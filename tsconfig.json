@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -19,15 +23,22 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
   "include": [
-    "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts",
-    "next.config.js"
-, "src/components/AppIcon.jsx", "src/app/vendor/products/components/AddProductModal.tsx", "src/app/vendor/storefront/components/StorefrontPreview.jsx" ],
-  "exclude": ["node_modules"]
+    "next-env.d.ts",
+    "next.config.js",
+    "src/app/vendor/products/components/AddProductModal.tsx",
+    "src/app/vendor/storefront/components/StorefrontPreview.jsx",
+    "src/components/AppIcon.jsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

@@ -8,25 +8,21 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
+import api from "@/lib/api_client";
+import api_endpoints from "@/hooks/api_endpoints";
 
 interface UserData {
   account_id: string;
   name: string;
-  fullname: string;
   email: string;
   role: string;
   phone: string;
-  businessname: string;
-  address: string;
-  description: string;
+  businessname: string; //no business name in the api response
+  address: string; // no address
+  description: string; // no description
   country: string;
   state: string;
-  zip: string;
-}
-
-interface ApiResponse {
-  status: "success" | "error";
-  users?: UserData[];
+  zip: string; //no zip info
 }
 
 interface AuthContextType {
@@ -34,7 +30,7 @@ interface AuthContextType {
   user: UserData | null;
   isLoading: boolean;
   error: string | null;
-  login: (email: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -46,59 +42,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch user from API
-  const fetchUserData = useCallback(async (email: string) => {
-    setIsLoading(true);
-    setError(null);
+  // Fetch user profile from API
+  const fetchUserProfile = useCallback(async () => {
     try {
-      const response = await fetch(
-        `https://api.rootsnsquares.com/innovations/users.php?email=${email}`
-      );
+      const response = await api.get(api_endpoints.PROFILE);
+      const data = response.data
 
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
-
-      const data: ApiResponse = await response.json();
-
-      if (data.status === "success" && data.users && data.users.length > 0) {
-        const fetchedUser = data.users[0];
-
-        setUser(fetchedUser);
+      console.log("use profile:", data);
+      
+      if (data && data.user) {
+        setUser(data.user);
         setIsLoggedIn(true);
 
         if (typeof window !== "undefined") {
-          sessionStorage.setItem("RSEmail", email);
-          sessionStorage.setItem("RSUser", JSON.stringify(fetchedUser));
+          sessionStorage.setItem("RSUser", JSON.stringify(data.user));
         }
-      } else {
-        throw new Error("User not found or API error.");
       }
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Error fetching user profile:", err);
       setError(
-        err instanceof Error ? err.message : "An unknown error occurred."
+        err.response?.data?.message || err.message || "Failed to fetch user profile"
       );
-      setIsLoggedIn(false);
-      setUser(null);
-
-      if (typeof window !== "undefined") {
-        sessionStorage.removeItem("RSEmail");
-        sessionStorage.removeItem("RSUser");
-      }
-    } finally {
-      setIsLoading(false);
     }
   }, []);
 
   // Initialize from sessionStorage (instant hydration)
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const storedEmail = sessionStorage.getItem("RSEmail");
-        const storedUser = sessionStorage.getItem("RSUser");
-        
-        console.log(storedEmail);
-        console.log(storedUser);
+      const storedUser = sessionStorage.getItem("RSUser");
+      const storedToken = sessionStorage.getItem("RSToken");
+      
+      // console.log("Stored user:", storedUser);
+      // console.log("Stored token:", storedToken ? "exists" : "null");
 
-      if (storedUser) {
+      if (storedUser && storedToken) {
         try {
           const parsedUser = JSON.parse(storedUser) as UserData;
           setUser(parsedUser);
@@ -106,41 +83,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsLoading(false);
 
           // Re-fetch fresh data in background
-          if (storedEmail) fetchUserData(storedEmail);
+          fetchUserProfile();
           return;
         } catch (e) {
           console.error("Error parsing RSUser:", e);
+          // Clear corrupted data
+          sessionStorage.removeItem("RSUser");
+          sessionStorage.removeItem("RSToken");
         }
       }
 
-      if (storedEmail) {
-        fetchUserData(storedEmail);
-      } else {
-        setIsLoggedIn(false);
-        setUser(null);
-        setIsLoading(false);
-      }
+      setIsLoggedIn(false);
+      setUser(null);
+      setIsLoading(false);
     }
-  }, [fetchUserData]);
+  }, [fetchUserProfile]);
 
   const login = useCallback(
-    async (email: string) => {
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem("RSEmail", email);
+    async (email: string, password: string) => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await api.post(api_endpoints.LOGIN, {
+          email,
+          password,
+        });
+
+        const data = response.data
+        // console.log(data);
+
+        if (data.access_token) {
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("RSToken", data.access_token);
+            sessionStorage.setItem("RSEmail", email);
+          }
+
+          // Fetch user profile after login
+          await fetchUserProfile();
+        } else {
+          throw new Error("No access token received");
+        }
+      } catch (err: any) {
+        const errorMessage = err.response?.data?.message || err.message || "Login failed";
+        setError(errorMessage);
+        setIsLoggedIn(false);
+        setUser(null);
+
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("RSToken");
+          sessionStorage.removeItem("RSEmail");
+          sessionStorage.removeItem("RSUser");
+        }
+
+        throw err;
+      } finally {
+        setIsLoading(false);
       }
-      await fetchUserData(email);
     },
-    [fetchUserData]
+    [fetchUserProfile]
   );
 
   const logout = useCallback(() => {
     if (typeof window !== "undefined") {
       sessionStorage.removeItem("RSEmail");
+      sessionStorage.removeItem("RSToken");
       sessionStorage.removeItem("RSUser");
     }
-    setIsLoggedIn(false);
-    setUser(null);
-    setError(null);
     window.location.href = "/";
   }, []);
 

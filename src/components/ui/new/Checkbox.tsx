@@ -1,4 +1,6 @@
-import React from "react";
+"use client";
+
+import React, { useId } from "react";
 import { Check, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -29,9 +31,9 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
     },
     ref
   ) => {
-    // Generate unique ID if not provided
-    const checkboxId =
-      id || `checkbox-${Math.random().toString(36).substr(2, 9)}`;
+    // Use React's built-in useId for stable IDs fixes hydration mismatch
+    const autoId = useId();
+    const checkboxId = id || autoId;
 
     // Size variants
     const sizeClasses = {
@@ -67,10 +69,10 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
             )}
           >
             {checked && !indeterminate && (
-              <Check className="h-3 w-3 text-current flex items-center justify-center" />
+              <Check className="flex items-center justify-center w-3 h-3 text-current" />
             )}
             {indeterminate && (
-              <Minus className="h-3 w-3 text-current flex items-center justify-center" />
+              <Minus className="flex items-center justify-center w-3 h-3 text-current" />
             )}
           </label>
         </div>
@@ -86,7 +88,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
                 )}
               >
                 {label}
-                {required && <span className="text-destructive ml-1">*</span>}
+                {required && <span className="ml-1 text-destructive">*</span>}
               </label>
             )}
 
@@ -104,7 +106,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
 
 Checkbox.displayName = "Checkbox";
 
-// CheckboxGroup Component
+// ✅ CheckboxGroup Component
 interface CheckboxGroupProps
   extends React.FieldsetHTMLAttributes<HTMLFieldSetElement> {
   children: React.ReactNode;
@@ -112,7 +114,7 @@ interface CheckboxGroupProps
   description?: string;
   error?: string;
   required?: boolean;
-  disabled?: boolean; // ✅ Added this to fix the error
+  disabled?: boolean;
 }
 
 const CheckboxGroup = React.forwardRef<HTMLFieldSetElement, CheckboxGroupProps>(
@@ -144,7 +146,7 @@ const CheckboxGroup = React.forwardRef<HTMLFieldSetElement, CheckboxGroupProps>(
             )}
           >
             {label}
-            {required && <span className="text-destructive ml-1">*</span>}
+            {required && <span className="ml-1 text-destructive">*</span>}
           </legend>
         )}
 

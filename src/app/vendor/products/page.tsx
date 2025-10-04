@@ -77,13 +77,13 @@ const ToastNotification: React.FC<{
         <div className="flex-1 min-w-0">
           <h4 className="font-medium">{toast.title}</h4>
           {toast.message && (
-            <p className="text-sm mt-1 opacity-80">{toast.message}</p>
+            <p className="mt-1 text-sm opacity-80">{toast.message}</p>
           )}
         </div>
         {toast.type !== "loading" && (
           <button
             onClick={() => onRemove(toast.id)}
-            className="opacity-60 hover:opacity-100 transition-opacity"
+            className="transition-opacity opacity-60 hover:opacity-100"
           >
             <Icon name="X" size={16} />
           </button>
@@ -101,15 +101,13 @@ const ToastContainer: React.FC<{
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 w-96 max-w-sm">
-      {toasts.map((toast) => (
+    <div className="fixed z-50 max-w-sm top-4 right-4 w-96">
+      {toasts.map(toast => (
         <ToastNotification key={toast.id} toast={toast} onRemove={onRemove} />
       ))}
     </div>
   );
 };
-
-// --- START OF TYPESCRIPT CONVERSION ---
 
 // Define specific string literal types for controlled vocabularies
 type ProductStatus = "active" | "draft" | "inactive" | "out-of-stock";
@@ -148,7 +146,14 @@ interface AddProductRequest {
   product_price: number;
   status: string;
   visibility: boolean;
-  images: string[]; // ✅ backend only needs URLs
+  images: string[];
+  quantity?: number;
+  stock?: number;
+  sku?: string;
+  barcode?: string;
+  weight?: number;
+  compare_price?: number;
+  cost?: number;
 }
 
 interface EditProductRequest extends AddProductRequest {}
@@ -196,19 +201,14 @@ interface VendorData {
 }
 
 // API Service class for product operations
-
-// Updated ProductApiService class with the new token and proper error handling
-
 class ProductApiService {
   private static baseUrl = "https://server.bizengo.com/api/vendor";
 
-  // Your NEW token (but you'll need to get an even newer one since this expires Jan 23, 2025)
   private static async getAuthToken(): Promise<string> {
     if (typeof window === "undefined") {
-      return ""; // Return empty string on server-side
+      return "";
     }
 
-    // Check localStorage first
     const storedToken = window.localStorage.getItem("vendorToken");
 
     if (storedToken && storedToken !== "null") {
@@ -225,18 +225,15 @@ class ProductApiService {
       }
     }
 
-    // Use your NEW token as fallback (but this will also expire)
     const newToken =
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc1NTg0OTUwMCwianRpIjoiYWNkZmYzNjUtNGVhZC00NDgzLWE3ZjgtZTlkYzk1NTIzNzRhIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6eyJpZCI6Miwicm9sZSI6InZlbmRvciJ9LCJuYmYiOjE3NTU4NDk1MDAsImNzcmYiOiJlZmNjNjczZS1mMTdkLTQ5NmMtOWY5Yi1hYjg1NjExYTE4YjEiLCJleHAiOjE3NTU5MzU5MDB9.kBBHDyU8cLXc-A-XJR3CJoi7t9-Bs4YDdaBwuInJFjg";
 
-    // Store it for future use
     if (typeof window !== "undefined") {
       window.localStorage.setItem("authToken", newToken);
     }
     return newToken;
   }
 
-  // Updated request method with better error handling
   private static async request(
     endpoint: string,
     options: RequestInit = {}
@@ -290,7 +287,6 @@ class ProductApiService {
     } catch (error) {
       console.error("API Request failed:", error);
 
-      // Handle network errors specifically
       if (error instanceof TypeError && error.message.includes("fetch")) {
         throw new Error(
           "Network error. Please check your internet connection and try again."
@@ -330,7 +326,6 @@ class ProductApiService {
     return response.json();
   }
 
-  // Helper method to convert File to base64
   static fileToBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -340,11 +335,10 @@ class ProductApiService {
         const base64 = result.split(",")[1];
         resolve(base64);
       };
-      reader.onerror = (error) => reject(error);
+      reader.onerror = error => reject(error);
     });
   }
 
-  // Method to manually login and get a fresh token
   static async login(email: string, password: string): Promise<string> {
     try {
       const response = await fetch(
@@ -379,7 +373,6 @@ class ProductApiService {
     }
   }
 }
-
 const ProductManagement: React.FC = () => {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
@@ -402,20 +395,20 @@ const ProductManagement: React.FC = () => {
   // Toast management functions
   const addToast = (toast: Omit<Toast, "id">): string => {
     const id = Date.now().toString();
-    setToasts((prev) => [...prev, { ...toast, id }]);
+    setToasts(prev => [...prev, { ...toast, id }]);
     return id;
   };
 
   const removeToast = (id: string): void => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    setToasts(prev => prev.filter(toast => toast.id !== id));
   };
 
   const updateToast = (
     id: string,
     updates: Partial<Omit<Toast, "id">>
   ): void => {
-    setToasts((prev) =>
-      prev.map((toast) => (toast.id === id ? { ...toast, ...updates } : toast))
+    setToasts(prev =>
+      prev.map(toast => (toast.id === id ? { ...toast, ...updates } : toast))
     );
   };
 
@@ -461,7 +454,7 @@ const ProductManagement: React.FC = () => {
 
     if (selectedCategory) {
       filtered = filtered.filter(
-        (product) =>
+        product =>
           product.category.toLowerCase() === selectedCategory.toLowerCase()
       );
     }
@@ -469,7 +462,7 @@ const ProductManagement: React.FC = () => {
     if (searchQuery) {
       const lowercasedQuery = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        (product) =>
+        product =>
           product.name.toLowerCase().includes(lowercasedQuery) ||
           product.sku.toLowerCase().includes(lowercasedQuery)
       );
@@ -486,15 +479,15 @@ const ProductManagement: React.FC = () => {
     productId: number | string,
     isSelected: boolean
   ): void => {
-    setSelectedProducts((prev) =>
+    setSelectedProducts(prev =>
       isSelected
         ? [...prev, Number(productId)]
-        : prev.filter((id) => id !== Number(productId))
+        : prev.filter(id => id !== Number(productId))
     );
   };
 
   const handleSelectAll = (isSelected: boolean): void => {
-    setSelectedProducts(isSelected ? filteredProducts.map((p) => p.id) : []);
+    setSelectedProducts(isSelected ? filteredProducts.map(p => p.id) : []);
   };
 
   const handleBulkAction = (action: BulkAction, productIds: number[]): void => {
@@ -508,7 +501,7 @@ const ProductManagement: React.FC = () => {
   };
 
   const handleEditProduct = (productId: number | string): void => {
-    const product = products.find((p) => p.id === productId);
+    const product = products.find(p => p.id === productId);
     if (product) {
       setEditingProduct(product);
       setShowAddModal(true);
@@ -516,9 +509,8 @@ const ProductManagement: React.FC = () => {
   };
 
   const handleDuplicateProduct = (productId: number | string): void => {
-    const product = products.find((p) => p.id === productId);
+    const product = products.find(p => p.id === productId);
     if (product) {
-      // Show loading toast for duplicate action
       const loadingToastId = addToast({
         type: "loading",
         title: "Duplicating product...",
@@ -526,7 +518,6 @@ const ProductManagement: React.FC = () => {
         duration: 0,
       });
 
-      // Simulate duplicate operation
       setTimeout(() => {
         const duplicatedProduct: Product = {
           ...product,
@@ -535,9 +526,8 @@ const ProductManagement: React.FC = () => {
           sku: `${product.sku}-COPY`,
           createdAt: new Date().toISOString(),
         };
-        setProducts((prev) => [duplicatedProduct, ...prev]);
+        setProducts(prev => [duplicatedProduct, ...prev]);
 
-        // Remove loading toast and show success
         removeToast(loadingToastId);
         addToast({
           type: "success",
@@ -554,7 +544,6 @@ const ProductManagement: React.FC = () => {
       typeof window !== "undefined" &&
       window.confirm("Are you sure you want to delete this product?")
     ) {
-      // Show loading toast for delete action
       const loadingToastId = addToast({
         type: "loading",
         title: "Deleting product...",
@@ -562,13 +551,11 @@ const ProductManagement: React.FC = () => {
         duration: 0,
       });
 
-      // Simulate delete operation (replace with actual API call)
       setTimeout(() => {
-        const deletedProduct = products.find((p) => p.id === productId);
-        setProducts((prev) => prev.filter((p) => p.id !== productId));
-        setSelectedProducts((prev) => prev.filter((id) => id !== productId));
+        const deletedProduct = products.find(p => p.id === productId);
+        setProducts(prev => prev.filter(p => p.id !== productId));
+        setSelectedProducts(prev => prev.filter(id => id !== productId));
 
-        // Remove loading toast and show success
         removeToast(loadingToastId);
         addToast({
           type: "success",
@@ -587,8 +574,8 @@ const ProductManagement: React.FC = () => {
     field: string,
     value: string | number
   ): void => {
-    setProducts((prev) =>
-      prev.map((product) => {
+    setProducts(prev =>
+      prev.map(product => {
         if (String(product.id) === productId) {
           const isNumericField = [
             "price",
@@ -607,36 +594,68 @@ const ProductManagement: React.FC = () => {
     );
   };
 
-  // Transform form data to API format
   const transformFormDataToApiRequest = async (
     formData: ProductFormData
   ): Promise<AddProductRequest> => {
     console.log("Original Form Data:", formData);
 
-    // Convert image files to base64
-    const imagePromises = formData.images.map(async (img) => {
-      if (img.file) {
-        const base64 = await ProductApiService.fileToBase64(img.file);
-        return base64; // Remove the data URL prefix as the API might not expect it
+    const validImages = Array.isArray(formData.images)
+      ? formData.images.filter(img => img && (img.file || img.url))
+      : [];
+
+    const imagePromises = validImages.map(async img => {
+      try {
+        if (img.file instanceof File) {
+          const base64 = await ProductApiService.fileToBase64(img.file);
+          return base64;
+        }
+        if (img.url && typeof img.url === "string") {
+          return img.url;
+        }
+        return null;
+      } catch (error) {
+        console.error("Error processing image:", error);
+        return null;
       }
-      return img.url; // If it's already a URL, use it as is
     });
 
-    const images = await Promise.all(imagePromises);
-    console.log("Processed Images:", images.length);
+    const processedImages = await Promise.all(imagePromises);
+    const images = processedImages.filter(
+      (img): img is string => img !== null && img !== ""
+    );
 
-    // Format the data according to API expectations
-    const apiData: AddProductRequest = {
-      product_name: formData.name,
+    if (!formData.name || formData.name.trim() === "") {
+      throw new Error("Product name is required");
+    }
+
+    if (!formData.price || parseFloat(formData.price) <= 0) {
+      throw new Error("Valid product price is required");
+    }
+
+    // ✅ INCLUDE ALL POSSIBLE FIELDS THE BACKEND MIGHT NEED
+    const apiData: any = {
+      product_name: formData.name.trim(),
       description: (formData.description || "").trim(),
       category: (formData.category || "Uncategorized").trim(),
-      product_price: parseFloat(formData.price) || 0,
+      product_price: parseFloat(formData.price),
       status: formData.status || "active",
       visibility: formData.visibility === "visible",
       images: images,
+      // ✅ ADD THESE - Backend likely requires them
+      quantity: parseInt(formData.stock, 10) || 0,
+      stock: parseInt(formData.stock, 10) || 0,
+      sku: formData.sku || `SKU-${Date.now()}`,
     };
 
-    console.log("Transformed API Data:", apiData);
+    // Add optional fields only if they have values
+    if (formData.barcode) apiData.barcode = formData.barcode;
+    if (formData.weight) apiData.weight = parseFloat(formData.weight);
+    if (formData.comparePrice)
+      apiData.compare_price = parseFloat(formData.comparePrice);
+    if (formData.cost) apiData.cost = parseFloat(formData.cost);
+
+    console.log("🚀 FINAL API REQUEST DATA:", JSON.stringify(apiData, null, 2));
+
     return apiData;
   };
 
@@ -647,12 +666,11 @@ const ProductManagement: React.FC = () => {
     const actionText = isEditing ? "Updating" : "Adding";
     const successText = isEditing ? "updated" : "added";
 
-    // Show loading toast
     const loadingToastId = addToast({
       type: "loading",
       title: `${actionText} product...`,
       message: "Please wait while we save your product.",
-      duration: 0, // Don't auto-remove loading toast
+      duration: 0,
     });
 
     setLoading(true);
@@ -662,15 +680,13 @@ const ProductManagement: React.FC = () => {
       const apiData = await transformFormDataToApiRequest(formData);
 
       if (editingProduct) {
-        // Edit existing product
         const response = await ProductApiService.editProduct(
           editingProduct.id,
           apiData
         );
 
-        // Update local state with the response
-        setProducts((prev) =>
-          prev.map((p) =>
+        setProducts(prev =>
+          prev.map(p =>
             p.id === editingProduct.id
               ? {
                   ...p,
@@ -680,7 +696,6 @@ const ProductManagement: React.FC = () => {
                   price: apiData.product_price,
                   status: apiData.status as ProductStatus,
                   image: apiData.images[0] || p.image,
-                  // Add other fields as needed
                 }
               : p
           )
@@ -688,12 +703,10 @@ const ProductManagement: React.FC = () => {
 
         console.log("Product updated successfully:", response);
       } else {
-        // Add new product
         const response = await ProductApiService.addProduct(apiData);
 
-        // Create new product from response and add to local state
         const newProduct: Product = {
-          id: response.id || Date.now(), // Use API response ID if available
+          id: response.id || Date.now(),
           name: apiData.product_name,
           description: apiData.description,
           category: apiData.category,
@@ -702,18 +715,16 @@ const ProductManagement: React.FC = () => {
           image:
             apiData.images[0] ||
             "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400",
-          sku: `SKU-${Date.now()}`, // Generate SKU or get from response
+          sku: `SKU-${Date.now()}`,
           stock: parseInt(formData.stock, 10) || 0,
           createdAt: new Date().toISOString(),
           views: 0,
-          // Add other fields as needed
         };
 
-        setProducts((prev) => [newProduct, ...prev]);
+        setProducts(prev => [newProduct, ...prev]);
         console.log("Product added successfully:", response);
       }
 
-      // Remove loading toast and show success
       removeToast(loadingToastId);
       addToast({
         type: "success",
@@ -729,7 +740,6 @@ const ProductManagement: React.FC = () => {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to save product";
 
-      // Remove loading toast and show error
       removeToast(loadingToastId);
       addToast({
         type: "error",
@@ -745,11 +755,11 @@ const ProductManagement: React.FC = () => {
   };
 
   const lowStockCount = products.filter(
-    (p) => p.stock > 0 && p.stock <= 10
+    p => p.stock > 0 && p.stock <= 10
   ).length;
-  const outOfStockCount = products.filter((p) => p.stock === 0).length;
+  const outOfStockCount = products.filter(p => p.stock === 0).length;
   const activeProductsCount = products.filter(
-    (p) => p.status === "active"
+    p => p.status === "active"
   ).length;
 
   return (
@@ -763,10 +773,10 @@ const ProductManagement: React.FC = () => {
             <div className="max-w-[85vw] mx-auto py-6 px-0 md:px-4">
               {/* Error Display */}
               {error && (
-                <div className="mb-4 p-4 bg-error/10 border border-error/20 rounded-lg">
+                <div className="p-4 mb-4 border rounded-lg bg-error/10 border-error/20">
                   <div className="flex items-center space-x-2">
                     <Icon name="AlertCircle" size={20} className="text-error" />
-                    <p className="text-error font-medium">{error}</p>
+                    <p className="font-medium text-error">{error}</p>
                   </div>
                   <button
                     onClick={() => setError(null)}
@@ -783,7 +793,7 @@ const ProductManagement: React.FC = () => {
                   <h1 className="text-[12px] sm:text-[14px] md:text-[16px] lg:text-[18px] font-bold text-foreground">
                     Product Management
                   </h1>
-                  <p className="text-muted-foreground mt-1">
+                  <p className="mt-1 text-muted-foreground">
                     Manage your product catalog and inventory
                   </p>
                 </div>
@@ -810,8 +820,8 @@ const ProductManagement: React.FC = () => {
               </div>
 
               {/* Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div className="bg-card border border-border rounded-lg p-6">
+              <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-4">
+                <div className="p-6 border rounded-lg bg-card border-border">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">
@@ -821,12 +831,12 @@ const ProductManagement: React.FC = () => {
                         {products.length}
                       </p>
                     </div>
-                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10">
                       <Icon name="Package" size={24} className="text-primary" />
                     </div>
                   </div>
                 </div>
-                <div className="bg-card border border-border rounded-lg p-6">
+                <div className="p-6 border rounded-lg bg-card border-border">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">
@@ -836,7 +846,7 @@ const ProductManagement: React.FC = () => {
                         {activeProductsCount}
                       </p>
                     </div>
-                    <div className="w-12 h-12 bg-success/10 rounded-lg flex items-center justify-center">
+                    <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-success/10">
                       <Icon
                         name="CheckCircle"
                         size={24}
@@ -845,7 +855,7 @@ const ProductManagement: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                <div className="bg-card border border-border rounded-lg p-6">
+                <div className="p-6 border rounded-lg bg-card border-border">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Low Stock</p>
@@ -853,7 +863,7 @@ const ProductManagement: React.FC = () => {
                         {lowStockCount}
                       </p>
                     </div>
-                    <div className="w-12 h-12 bg-warning/10 rounded-lg flex items-center justify-center">
+                    <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-warning/10">
                       <Icon
                         name="AlertTriangle"
                         size={24}
@@ -862,7 +872,7 @@ const ProductManagement: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                <div className="bg-card border border-border rounded-lg p-6">
+                <div className="p-6 border rounded-lg bg-card border-border">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">
@@ -872,7 +882,7 @@ const ProductManagement: React.FC = () => {
                         {outOfStockCount}
                       </p>
                     </div>
-                    <div className="w-12 h-12 bg-error/10 rounded-lg flex items-center justify-center">
+                    <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-error/10">
                       <Icon
                         name="AlertCircle"
                         size={24}
@@ -884,7 +894,7 @@ const ProductManagement: React.FC = () => {
               </div>
 
               {/* Main Content */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
                 <div className="lg:col-span-3">
                   <CategoryTree
                     onCategorySelect={handleCategorySelect}
@@ -904,7 +914,7 @@ const ProductManagement: React.FC = () => {
                   />
 
                   {loading ? (
-                    <div className="w-full h-64 flex items-center justify-center">
+                    <div className="flex items-center justify-center w-full h-64">
                       <div className="flex flex-col items-center space-y-4">
                         <div className="animate-spin">
                           <Icon
@@ -937,6 +947,7 @@ const ProductManagement: React.FC = () => {
                       onEditProduct={handleEditProduct}
                       onDuplicateProduct={handleDuplicateProduct}
                       onDeleteProduct={handleDeleteProduct}
+                      viewMode={viewMode}
                     />
                   )}
                 </div>

@@ -217,7 +217,7 @@ const Settings: React.FC<SettingsProps> = ({ userProfile: propUserProfile }) => 
     const renderLocationSettings = () => (
         <div className="space-y-6">
             {/* Current Location Detection */}
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
                 <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-2">
                         <Navigation className="w-5 h-5 text-blue-600" />
@@ -226,7 +226,7 @@ const Settings: React.FC<SettingsProps> = ({ userProfile: propUserProfile }) => 
                     <button
                         onClick={detectCurrentLocation}
                         disabled={isLoadingLocation}
-                        className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-1"
+                        className="flex items-center px-3 py-1 space-x-1 text-sm text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50"
                     >
                         {isLoadingLocation ? (
                             <>
@@ -245,7 +245,7 @@ const Settings: React.FC<SettingsProps> = ({ userProfile: propUserProfile }) => 
                 {settings.location.currentLocation && (
                     <div className="text-sm text-blue-800">
                         <p><strong>Detected:</strong> {settings.location.currentLocation.address}</p>
-                        <p className="text-xs mt-1">
+                        <p className="mt-1 text-xs">
                             Coordinates: {settings.location.currentLocation.coordinates.lat.toFixed(4)}, 
                             {settings.location.currentLocation.coordinates.lng.toFixed(4)}
                         </p>
@@ -253,7 +253,7 @@ const Settings: React.FC<SettingsProps> = ({ userProfile: propUserProfile }) => 
                 )}
                 
                 {locationError && (
-                    <div className="flex items-center space-x-2 text-red-600 text-sm">
+                    <div className="flex items-center space-x-2 text-sm text-red-600">
                         <AlertCircle className="w-4 h-4" />
                         <span>{locationError}</span>
                     </div>
@@ -262,7 +262,7 @@ const Settings: React.FC<SettingsProps> = ({ userProfile: propUserProfile }) => 
 
             {/* Home Address */}
             <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
+                <label className="block mb-2 text-sm font-medium text-gray-900">
                     Home Address
                 </label>
                 <div className="flex space-x-2">
@@ -275,19 +275,19 @@ const Settings: React.FC<SettingsProps> = ({ userProfile: propUserProfile }) => 
                     />
                     <button 
                         onClick={() => handleProfileUpdate('location', settings.location.homeAddress)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700"
                     >
                         Update
                     </button>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="mt-1 text-xs text-gray-500">
                     This helps us show you the most relevant nearby products
                 </p>
             </div>
 
             {/* Search Radius */}
             <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
+                <label className="block mb-2 text-sm font-medium text-gray-900">
                     Default Search Radius: {settings.location.searchRadius} miles
                 </label>
                 <input
@@ -298,7 +298,7 @@ const Settings: React.FC<SettingsProps> = ({ userProfile: propUserProfile }) => 
                     onChange={(e) => handleSettingChange('location', 'searchRadius', parseInt(e.target.value))}
                     className="w-full accent-blue-600"
                 />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <div className="flex justify-between mt-1 text-xs text-gray-500">
                     <span>1 mile</span>
                     <span>50 miles</span>
                 </div>
@@ -376,12 +376,12 @@ const Settings: React.FC<SettingsProps> = ({ userProfile: propUserProfile }) => 
     const renderAccountSettings = () => (
         <div className="space-y-6">
             {/* User Profile Info */}
-            <div className="p-4 bg-gray-50 rounded-lg">
+            <div className="p-4 rounded-lg bg-gray-50">
                 <div className="flex items-center space-x-4">
                     <img
                         src={userProfile.avatar}
                         alt={userProfile.name}
-                        className="w-16 h-16 rounded-full object-cover"
+                        className="object-cover w-16 h-16 rounded-full"
                     />
                     <div>
                         <h4 className="font-semibold text-gray-900">{userProfile.name}</h4>
@@ -394,19 +394,19 @@ const Settings: React.FC<SettingsProps> = ({ userProfile: propUserProfile }) => 
 
             {/* User Stats */}
             <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 bg-blue-50 rounded-lg text-center">
+                <div className="p-3 text-center rounded-lg bg-blue-50">
                     <div className="text-2xl font-bold text-blue-600">{userProfile.stats.itemsListed}</div>
                     <div className="text-sm text-blue-800">Items Listed</div>
                 </div>
-                <div className="p-3 bg-green-50 rounded-lg text-center">
+                <div className="p-3 text-center rounded-lg bg-green-50">
                     <div className="text-2xl font-bold text-green-600">{userProfile.stats.purchasesMade}</div>
                     <div className="text-sm text-green-800">Purchases Made</div>
                 </div>
-                <div className="p-3 bg-yellow-50 rounded-lg text-center">
+                <div className="p-3 text-center rounded-lg bg-yellow-50">
                     <div className="text-2xl font-bold text-yellow-600">{userProfile.stats.sellerRating}</div>
                     <div className="text-sm text-yellow-800">Seller Rating</div>
                 </div>
-                <div className="p-3 bg-purple-50 rounded-lg text-center">
+                <div className="p-3 text-center rounded-lg bg-purple-50">
                     <div className="text-2xl font-bold text-purple-600">{userProfile.stats.totalReviews}</div>
                     <div className="text-sm text-purple-800">Total Reviews</div>
                 </div>
@@ -430,7 +430,7 @@ const Settings: React.FC<SettingsProps> = ({ userProfile: propUserProfile }) => 
                     ) : (
                         <button 
                             onClick={() => alert('Verification email sent!')}
-                            className="text-blue-600 hover:underline text-sm"
+                            className="text-sm text-blue-600 hover:underline"
                         >
                             Verify Now
                         </button>
@@ -453,7 +453,7 @@ const Settings: React.FC<SettingsProps> = ({ userProfile: propUserProfile }) => 
                     ) : (
                         <button 
                             onClick={() => alert('SMS verification sent!')}
-                            className="text-blue-600 hover:underline text-sm"
+                            className="text-sm text-blue-600 hover:underline"
                         >
                             Verify Now
                         </button>
@@ -477,10 +477,10 @@ const Settings: React.FC<SettingsProps> = ({ userProfile: propUserProfile }) => 
     };
 
     return (
-        <div className="max-w-4xl mx-auto p-6 space-y-6">
+        <div className="max-w-4xl p-6 mx-auto space-y-6">
             {/* Header */}
-            <div className="text-center mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Settings</h1>
+            <div className="mb-8 text-center">
+                <h1 className="mb-2 text-3xl font-bold text-gray-900">Settings</h1>
                 <p className="text-gray-600">Manage your account preferences and privacy settings</p>
             </div>
 
@@ -501,7 +501,7 @@ const Settings: React.FC<SettingsProps> = ({ userProfile: propUserProfile }) => 
 
             {/* Desktop Tabs */}
             <div className="hidden md:block">
-                <div className="flex space-x-1 bg-gray-100 rounded-lg p-1 mb-6">
+                <div className="flex p-1 mb-6 space-x-1 bg-gray-100 rounded-lg">
                     {sections.map((section) => {
                         const Icon = section.icon;
                         return (
@@ -522,8 +522,8 @@ const Settings: React.FC<SettingsProps> = ({ userProfile: propUserProfile }) => 
             </div>
 
             {/* Content */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-6">
+            <div className="p-6 bg-white border border-gray-200 rounded-lg">
+                <h3 className="mb-6 text-lg font-semibold text-gray-900">
                     {sections.find(s => s.id === activeSection)?.label}
                 </h3>
                 {renderContent()}

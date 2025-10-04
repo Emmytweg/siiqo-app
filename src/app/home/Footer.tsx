@@ -20,7 +20,7 @@ import {
 
 const Footer = () => {
   return (
-    <footer className="pt-16 pb-8 bg-gradient-to-b from-background to-muted/20">
+    <footer className="pt-16 pb-18 bg-gradient-to-b from-background to-muted/20">
       <div className="container px-4 mx-auto">
         {/* Newsletter Section */}
         <div className="bg-[#001d3b] rounded-2xl p-8 mb-16 text-center">

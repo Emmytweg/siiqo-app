@@ -9,6 +9,7 @@ import SellerCard from "./components/SellerCard";
 import SimilarProducts from "./components/SimilarProducts";
 import PriceComparison from "./components/PriceComparison";
 import { CheckCircle, AlertCircle, X } from "lucide-react";
+import Button from "@/components/Button";
 
 // API Response Types
 interface ApiProduct {
@@ -114,7 +115,7 @@ const NotificationToast: React.FC<{
 
   return (
     <div
-      className={`fixed top-4 right-4 z-1 p-4 rounded-lg border ${
+      className={`fixed top-4 right-4 z-50 p-4 rounded-lg border ${
         bgColors[notification.type]
       } shadow-lg max-w-sm animate-in slide-in-from-right duration-300`}
     >
@@ -164,12 +165,12 @@ const ProductDetail = () => {
     message: string
   ) => {
     const id = Date.now().toString();
-    setNotifications((prev) => [...prev, { id, type, message }]);
+    setNotifications(prev => [...prev, { id, type, message }]);
   };
 
   // Remove notification
   const removeNotification = (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
   // API call helper
@@ -317,7 +318,7 @@ const ProductDetail = () => {
         }),
       });
 
-      setCartQuantity((prev) => prev + quantity);
+      setCartQuantity(prev => prev + quantity);
       addNotification(
         "success",
         `Added ${quantity} item(s) to cart successfully!`
@@ -439,9 +440,9 @@ const ProductDetail = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-8 h-8 mx-auto mb-4 border-2 rounded-full border-primary border-t-transparent animate-spin"></div>
           <p className="text-text-secondary">Loading product details...</p>
         </div>
       </div>
@@ -450,18 +451,18 @@ const ProductDetail = () => {
 
   if (error || !product) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-text-primary mb-2">
+          <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-500" />
+          <h2 className="mb-2 text-xl font-semibold text-text-primary">
             Product Not Available
           </h2>
-          <p className="text-text-secondary mb-4">
+          <p className="mb-4 text-text-secondary">
             {error || "The product you're looking for doesn't exist."}
           </p>
           <button
             onClick={() => router.back()}
-            className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-700 transition-colors"
+            className="px-6 py-2 text-white transition-colors rounded-lg bg-primary hover:bg-primary-700"
           >
             Go Back
           </button>
@@ -471,9 +472,9 @@ const ProductDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen mb-20 bg-background">
       {/* Notifications */}
-      {notifications.map((notification) => (
+      {notifications.map(notification => (
         <NotificationToast
           key={notification.id}
           notification={notification}
@@ -483,7 +484,7 @@ const ProductDetail = () => {
 
       {/* Desktop Layout */}
       <div className="hidden lg:block">
-        <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="px-6 py-8 mx-auto max-w-7xl">
           <div className="grid grid-cols-3 gap-8">
             {/* Left Column - Images and Map */}
             <div className="col-span-2 space-y-6">
@@ -523,43 +524,48 @@ const ProductDetail = () => {
               />
 
               <div className="space-y-3">
-                <button
+                <Button
+                  type="button"
+                  variant="navy"
                   onClick={handleBuyNow}
                   disabled={
                     isAddingToCart || product.availability !== "Available"
                   }
-                  className="w-full bg-primary text-white py-4 rounded-lg font-semibold hover:bg-primary-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-4 text-sm transition-colors duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isAddingToCart ? (
                     <div className="flex items-center justify-center space-x-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <div className="w-4 h-4 border-2 border-white rounded-full border-t-transparent animate-spin"></div>
                       <span>Processing...</span>
                     </div>
                   ) : (
                     `Buy Now - ₦${product.price.toLocaleString()}`
                   )}
-                </button>
-                <button
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => handleAddToCart(1)}
                   disabled={
                     isAddingToCart || product.availability !== "Available"
                   }
-                  className="w-full border-2 border-primary text-primary py-4 rounded-lg font-semibold hover:bg-primary-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-4 text-sm font-semibold transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isAddingToCart ? (
                     <div className="flex items-center justify-center space-x-2">
-                      <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                      <div className="w-4 h-4 border-2 rounded-full border-primary border-t-transparent animate-spin"></div>
                       <span>Adding to Cart...</span>
                     </div>
                   ) : (
                     `Add to Cart ${cartQuantity > 0 ? `(${cartQuantity})` : ""}`
                   )}
-                </button>
+                </Button>
               </div>
 
               {product.availability !== "Available" && (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-yellow-800 text-sm font-medium">
+                <div className="p-4 border border-yellow-200 rounded-lg bg-yellow-50">
+                  <p className="text-sm font-medium text-yellow-800">
                     This product is currently unavailable.
                   </p>
                 </div>
@@ -570,7 +576,7 @@ const ProductDetail = () => {
           <div className="mt-12">
             <SimilarProducts
               products={similarProducts}
-              onProductClick={(productId) =>
+              onProductClick={productId =>
                 router.push(`/product-detail?id=${productId}`)
               }
             />
@@ -621,46 +627,47 @@ const ProductDetail = () => {
 
             <SimilarProducts
               products={similarProducts}
-              onProductClick={(productId) =>
+              onProductClick={productId =>
                 router.push(`/product-detail?id=${productId}`)
               }
               isMobile={true}
             />
 
             {/* Mobile Action Buttons */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-border p-4 space-y-3">
-              <button
+            <div className="fixed bottom-0 left-0 right-0 p-4 space-y-3 bg-white border-t border-border">
+              <Button type="button" variant="navy"
                 onClick={handleBuyNow}
                 disabled={
                   isAddingToCart || product.availability !== "Available"
                 }
-                className="w-full bg-primary text-white py-4 rounded-lg font-semibold hover:bg-primary-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-4 text-sm transition-colors duration-200disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isAddingToCart ? (
                   <div className="flex items-center justify-center space-x-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-4 h-4 border-2 border-white rounded-full border-t-transparent animate-spin"></div>
                     <span>Processing...</span>
                   </div>
                 ) : (
                   `Buy Now - ₦${product.price.toLocaleString()}`
                 )}
-              </button>
-              <button
+              </Button>
+              
+              <Button type="button" variant="outline"
                 onClick={() => handleAddToCart(1)}
                 disabled={
                   isAddingToCart || product.availability !== "Available"
                 }
-                className="w-full border-2 border-primary text-primary py-4 rounded-lg font-semibold hover:bg-primary-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-4 text-sm transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isAddingToCart ? (
                   <div className="flex items-center justify-center space-x-2">
-                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-4 h-4 border-2 rounded-full border-primary border-t-transparent animate-spin"></div>
                     <span>Adding to Cart...</span>
                   </div>
                 ) : (
                   `Add to Cart ${cartQuantity > 0 ? `(${cartQuantity})` : ""}`
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -673,9 +680,9 @@ const ProductDetailPage = () => {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex items-center justify-center min-h-screen bg-background">
           <div className="text-center">
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <div className="w-8 h-8 mx-auto mb-4 border-2 rounded-full border-primary border-t-transparent animate-spin"></div>
             <p className="text-text-secondary">Loading...</p>
           </div>
         </div>

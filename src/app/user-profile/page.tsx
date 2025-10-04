@@ -8,35 +8,7 @@ import SavedItems from "./components/SavedItems";
 import Settings from "./components/Settings";
 import { useRouter } from "next/navigation";
 import { LucideIconName } from "@/components/ui/AppIcon";
-
-interface UserProfileData {
-  id: number;
-  name?: string;
-  business_name?: string;
-  email: string;
-  phone?: string;
-  country?: string;
-  state?: string;
-  referral_code?: string;
-  referred_by?: string | null;
-  role?: string;
-}
-
-interface Tab {
-  id: string;
-  label: string;
-  icon: LucideIconName;
-  count?: number;
-}
-
-interface QuickAction {
-  id: string;
-  label: string;
-  icon: LucideIconName;
-  color: string;
-  action?: () => void;
-  badge?: number;
-}
+import { QuickAction, Tab, UserProfileData } from "@/types/userProfile";
 
 const UserProfile = () => {
   const [activeTab, setActiveTab] = useState<string>("listings");
@@ -130,19 +102,19 @@ const UserProfile = () => {
         "Content-Type": "application/json",
       },
     })
-      .then((res) => {
+      .then(res => {
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`);
         }
         return res.json();
       })
-      .then((data) => {
+      .then(data => {
         setUser(data);
         // Update saved data
         sessionStorage.setItem("RSUser", JSON.stringify(data));
         setLoading(false);
       })
-      .catch((err) => {
+      .catch(err => {
         console.error("Error fetching profile:", err);
         setLoading(false);
       });
@@ -218,7 +190,7 @@ const UserProfile = () => {
       id: "messages",
       label: "Messages",
       icon: "MessageCircle",
-      color: "bg-secondary text-white",
+      color: "bg-secondary text-primary",
       badge: 3,
     },
     {
@@ -254,9 +226,9 @@ const UserProfile = () => {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <div className="w-12 h-12 mx-auto mb-4 border-b-2 rounded-full animate-spin border-primary"></div>
           <p className="text-text-secondary">Loading profile...</p>
         </div>
       </div>
@@ -266,22 +238,22 @@ const UserProfile = () => {
   // Error state - no user data
   if (!userProfile) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
           <Icon
             name="AlertCircle"
             size={48}
-            className="text-error mx-auto mb-4"
+            className="mx-auto mb-4 text-error"
           />
-          <h2 className="text-xl font-semibold text-text-primary mb-2">
+          <h2 className="mb-2 text-xl font-semibold text-text-primary">
             Unable to load profile
           </h2>
-          <p className="text-text-secondary mb-4">
+          <p className="mb-4 text-text-secondary">
             There was an error loading your profile data.
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+            className="px-4 py-2 text-white transition-colors rounded-lg bg-primary hover:bg-primary/90"
           >
             Try Again
           </button>
@@ -293,8 +265,8 @@ const UserProfile = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="md:hidden">
-        <div className="bg-surface border-b border-border px-4 py-6">
-          <div className="flex items-center space-x-4 mb-4">
+        <div className="px-4 py-6 border-b bg-surface border-border">
+          <div className="flex items-center mb-4 space-x-4">
             <div className="relative w-16 h-16">
               <div
                 className="relative w-16 h-16 cursor-pointer group"
@@ -306,24 +278,24 @@ const UserProfile = () => {
                   src={userProfile.avatar}
                   alt={userProfile.name}
                   fill
-                  className="rounded-full object-cover"
+                  className="object-cover rounded-full"
                   sizes="64px"
                 />
                 {userProfile.isVerified.email && (
-                  <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                  <div className="absolute flex items-center justify-center w-6 h-6 rounded-full -bottom-1 -right-1 bg-primary">
                     <Icon name="Check" size={12} className="text-white" />
                   </div>
                 )}
                 {/* Upload overlay */}
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 rounded-full flex items-center justify-center transition-all duration-200">
+                <div className="absolute inset-0 flex items-center justify-center transition-all duration-200 bg-black bg-opacity-0 rounded-full group-hover:bg-opacity-50">
                   <Icon
                     name="Camera"
                     size={20}
-                    className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                    className="text-white transition-opacity duration-200 opacity-0 group-hover:opacity-100"
                   />
                 </div>
                 {uploading && (
-                  <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
+                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full">
                     <Icon
                       name="Loader2"
                       size={20}
@@ -333,20 +305,20 @@ const UserProfile = () => {
                 )}
               </div>
               {userProfile.isVerified.email && (
-                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                <div className="absolute flex items-center justify-center w-6 h-6 rounded-full -bottom-1 -right-1 bg-primary">
                   <Icon name="Check" size={12} className="text-white" />
                 </div>
               )}
             </div>
             <div className="flex-1">
-              <h1 className="text-xl font-heading font-semibold text-text-primary">
+              <h1 className="text-xl font-semibold font-heading text-text-primary">
                 {userProfile.name}
               </h1>
-              <div className="flex items-center space-x-1 text-text-secondary text-sm">
+              <div className="flex items-center space-x-1 text-sm text-text-secondary">
                 <Icon name="MapPin" size={14} />
                 <span>{userProfile.location}</span>
               </div>
-              <p className="text-text-tertiary text-xs mt-1">
+              <p className="mt-1 text-xs text-text-tertiary">
                 Member since {userProfile.joinDate}
               </p>
             </div>
@@ -371,7 +343,7 @@ const UserProfile = () => {
                 <Icon
                   name="Star"
                   size={14}
-                  className="text-warning fill-current"
+                  className="text-orange-500 fill-current"
                 />
                 <span className="text-lg font-semibold text-text-primary">
                   {userProfile.stats.sellerRating}
@@ -385,18 +357,18 @@ const UserProfile = () => {
 
           {/* Quick Actions */}
           <div className="grid grid-cols-3 gap-3">
-            {quickActions.map((action) => (
+            {quickActions.map(action => (
               <button
                 key={action.id}
                 onClick={action.action}
                 className={`relative p-3 rounded-lg transition-colors duration-200 ${action.color} hover:opacity-90`}
               >
                 <Icon name={action.icon} size={18} className="mx-auto mb-1" />
-                <span className="text-xs font-medium block">
+                <span className="block text-xs font-medium">
                   {action.label}
                 </span>
                 {action.badge && (
-                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-accent text-white text-xs rounded-full flex items-center justify-center">
+                  <div className="absolute flex items-center justify-center w-5 h-5 text-xs text-white rounded-full -top-1 -right-1 bg-accent">
                     {action.badge}
                   </div>
                 )}
@@ -406,9 +378,9 @@ const UserProfile = () => {
         </div>
 
         {/* Tab Navigation */}
-        <div className="bg-surface border-b border-border">
+        <div className="border-b bg-surface border-border">
           <div className="flex overflow-x-auto">
-            {tabs.map((tab) => (
+            {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
@@ -441,13 +413,13 @@ const UserProfile = () => {
       </div>
 
       {/* Desktop Layout */}
-      <div className="hidden md:block max-w-7xl mx-auto px-6 py-8">
+      <div className="hidden px-6 py-8 mx-auto md:block max-w-7xl">
         <div className="grid grid-cols-12 gap-8">
           {/* Left Sidebar - Profile Info */}
           <div className="col-span-4">
-            <div className="bg-surface rounded-lg border border-border p-6 mb-6">
-              <div className="text-center mb-6">
-                <div className="relative w-24 h-24 rounded-full overflow-hidden mx-auto">
+            <div className="p-6 mb-6 border rounded-lg bg-surface border-border">
+              <div className="mb-6 text-center">
+                <div className="relative w-24 h-24 mx-auto overflow-hidden rounded-full">
                   <Image
                     fill
                     src={userProfile.avatar}
@@ -456,25 +428,25 @@ const UserProfile = () => {
                     sizes="96px"
                   />
                   {userProfile.isVerified.email && (
-                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                    <div className="absolute flex items-center justify-center w-6 h-6 rounded-full -bottom-1 -right-1 bg-primary">
                       <Icon name="Check" size={12} className="text-white" />
                     </div>
                   )}
                 </div>
-                <h1 className="text-2xl font-heading font-semibold text-text-primary mt-4">
+                <h1 className="mt-4 text-2xl font-semibold font-heading text-text-primary">
                   {userProfile.name}
                 </h1>
-                <div className="flex items-center justify-center space-x-1 text-text-secondary mt-2">
+                <div className="flex items-center justify-center mt-2 space-x-1 text-text-secondary">
                   <Icon name="MapPin" size={16} />
                   <span>{userProfile.location}</span>
                 </div>
-                <p className="text-text-tertiary text-sm mt-1">
+                <p className="mt-1 text-sm text-text-tertiary">
                   Member since {userProfile.joinDate}
                 </p>
                 {user?.referral_code && (
-                  <div className="mt-3 p-2 bg-primary-50 rounded-lg">
+                  <div className="p-2 mt-3 rounded-lg bg-primary-50">
                     <p className="text-xs text-text-secondary">Referral Code</p>
-                    <p className="text-sm font-mono font-semibold text-primary">
+                    <p className="font-mono text-sm font-semibold text-primary">
                       {user.referral_code}
                     </p>
                   </div>
@@ -482,7 +454,7 @@ const UserProfile = () => {
               </div>
 
               {/* Verification Badges */}
-              <div className="space-y-2 mb-6">
+              <div className="mb-6 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Icon
@@ -549,15 +521,15 @@ const UserProfile = () => {
 
               {/* Bio */}
               <div className="mb-6">
-                <h3 className="text-sm font-medium text-text-primary mb-2">
+                <h3 className="mb-2 text-sm font-medium text-text-primary">
                   About
                 </h3>
-                <p className="text-sm text-text-secondary leading-relaxed">
+                <p className="text-sm leading-relaxed text-text-secondary">
                   {userProfile.bio}
                 </p>
                 {user?.role && (
                   <div className="mt-2">
-                    <span className="inline-block px-2 py-1 bg-primary-50 text-primary text-xs rounded-full">
+                    <span className="inline-block px-2 py-1 text-xs rounded-full bg-primary-50 text-primary">
                       {user.role}
                     </span>
                   </div>
@@ -566,7 +538,7 @@ const UserProfile = () => {
 
               {/* Quick Actions */}
               <div className="space-y-3">
-                {quickActions.map((action) => (
+                {quickActions.map(action => (
                   <button
                     key={action.id}
                     onClick={action.action}
@@ -575,7 +547,7 @@ const UserProfile = () => {
                     <Icon name={action.icon} size={18} />
                     <span className="font-medium">{action.label}</span>
                     {action.badge && (
-                      <div className="absolute top-2 right-2 w-5 h-5 bg-accent text-white text-xs rounded-full flex items-center justify-center">
+                      <div className="absolute flex items-center justify-center w-5 h-5 text-xs text-white rounded-full top-2 right-2 bg-accent">
                         {action.badge}
                       </div>
                     )}
@@ -585,8 +557,8 @@ const UserProfile = () => {
             </div>
 
             {/* Stats Card */}
-            <div className="bg-surface rounded-lg border border-border p-6">
-              <h3 className="text-lg font-heading font-semibold text-text-primary mb-4">
+            <div className="p-6 border rounded-lg bg-surface border-border">
+              <h3 className="mb-4 text-lg font-semibold font-heading text-text-primary">
                 Activity Stats
               </h3>
               <div className="space-y-4">
@@ -606,7 +578,7 @@ const UserProfile = () => {
                     <Icon
                       name="ShoppingBag"
                       size={16}
-                      className="text-secondary"
+                      className="text-primary"
                     />
                     <span className="text-sm text-text-secondary">
                       Purchases Made
@@ -618,7 +590,11 @@ const UserProfile = () => {
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <Icon name="Star" size={16} className="text-warning" />
+                    <Icon
+                      name="Star"
+                      size={16}
+                      className="text-orange-500 fill-current"
+                    />
                     <span className="text-sm text-text-secondary">
                       Seller Rating
                     </span>
@@ -639,9 +615,9 @@ const UserProfile = () => {
           {/* Right Content Area */}
           <div className="col-span-8">
             {/* Tab Navigation */}
-            <div className="bg-surface rounded-lg border border-border mb-6">
+            <div className="mb-6 border rounded-lg bg-surface border-border">
               <div className="flex border-b border-border">
-                {tabs.map((tab) => (
+                {tabs.map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}

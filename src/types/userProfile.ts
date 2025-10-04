@@ -1,0 +1,30 @@
+import { LucideIconName } from "@/components/AppIcon";
+
+export interface UserProfileData {
+  id: number;
+  name?: string;
+  business_name?: string;
+  email: string;
+  phone?: string;
+  country?: string;
+  state?: string;
+  referral_code?: string;
+  referred_by?: string | null;
+  role?: string;
+}
+
+export interface Tab {
+  id: string;
+  label: string;
+  icon: LucideIconName;
+  count?: number;
+}
+
+export interface QuickAction {
+  id: string;
+  label: string;
+  icon: LucideIconName;
+  color: string;
+  action?: () => void;
+  badge?: number;
+}

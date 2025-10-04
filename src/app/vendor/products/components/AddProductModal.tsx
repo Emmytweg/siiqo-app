@@ -470,7 +470,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-1300 p-4">
+    <div className="fixed inset-0 flex items-center justify-center p-4 bg-black/50 z-1300">
       <div className="bg-card border border-border rounded-lg w-full max-w-4xl max-h-[75vh] overflow-y-scroll">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border">
@@ -479,7 +479,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-muted rounded-md transition-smooth"
+            className="p-2 rounded-md hover:bg-muted transition-smooth"
           >
             <Icon name="X" size={20} />
           </button>
@@ -512,7 +512,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
             loading || disabled ? "opacity-70 pointer-events-none" : ""
           }`}
         >
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 p-6 overflow-y-auto">
             {activeTab === "basic" && (
               <div className="space-y-6">
                 <Input
@@ -527,7 +527,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                 />
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
+                  <label className="block mb-2 text-sm font-medium text-foreground">
                     Description
                   </label>
                   <textarea
@@ -537,7 +537,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                     }
                     placeholder="Enter product description"
                     rows={4}
-                    className="w-full px-3 py-2 border border-border rounded-lg bg-background placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="w-full px-3 py-2 border rounded-lg border-border bg-background placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
                 </div>
 
@@ -584,11 +584,11 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
               <div className="space-y-6">
                 {/* Upload Errors */}
                 {uploadErrors.length > 0 && (
-                  <div className="p-3 bg-error/10 border border-error/20 rounded-lg">
-                    <h4 className="text-sm font-medium text-error mb-2">
+                  <div className="p-3 border rounded-lg bg-error/10 border-error/20">
+                    <h4 className="mb-2 text-sm font-medium text-error">
                       Upload Errors:
                     </h4>
-                    <ul className="text-sm text-error space-y-1">
+                    <ul className="space-y-1 text-sm text-error">
                       {uploadErrors.map((error, index) => (
                         <li key={index}>• {error}</li>
                       ))}
@@ -606,7 +606,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
+                  <label className="block mb-2 text-sm font-medium text-foreground">
                     Product Images
                   </label>
                   <div
@@ -623,12 +623,12 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                     <Icon
                       name="Upload"
                       size={48}
-                      className="text-muted-foreground mx-auto mb-4"
+                      className="mx-auto mb-4 text-muted-foreground"
                     />
-                    <p className="text-muted-foreground mb-2">
+                    <p className="mb-2 text-muted-foreground">
                       Drag and drop images here, or click to select
                     </p>
-                    <p className="text-xs text-muted-foreground mb-4">
+                    <p className="mb-4 text-xs text-muted-foreground">
                       Images will be uploaded automatically
                     </p>
                     <input
@@ -669,18 +669,18 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                 )}
 
                 {formData.images.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                     {formData.images.map((image, index) => (
                       <div key={image.id} className="relative group">
-                        <div className="aspect-square bg-muted rounded-lg overflow-hidden">
+                        <div className="overflow-hidden rounded-lg aspect-square bg-muted">
                           <Image
                             src={image.url}
                             alt={image.alt}
-                            className="w-full h-full object-cover"
+                            className="object-cover w-full h-full"
                           />
                           {image.isUploading && (
-                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                              <div className="w-6 h-6 border-b-2 border-white rounded-full animate-spin"></div>
                             </div>
                           )}
                         </div>
@@ -689,13 +689,13 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                           type="button"
                           onClick={() => removeImage(image.id)}
                           disabled={image.isUploading}
-                          className="absolute top-2 right-2 p-1 bg-error text-error-foreground rounded-full opacity-0 group-hover:opacity-100 transition-smooth disabled:opacity-50"
+                          className="absolute p-1 rounded-full opacity-0 top-2 right-2 bg-error text-error-foreground group-hover:opacity-100 transition-smooth disabled:opacity-50"
                         >
                           <Icon name="X" size={14} />
                         </button>
 
                         {index === 0 && (
-                          <span className="absolute bottom-2 left-2 px-2 py-1 bg-primary text-primary-foreground text-xs rounded">
+                          <span className="absolute px-2 py-1 text-xs rounded bottom-2 left-2 bg-primary text-primary-foreground">
                             Main
                           </span>
                         )}
@@ -703,19 +703,19 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                         {/* Upload Status */}
                         <div className="absolute bottom-2 right-2">
                           {image.isUploading && (
-                            <span className="px-2 py-1 bg-warning text-warning-foreground text-xs rounded">
+                            <span className="px-2 py-1 text-xs rounded bg-warning text-warning-foreground">
                               Uploading...
                             </span>
                           )}
                           {image.isUploaded && (
-                            <span className="px-2 py-1 bg-success text-success-foreground text-xs rounded">
+                            <span className="px-2 py-1 text-xs rounded bg-success text-success-foreground">
                               ✓
                             </span>
                           )}
                           {!image.isUploaded &&
                             !image.isUploading &&
                             image.file && (
-                              <span className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded">
+                              <span className="px-2 py-1 text-xs rounded bg-muted text-muted-foreground">
                                 Pending
                               </span>
                             )}
@@ -729,7 +729,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
 
             {activeTab === "pricing" && (
               <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <Input
                     label="Price"
                     type="number"
@@ -767,8 +767,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                   />
                 </div>
 
-                <div className="p-4 bg-muted/50 rounded-lg">
-                  <h4 className="font-medium text-foreground mb-2">
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <h4 className="mb-2 font-medium text-foreground">
                     Profit Calculation
                   </h4>
                   <div className="space-y-1 text-sm">
@@ -784,7 +784,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                         -${formData.cost || "0.00"}
                       </span>
                     </div>
-                    <div className="flex justify-between border-t border-border pt-1">
+                    <div className="flex justify-between pt-1 border-t border-border">
                       <span className="font-medium text-foreground">
                         Profit:
                       </span>
@@ -803,7 +803,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
 
             {activeTab === "inventory" && (
               <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <Input
                     label="SKU"
                     type="text"
@@ -825,7 +825,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <Input
                     label="Stock Quantity"
                     type="number"
@@ -916,7 +916,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                 />
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
+                  <label className="block mb-2 text-sm font-medium text-foreground">
                     SEO Description
                   </label>
                   <textarea
@@ -926,15 +926,15 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                     }
                     placeholder="Enter SEO description"
                     rows={3}
-                    className="w-full px-3 py-2 border border-border rounded-lg bg-background placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="w-full px-3 py-2 border rounded-lg border-border bg-background placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Recommended: 150-160 characters
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
+                  <label className="block mb-2 text-sm font-medium text-foreground">
                     Product Tags
                   </label>
                   <Input
@@ -948,7 +948,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end space-x-3 p-6 border-t border-border">
+          <div className="flex items-center justify-end p-6 space-x-3 border-t border-border">
             <Button
               type="button"
               variant="outline"

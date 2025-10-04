@@ -106,11 +106,11 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
         <div className="flex items-center justify-between h-16">
           {/* Logo & Business Name */}
           <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary">
               <Icon name="Store" size={24} color="white" />
             </div>
             <div>
-              <h1 className="font-heading font-semibold text-lg text-text-primary">
+              <h1 className="text-lg font-semibold font-heading text-text-primary">
                 {vendorData?.business_name || "My Store"}
               </h1>
               <p className="text-sm text-text-muted">Vendor Dashboard</p>
@@ -118,7 +118,7 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-1">
+          <nav className="items-center hidden space-x-1 lg:flex">
             {navigationItems.map((item) => (
               <button
                 key={item.path}
@@ -143,14 +143,14 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
           <div className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center space-x-3 p-2 rounded-lg hover:bg-surface transition-colors"
+              className="flex items-center p-2 space-x-3 transition-colors rounded-lg hover:bg-surface"
             >
-              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                <span className="text-white font-medium text-sm">
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary">
+                <span className="text-sm font-medium text-white">
                   {vendorData?.first_name?.charAt(0) || "V"}
                 </span>
               </div>
-              <div className="hidden sm:block text-left">
+              <div className="hidden text-left sm:block">
                 <p className="text-sm font-medium text-text-primary">
                   {vendorData?.first_name} {vendorData?.last_name}
                 </p>
@@ -167,7 +167,7 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
 
             {/* Dropdown Menu */}
             {showUserMenu && (
-              <div className="absolute right-0 top-full mt-2 w-56 bg-card border border-border rounded-lg shadow-elevated z-50">
+              <div className="absolute right-0 z-50 w-56 mt-2 border rounded-lg top-full bg-card border-border shadow-elevated">
                 <div className="p-4 border-b border-border">
                   <p className="font-medium text-text-primary">
                     {vendorData?.first_name} {vendorData?.last_name}
@@ -193,7 +193,7 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
                       handleNavigation("../profile");
                       setShowUserMenu(false);
                     }}
-                    className="w-full flex items-center space-x-3 px-3 py-2 text-left rounded-lg hover:bg-surface transition-colors"
+                    className="flex items-center w-full px-3 py-2 space-x-3 text-left transition-colors rounded-lg hover:bg-surface"
                   >
                     <Icon name="User" size={16} className="text-text-muted" />
                     <span className="text-sm text-text-secondary">Profile</span>
@@ -204,7 +204,7 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
                       handleNavigation("../settings");
                       setShowUserMenu(false);
                     }}
-                    className="w-full flex items-center space-x-3 px-3 py-2 text-left rounded-lg hover:bg-surface transition-colors"
+                    className="flex items-center w-full px-3 py-2 space-x-3 text-left transition-colors rounded-lg hover:bg-surface"
                   >
                     <Icon
                       name="Settings"
@@ -221,7 +221,7 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
                       router.push("/");
                       setShowUserMenu(false);
                     }}
-                    className="w-full flex items-center space-x-3 px-3 py-2 text-left rounded-lg hover:bg-surface transition-colors"
+                    className="flex items-center w-full px-3 py-2 space-x-3 text-left transition-colors rounded-lg hover:bg-surface"
                   >
                     <Icon
                       name="ExternalLink"
@@ -240,7 +240,7 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
                       onLogout();
                       setShowUserMenu(false);
                     }}
-                    className="w-full flex items-center space-x-3 px-3 py-2 text-left rounded-lg hover:bg-surface transition-colors"
+                    className="flex items-center w-full px-3 py-2 space-x-3 text-left transition-colors rounded-lg hover:bg-surface"
                   >
                     <Icon name="LogOut" size={16} />
                     <span className="text-sm text-error">Sign Out</span>
@@ -252,7 +252,7 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
         </div>
 
         {/* Mobile Navigation */}
-        <div className="lg:hidden border-t border-border py-2">
+        <div className="py-2 border-t lg:hidden border-border">
           <div className="flex items-center space-x-1 overflow-x-auto">
             {navigationItems.map((item) => (
               <button

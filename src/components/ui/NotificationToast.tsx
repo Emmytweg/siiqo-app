@@ -33,7 +33,7 @@ export default function NotificationToast({
 
   return (
     <div
-      className={`fixed top-4 right-4 px-4 py-3 rounded-lg shadow-md border ${
+      className={`fixed top-4 right-4 px-4 z-10 py-3 rounded-lg border ${
         styles[notification.type]
       } animate-slide-in`}
     >

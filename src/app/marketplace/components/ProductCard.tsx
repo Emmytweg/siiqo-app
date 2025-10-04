@@ -1,192 +1,145 @@
-import React, { useState, MouseEvent, JSX } from 'react';
-import Image from '@/components/ui/alt/AppImageAlt';
-import Icon from '@/components/AppIcon';
+"use client";
 
-// Type definitions
-interface Product {
-	id: any;
-	name: string;
-	vendor: string;
-	price: number;
-	salePrice?: number;
-	originalPrice?: number;
-	rating: number;
-	reviewCount: number;
-	image: string;
-	images?: string[];
-	stock: number;
-	category: string;
-	isWishlisted?: boolean;
-	description: string;
-}
+import React, { useState } from "react";
+import { Heart, ShoppingCart, Star } from "lucide-react";
+import { Products } from "@/types/products";
+import Skeleton from "@/components/skeleton";
+import Button from "@/components/Button";
 
 interface ProductCardProps {
-	product: Product;
-	onAddToWishlist?: (productId: number, isWishlisted: boolean) => void;
-	onQuickView?: (product: Product) => void;
-	onAddToCart?: (product: Product) => void;
+  product: Products;
+  onAddToCart: (product: Products) => void;
+  onQuickView: (product: Products) => void;
+  onAddToWishlist: (productId: number | string, isWishlisted: boolean) => void;
+  cartQuantities: { [key: number]: number };
+  isAddingToCart: { [key: number]: boolean };
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({
-	product,
-	onAddToWishlist,
-	onQuickView,
-	onAddToCart
-}) => {
-	const [isWishlisted, setIsWishlisted] = useState<boolean>(product.isWishlisted || false);
-	const [imageLoading, setImageLoading] = useState<boolean>(true);
+const ProductCard = ({
+  product,
+  onAddToCart,
+  onQuickView,
+  onAddToWishlist,
+  cartQuantities,
+  isAddingToCart,
+}: ProductCardProps) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const cartQuantity = cartQuantities[product.id] || 0;
+  const isAdding = isAddingToCart[product.id] || false;
 
-	const handleWishlistToggle = (e: MouseEvent<HTMLButtonElement>): void => {
-		e.stopPropagation();
-		setIsWishlisted(!isWishlisted);
-		onAddToWishlist?.(product.id, !isWishlisted);
-	};
+  return (
+    <div
+      className="z-0 overflow-hidden transition-shadow duration-200 bg-white border border-gray-200 rounded-lg"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className="relative overflow-hidden bg-gray-100 aspect-square">
+        <img
+          src={product.image}
+          alt={product.name}
+          className="object-cover w-full h-full"
+          loading="lazy"
+        />
 
-	const handleQuickView = (e: MouseEvent<HTMLButtonElement>): void => {
-		e.stopPropagation();
-		onQuickView?.(product);
-	};
+        <button
+          onClick={() => onAddToWishlist(product.id, !product.isWishlisted)}
+          className={`absolute z-20 top-3 right-3 p-2 rounded-full transition-all duration-200 ${
+            product.isWishlisted
+              ? "bg-white text-red-500"
+              : "bg-white/80 text-gray-600 hover:bg-white"
+          }`}
+        >
+          <Heart
+            className={`w-4 h-4 ${product.isWishlisted ? "fill-current" : ""}`}
+          />
+        </button>
 
-	const handleAddToCart = (e: MouseEvent<HTMLButtonElement>): void => {
-		e.stopPropagation();
-		onAddToCart?.(product);
-	};
+        {isHovered && (
+          <button
+            onClick={() => onQuickView(product)}
+            className="absolute inset-0 z-10 flex items-center justify-center font-medium text-white transition-opacity duration-200 opacity-0 bg-black/50 hover:opacity-100"
+          >
+            Quick View
+          </button>
+        )}
+      </div>
 
-	const renderStars = (rating: number): JSX.Element[] => {
-		const stars: JSX.Element[] = [];
-		const fullStars = Math.floor(rating);
-		const hasHalfStar = rating % 1 !== 0;
+      <div className="p-4">
+        <div className="mb-2">
+          <h3 className="text-sm font-semibold text-gray-900 line-clamp-2">
+            {product.name}
+          </h3>
+          <p className="text-xs text-gray-500">{product.vendor}</p>
+        </div>
 
-		for (let i = 0; i < fullStars; i++) {
-			stars.push(
-				<Icon key={i} name="Star" size={12} className="text-warning fill-current" />
-			);
-		}
+        <div className="flex items-center mb-2 space-x-1">
+          <div className="flex items-center">
+            {[...Array(5)].map((_, i) => (
+              <Star
+                key={i}
+                className={`w-3 h-3 ${
+                  i < Math.floor(product.rating)
+                    ? "text-yellow-400 fill-current"
+                    : "text-gray-300"
+                }`}
+              />
+            ))}
+          </div>
+          <span className="text-xs text-gray-500">({product.reviewCount})</span>
+        </div>
 
-		if (hasHalfStar) {
-			stars.push(
-				<Icon key="half" name="Star" size={12} className="text-warning fill-current opacity-50" />
-			);
-		}
+        <div className="mb-3">
+          <div className="flex items-center space-x-2">
+            <span className="text-lg font-bold text-gray-900">
+              ₦{product.price.toLocaleString()}
+            </span>
+            {product.salePrice && (
+              <span className="text-sm text-gray-500 line-through">
+                ₦{product.originalPrice?.toLocaleString()}
+              </span>
+            )}
+          </div>
+        </div>
 
-		const emptyStars = 5 - Math.ceil(rating);
-		for (let i = 0; i < emptyStars; i++) {
-			stars.push(
-				<Icon key={`empty-${i}`} name="Star" size={12} className="text-muted-foreground" />
-			);
-		}
-
-		return stars;
-	};
-
-	const calculateDiscountPercentage = (): number => {
-		if (!product.salePrice || !product.originalPrice) return 0;
-		return Math.round(((product.originalPrice - product.salePrice) / product.originalPrice) * 100);
-	};
-
-	return (
-		<div className="group bg-card rounded-lg border border-border shadow-card hover:shadow-modal transition-all duration-300 ease-out overflow-hidden">
-			{/* Product Image */}
-			<div className="relative aspect-square overflow-hidden bg-muted">
-				<Image
-					src={product.image}
-					alt={product.name}
-					className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 ${imageLoading ? 'opacity-0' : 'opacity-100'
-						}`}
-					onLoad={() => setImageLoading(false)}
-				/>
-
-				{/* Loading Skeleton */}
-				{imageLoading && (
-					<div className="absolute inset-0 bg-muted animate-pulse" />
-				)}
-
-				{/* Wishlist Button */}
-				<button
-					onClick={handleWishlistToggle}
-					className="absolute top-2 right-2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-card hover:bg-white transition-all duration-200"
-				>
-					<Icon
-						name="Heart"
-						size={16}
-						className={`transition-colors duration-200 ${isWishlisted ? 'text-error fill-current' : 'text-muted-foreground'
-							}`}
-					/>
-				</button>
-
-				{/* Quick View Button - Desktop Only */}
-				<button
-					onClick={handleQuickView}
-					className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-all duration-300 opacity-0 group-hover:opacity-100 hidden md:flex items-center justify-center"
-				>
-					<div className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full shadow-card">
-						<span className="text-sm font-medium text-foreground">Quick View</span>
-					</div>
-				</button>
-
-				{/* Sale Badge */}
-				{product.salePrice && (
-					<div className="absolute top-2 left-2 bg-error text-error-foreground px-2 py-1 rounded-md text-xs font-medium">
-						{calculateDiscountPercentage()}% OFF
-					</div>
-				)}
-
-				{/* Stock Status */}
-				{product.stock === 0 && (
-					<div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-						<span className="bg-white px-3 py-1 rounded-full text-sm font-medium text-foreground">
-							Out of Stock
-						</span>
-					</div>
-				)}
-			</div>
-
-			{/* Product Info */}
-			<div className="p-4">
-				{/* Vendor Name */}
-				<p className="text-xs text-muted-foreground mb-1 truncate">{product.vendor}</p>
-
-				{/* Product Name */}
-				<h3 className="font-medium text-foreground mb-2 line-clamp-2 text-sm leading-tight">
-					{product.name}
-				</h3>
-
-				{/* Rating */}
-				<div className="flex items-center space-x-1 mb-2">
-					<div className="flex items-center space-x-0.5">
-						{renderStars(product.rating)}
-					</div>
-					<span className="text-xs text-muted-foreground">
-						({product.reviewCount})
-					</span>
-				</div>
-
-				{/* Price */}
-				<div className="flex items-center space-x-2 mb-3">
-					<span className="font-semibold text-foreground">
-						${product.salePrice || product.price}
-					</span>
-					{product.salePrice && (
-						<span className="text-sm text-muted-foreground line-through">
-							${product.originalPrice}
-						</span>
-					)}
-				</div>
-
-				{/* Add to Cart Button */}
-				<button
-					onClick={handleAddToCart}
-					disabled={product.stock === 0}
-					className={`w-full py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${product.stock === 0
-						? 'bg-muted text-muted-foreground cursor-not-allowed'
-						: 'bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80'
-						}`}
-				>
-					{product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
-				</button>
-			</div>
-		</div>
-	);
+        <Button
+          type="button"
+          variant="navy"
+          onClick={() => onAddToCart(product)}
+          disabled={isAdding}
+          className="flex items-center justify-center w-full px-4 py-2 space-x-2 text-sm transition-colors duration-200 disabled:opacity-50"
+        >
+          <ShoppingCart className="w-4 h-4" />
+          <span>
+            {isAdding
+              ? "Adding..."
+              : `Add to Cart ${cartQuantity > 0 ? `(${cartQuantity})` : ""}`}
+          </span>
+        </Button>
+      </div>
+    </div>
+  );
 };
 
 export default ProductCard;
+
+export const ProductCardSkeleton = () => {
+  return (
+    <div className="z-0 overflow-hidden bg-white border border-gray-200 rounded-lg shadow-sm">
+      <Skeleton type="rect" className="w-full aspect-square" />
+      <div className="p-4 space-y-3">
+        <Skeleton type="text" className="w-3/4" />
+        <Skeleton type="text" className="w-1/2" />
+        <div className="flex space-x-1">
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} type="circle" width={12} height={12} />
+          ))}
+        </div>
+        <div className="flex space-x-2">
+          <Skeleton type="rect" className="w-1/4 h-5" />
+          <Skeleton type="rect" className="w-1/6 h-5" />
+        </div>
+        <Skeleton type="rect" className="w-full h-9" />
+      </div>
+    </div>
+  );
+};

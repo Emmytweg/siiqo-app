@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Icon from "@/components/ui/AppIcon";
 import Image from "@/components/ui/AppImage";
+import Button from "@/components/Button";
+import Skeleton from "@/components/skeleton";
 
 interface RecentItem {
   id: number;
@@ -139,20 +141,33 @@ const RecentlyViewed: React.FC = () => {
           <h2 className="text-lg font-semibold text-text-primary">
             Recently Viewed
           </h2>
-          <div className="w-8 h-8 rounded animate-pulse bg-surface-secondary"></div>
+          <Skeleton
+            type="text"
+            className="w-8 h-8 rounded animate-pulse bg-surface-secondary"
+          />
+          {/* <div className="w-8 h-8 rounded animate-pulse bg-surface-secondary"></div> */}
         </div>
+
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
           {[...Array(4)].map((_, index) => (
             <div
               key={index}
               className="border rounded-lg bg-surface border-border animate-pulse"
             >
-              <div className="w-full h-32 rounded-t-lg md:h-40 bg-surface-secondary"></div>
+              <Skeleton
+                type="text"
+                className="w-full h-32 rounded-t-lg md:h-40 bg-surface-secondary"
+              />
               <div className="p-3 space-y-2">
-                <div className="w-3/4 h-4 rounded bg-surface-secondary"></div>
+                <Skeleton
+                  type="text"
+                  className="w-3/4 h-4 rounded bg-surface-secondary"
+                  count={5}
+                />
+                {/* <div className="w-3/4 h-4 rounded bg-surface-secondary"></div>
                 <div className="w-1/2 h-4 rounded bg-surface-secondary"></div>
                 <div className="w-full h-3 rounded bg-surface-secondary"></div>
-                <div className="w-2/3 h-3 rounded bg-surface-secondary"></div>
+                <div className="w-2/3 h-3 rounded bg-surface-secondary"></div> */}
               </div>
             </div>
           ))}
@@ -184,12 +199,12 @@ const RecentlyViewed: React.FC = () => {
               Start browsing products to see your recently viewed items here.
               They'll help you quickly find products you've looked at before.
             </p>
-            <button
+            <Button
               onClick={() => router.push("/marketplace")}
               className="px-4 py-2 font-medium text-white transition-colors duration-200 rounded-lg bg-primary hover:bg-primary-700"
             >
               Browse Products
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -210,12 +225,12 @@ const RecentlyViewed: React.FC = () => {
           </p>
         </div>
         {recentItems.length > 0 && (
-          <button
+          <Button
             onClick={clearRecentlyViewed}
             className="text-sm font-medium transition-colors duration-200 text-text-secondary hover:text-text-primary"
           >
             Clear All
-          </button>
+          </Button>
         )}
       </div>
 
@@ -229,13 +244,13 @@ const RecentlyViewed: React.FC = () => {
             }`}
           >
             {/* Remove button */}
-            <button
+            <Button
               onClick={(e) => handleRemoveItem(e, item.id)}
               className="absolute z-10 p-1 text-white transition-opacity duration-200 bg-black bg-opacity-50 rounded-full top-2 left-2 hover:bg-opacity-70"
               title="Remove from recently viewed"
             >
               <Icon name="X" size={12} />
-            </button>
+            </Button>
 
             {/* Image */}
             <div className="relative w-full h-32 overflow-hidden rounded-t-lg md:h-40">
@@ -273,13 +288,13 @@ const RecentlyViewed: React.FC = () => {
                   ${item.price}
                 </span>
                 {item.isAvailable && (
-                  <button
+                  <Button
                     onClick={(e) => handleQuickAdd(e, item)}
                     className="p-1 transition-colors duration-200 rounded-full hover:bg-surface-secondary"
                     title="Quick add to cart"
                   >
                     <Icon name="Plus" size={14} className="text-primary" />
-                  </button>
+                  </Button>
                 )}
               </div>
 

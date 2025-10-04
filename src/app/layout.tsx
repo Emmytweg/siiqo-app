@@ -6,6 +6,7 @@ import type { Metadata } from "next";
 import ConditionalHeader from "@/components/ConditionalHeader";
 import ConditionalBottomNav from "@/components/ConditionalBottomNav";
 import { AuthProvider } from "@/context/AuthContext";
+import { CartProvider } from "@/context/CartContext";
 
 export const metadata: Metadata = {
   title: "Citymart | Roots & Squares",
@@ -29,14 +30,16 @@ export default function RootLayout({
       <body className="flex flex-col min-h-screen" cz-shortcut-listen="true">
         <ErrorBoundary>
           <AuthProvider>
-            <ScrollToTop />
-            <main>
-              <ConditionalHeader />
-              <div className="w-full min-h-screen overflow-x-hidden">
-                {children}
-              </div>
-            </main>
-            <ConditionalBottomNav />
+            <CartProvider>
+              <ScrollToTop />
+              <main>
+                <ConditionalHeader />
+                <div className="w-full min-h-screen overflow-x-hidden">
+                  {children}
+                </div>
+              </main>
+              <ConditionalBottomNav />
+            </CartProvider>
           </AuthProvider>
         </ErrorBoundary>
       </body>

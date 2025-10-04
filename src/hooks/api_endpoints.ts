@@ -16,6 +16,12 @@ const api_endpoints = {
     // Products.
     FETCH_POPULAR_PRODUCTS: "/marketplace/popular-products",
     FETCH_PRODUCTS: "/marketplace/products",
+
+    // Storefronts
+    FETCH_STOREFRONTS: "/admin/storefronts",
+    
+    // vendor apis
+    VENDOR_LOGIN: "vendor/login",
 };
 
 export default api_endpoints;

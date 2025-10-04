@@ -3,16 +3,12 @@ import Image from '@/components/ui/alt/AppImageAlt';
 import Icon from '@/components/AppIcon';
 import Button from '@/components/ui/new/Button';
 
-// --- START OF TYPESCRIPT CONVERSION ---
-
 // Define the shape of a product variant
 interface ProductVariant {
     id: number | string;
     name: string;
-    // Add other variant properties like price, stock if they exist
 }
 
-// Define the detailed shape of the product for the modal
 interface ProductDetails {
     id: number | string;
     name: string;
@@ -45,8 +41,6 @@ interface QuickViewModalProps {
     onAddToCart?: (payload: AddToCartPayload) => void;
     onAddToWishlist?: (productId: number | string, isWishlisted: boolean) => void;
 }
-
-// --- END OF TYPESCRIPT CONVERSION ---
 
 const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClose, onAddToCart, onAddToWishlist }) => {
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -101,13 +95,13 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
 
         for (let i = 0; i < fullStars; i++) {
             stars.push(
-                <Icon key={i} name="Star" size={16} className="text-warning fill-current" />
+                <Icon key={i} name="Star" size={16} className="fill-current text-warning" />
             );
         }
 
         if (hasHalfStar) {
             stars.push(
-                <Icon key="half" name="Star" size={16} className="text-warning fill-current opacity-50" />
+                <Icon key="half" name="Star" size={16} className="opacity-50 fill-current text-warning" />
             );
         }
 
@@ -121,12 +115,12 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
     };
 
     return (
-        <div className="fixed inset-0 z-1400 flex items-center justify-center p-4">
+        <div className="fixed inset-0 flex items-center justify-center p-4 z-1400">
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-card rounded-xl shadow-modal max-w-4xl w-full max-h-[75vh] overflow-auto">
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 z-10 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-card hover:bg-white transition-colors duration-200"
+                    className="absolute z-10 flex items-center justify-center w-8 h-8 transition-colors duration-200 rounded-full top-4 right-4 bg-white/90 backdrop-blur-sm shadow-card hover:bg-white"
                 >
                     <Icon name="X" size={16} />
                 </button>
@@ -134,11 +128,11 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
                 <div className="grid grid-cols-1 lg:grid-cols-2 h-full max-h-[90vh]">
                     {/* Image Section */}
                     <div className="relative bg-muted">
-                        <div className="aspect-square lg:h-full lg:aspect-auto relative overflow-hidden">
+                        <div className="relative overflow-hidden aspect-square lg:h-full lg:aspect-auto">
                             <Image
                                 src={images[selectedImageIndex]}
                                 alt={product.name}
-                                className="w-full h-full object-cover"
+                                className="object-cover w-full h-full"
                             />
 
                             {/* Image Navigation */}
@@ -148,7 +142,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
                                         onClick={() => setSelectedImageIndex(prev =>
                                             prev === 0 ? images.length - 1 : prev - 1
                                         )}
-                                        className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-card hover:bg-white transition-colors duration-200"
+                                        className="absolute flex items-center justify-center w-8 h-8 transition-colors duration-200 -translate-y-1/2 rounded-full left-2 top-1/2 bg-white/90 backdrop-blur-sm shadow-card hover:bg-white"
                                     >
                                         <Icon name="ChevronLeft" size={16} />
                                     </button>
@@ -156,7 +150,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
                                         onClick={() => setSelectedImageIndex(prev =>
                                             prev === images.length - 1 ? 0 : prev + 1
                                         )}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-card hover:bg-white transition-colors duration-200"
+                                        className="absolute flex items-center justify-center w-8 h-8 transition-colors duration-200 -translate-y-1/2 rounded-full right-2 top-1/2 bg-white/90 backdrop-blur-sm shadow-card hover:bg-white"
                                     >
                                         <Icon name="ChevronRight" size={16} />
                                     </button>
@@ -165,7 +159,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
 
                             {/* Sale Badge */}
                             {product.salePrice && (
-                                <div className="absolute top-4 left-4 bg-error text-error-foreground px-3 py-1 rounded-md text-sm font-medium">
+                                <div className="absolute px-3 py-1 text-sm font-medium rounded-md top-4 left-4 bg-error text-error-foreground">
                                     {Math.round(((product.originalPrice - product.salePrice) / product.originalPrice) * 100)}% OFF
                                 </div>
                             )}
@@ -173,7 +167,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
 
                         {/* Thumbnail Navigation */}
                         {images.length > 1 && (
-                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
+                            <div className="absolute flex space-x-2 -translate-x-1/2 bottom-4 left-1/2">
                                 {images.map((_, index) => (
                                     <button
                                         key={index}
@@ -188,15 +182,15 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
 
                     {/* Product Details */}
                     <div className="flex flex-col h-full max-h-[90vh] lg:max-h-none">
-                        <div className="flex-1 overflow-y-auto p-6">
+                        <div className="flex-1 p-6 overflow-y-auto">
                             {/* Vendor */}
-                            <p className="text-sm text-muted-foreground mb-2">{product.vendor}</p>
+                            <p className="mb-2 text-sm text-muted-foreground">{product.vendor}</p>
 
                             {/* Product Name */}
-                            <h1 className="text-2xl font-bold text-foreground mb-4">{product.name}</h1>
+                            <h1 className="mb-4 text-2xl font-bold text-foreground">{product.name}</h1>
 
                             {/* Rating */}
-                            <div className="flex items-center space-x-2 mb-4">
+                            <div className="flex items-center mb-4 space-x-2">
                                 <div className="flex items-center space-x-0.5">
                                     {renderStars(product.rating)}
                                 </div>
@@ -206,12 +200,12 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
                             </div>
 
                             {/* Price */}
-                            <div className="flex items-center space-x-3 mb-6">
+                            <div className="flex items-center mb-6 space-x-3">
                                 <span className="text-3xl font-bold text-foreground">
                                     ${product.salePrice || product.price}
                                 </span>
                                 {product.salePrice && (
-                                    <span className="text-xl text-muted-foreground line-through">
+                                    <span className="text-xl line-through text-muted-foreground">
                                         ${product.originalPrice}
                                     </span>
                                 )}
@@ -219,8 +213,8 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
 
                             {/* Description */}
                             <div className="mb-6">
-                                <h3 className="font-semibold text-foreground mb-2">Description</h3>
-                                <p className="text-muted-foreground leading-relaxed">
+                                <h3 className="mb-2 font-semibold text-foreground">Description</h3>
+                                <p className="leading-relaxed text-muted-foreground">
                                     {product.description || `Experience the perfect blend of style and functionality with ${product.name}. Crafted with attention to detail and designed for modern living, this product offers exceptional quality and performance that exceeds expectations.`}
                                 </p>
                             </div>
@@ -228,7 +222,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
                             {/* Variants */}
                             {variants.length > 0 && (
                                 <div className="mb-6">
-                                    <h3 className="font-semibold text-foreground mb-3">Options</h3>
+                                    <h3 className="mb-3 font-semibold text-foreground">Options</h3>
                                     <div className="flex flex-wrap gap-2">
                                         {variants.map((variant) => (
                                             <button
@@ -264,7 +258,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
 
                             {/* Features */}
                             <div className="mb-6">
-                                <h3 className="font-semibold text-foreground mb-3">Features</h3>
+                                <h3 className="mb-3 font-semibold text-foreground">Features</h3>
                                 <ul className="space-y-2">
                                     <li className="flex items-center space-x-2 text-sm text-muted-foreground">
                                         <Icon name="Truck" size={14} />
@@ -283,21 +277,21 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
                         </div>
 
                         {/* Actions */}
-                        <div className="border-t border-border p-6">
+                        <div className="p-6 border-t border-border">
                             {/* Quantity Selector */}
-                            <div className="flex items-center space-x-4 mb-4">
+                            <div className="flex items-center mb-4 space-x-4">
                                 <span className="text-sm font-medium text-foreground">Quantity:</span>
-                                <div className="flex items-center border border-border rounded-lg">
+                                <div className="flex items-center border rounded-lg border-border">
                                     <button
                                         onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                        className="w-10 h-10 flex items-center justify-center hover:bg-muted transition-colors duration-200"
+                                        className="flex items-center justify-center w-10 h-10 transition-colors duration-200 hover:bg-muted"
                                     >
                                         <Icon name="Minus" size={16} />
                                     </button>
-                                    <span className="w-12 text-center font-medium">{quantity}</span>
+                                    <span className="w-12 font-medium text-center">{quantity}</span>
                                     <button
                                         onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-                                        className="w-10 h-10 flex items-center justify-center hover:bg-muted transition-colors duration-200"
+                                        className="flex items-center justify-center w-10 h-10 transition-colors duration-200 hover:bg-muted"
                                     >
                                         <Icon name="Plus" size={16} />
                                     </button>

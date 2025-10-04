@@ -2,45 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Icon from "@/components/ui/AppIcon";
 import Image from "@/components/ui/AppImage";
-
-interface PopularItem {
-  id: number;
-  title: string;
-  price: number;
-  image: string;
-  distance: string;
-  seller: string;
-  rating: number;
-  reviews: number;
-  popularity: number;
-  category: string;
-  description: string;
-}
-
-// API Response interfaces - updated to match actual API response
-interface ApiVendor {
-  business_name: string;
-  email: string;
-  id: number;
-}
-
-interface ApiProduct {
-  category: string;
-  id: number;
-  images: string[];
-  product_name: string;
-  product_price: number;
-  vendor: ApiVendor;
-  // Optional fields that may not exist in API response
-  description?: string;
-  status?: string;
-  visibility?: boolean;
-}
-
-interface ApiResponse {
-  count: number;
-  products: ApiProduct[];
-}
+import Button from "@/components/Button";
+import Skeleton from "@/components/skeleton";
+import { PopularItem, ApiVendor, ApiProduct, ApiResponse } from "@/types/popular";
 
 const PopularInArea: React.FC = () => {
   const router = useRouter();
@@ -182,18 +146,22 @@ const PopularInArea: React.FC = () => {
   // Loading state
   if (loading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
         {[...Array(8)].map((_, index) => (
           <div
             key={index}
-            className="bg-surface rounded-lg border border-border animate-pulse"
+            className="border rounded-lg bg-surface border-border animate-pulse"
           >
-            <div className="w-full h-32 md:h-40 bg-surface-secondary rounded-t-lg"></div>
+            <Skeleton
+              type="text"
+              className="w-full h-32 rounded-t-lg md:h-40 bg-surface-secondary"
+            />
             <div className="p-3 space-y-2">
-              <div className="h-4 bg-surface-secondary rounded w-3/4"></div>
-              <div className="h-4 bg-surface-secondary rounded w-1/2"></div>
-              <div className="h-3 bg-surface-secondary rounded w-full"></div>
-              <div className="h-3 bg-surface-secondary rounded w-2/3"></div>
+              <Skeleton
+                type="text"
+                count={4}
+                className="w-full h-4 rounded bg-surface-secondary"
+              />
             </div>
           </div>
         ))}
@@ -209,18 +177,19 @@ const PopularInArea: React.FC = () => {
           <Icon
             name="AlertCircle"
             size={48}
-            className="text-destructive mx-auto mb-4"
+            className="mx-auto mb-4 text-destructive"
           />
-          <h3 className="text-lg font-semibold text-text-primary mb-2">
+          <h3 className="mb-2 text-lg font-semibold text-text-primary">
             Failed to Load Products
           </h3>
-          <p className="text-text-secondary mb-4 max-w-md">{error}</p>
-          <button
+          <p className="max-w-md mb-4 text-text-secondary">{error}</p>
+          <Button
+            type="button" variant="navy"
             onClick={handleRetry}
-            className="bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-700 transition-colors duration-200"
+            className="px-4 py-2 font-medium text-white transition-colors duration-200 rounded-lg bg-primary hover:bg-primary-700"
           >
             Try Again
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -234,21 +203,21 @@ const PopularInArea: React.FC = () => {
           <Icon
             name="Package"
             size={48}
-            className="text-text-secondary mx-auto mb-4"
+            className="mx-auto mb-4 text-text-secondary"
           />
-          <h3 className="text-lg font-semibold text-text-primary mb-2">
+          <h3 className="mb-2 text-lg font-semibold text-text-primary">
             No Products Available
           </h3>
-          <p className="text-text-secondary mb-4 max-w-md">
+          <p className="max-w-md mb-4 text-text-secondary">
             There are currently no popular products in your area. Check back
             later for new arrivals!
           </p>
-          <button
+          <Button
             onClick={handleRetry}
-            className="bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-700 transition-colors duration-200"
+            className="px-4 py-2 font-medium text-white transition-colors duration-200 rounded-lg bg-primary hover:bg-primary-700"
           >
             Refresh
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -258,7 +227,7 @@ const PopularInArea: React.FC = () => {
   return (
     <div>
       {/* Header with refresh button */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-8">
         <div>
           <h2 className="text-lg font-semibold text-text-primary">
             Popular in Your Area
@@ -267,63 +236,77 @@ const PopularInArea: React.FC = () => {
             {popularItems.length} products found
           </p>
         </div>
-        <button
-          onClick={handleRetry}
-          className="p-2 text-text-secondary hover:text-text-primary transition-colors duration-200"
-          title="Refresh products"
-        >
-          <Icon name="RefreshCw" size={18} />
-        </button>
+        {/* refresh button */}
+
+        <div className="flex items-center gap-4">
+          <Button
+            variant="orange"
+            onClick={handleRetry}
+            className="flex items-center gap-2 text-sm duration-200 trans-smition-colors"
+            title="Refresh products"
+          >
+            <Icon name="RefreshCw" size={18} /> Refresh
+          </Button>
+          
+          <Button type="button" variant="navy"
+            onClick={() => router.push("/search-results?sort=popular")}
+            className="text-sm transition-colors duration-200"
+          >
+            View All
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {popularItems.map((item) => (
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+        {popularItems.map(item => (
           <div
             key={item.id}
             onClick={() => handleItemClick(item)}
-            className="bg-surface rounded-lg border border-border hover:shadow-elevation-2 transition-all duration-200 cursor-pointer"
+            className="transition-all duration-200 border rounded-lg cursor-pointer bg-surface border-border hover:shadow-elevation-2"
           >
             {/* Image */}
-            <div className="relative overflow-hidden rounded-t-lg w-full h-32 md:h-40">
+            <div className="relative w-full h-32 overflow-hidden rounded-t-lg md:h-40">
               <Image
                 src={item.image}
                 alt={item.title}
                 fill
                 className="object-cover"
                 sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                onError={(e) => {
+                onError={e => {
                   // Fallback image on error
                   const target = e.target as HTMLImageElement;
                   target.src =
                     "https://via.placeholder.com/400x400?text=Product+Image";
                 }}
               />
-              <div className="absolute top-2 left-2 bg-primary text-white px-2 py-1 rounded-full text-xs font-medium">
+              <div className="absolute px-2 py-1 text-xs font-medium text-white rounded-full top-2 left-2 bg-primary">
                 #{item.popularity}% Popular
               </div>
-              <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded-full text-xs">
+              <div className="absolute px-2 py-1 text-xs text-white bg-black bg-opacity-50 rounded-full top-2 right-2">
                 {item.distance}
               </div>
-              <button
-                onClick={(e) => toggleWishlist(e, item.id)}
-                className="absolute bottom-2 right-2 p-2 bg-white bg-opacity-90 rounded-full hover:bg-white transition-colors duration-200"
+              <Button
+                type="button"
+                variant="navy"
+                onClick={e => toggleWishlist(e, item.id)}
+                className="absolute p-2 transition-colors duration-200 bg-white rounded-full bottom-2 right-2 bg-opacity-90 hover:bg-white"
               >
                 <Icon
                   name="Heart"
                   size={14}
                   className={
                     wishlist.has(item.id)
-                      ? "text-accent fill-current"
-                      : "text-text-secondary"
+                      ? "text-slate-700 fill-current"
+                      : "text-text-secondary text-slate-900"
                   }
                 />
-              </button>
+              </Button>
             </div>
 
             {/* Content */}
             <div className="p-3">
               <div className="flex items-start justify-between mb-2">
-                <h3 className="text-sm font-medium text-text-primary line-clamp-2 flex-1">
+                <h3 className="flex-1 text-sm font-medium text-text-primary line-clamp-2">
                   {item.title}
                 </h3>
               </div>
@@ -341,17 +324,17 @@ const PopularInArea: React.FC = () => {
                 </span>
               </div>
 
-              <div className="flex items-center justify-between text-xs text-text-secondary mb-2">
+              <div className="flex items-center justify-between mb-2 text-xs text-text-secondary">
                 <div className="flex items-center space-x-1">
                   <Icon
                     name="Star"
                     size={10}
-                    className="text-warning fill-current"
+                    className="fill-current text-warning"
                   />
                   <span>{item.rating}</span>
                   <span>({item.reviews})</span>
                 </div>
-                <span className="bg-surface-secondary px-2 py-1 rounded-full">
+                <span className="px-2 py-1 rounded-full bg-surface-secondary">
                   {item.category}
                 </span>
               </div>
@@ -363,9 +346,13 @@ const PopularInArea: React.FC = () => {
                 >
                   {item.seller}
                 </span>
-                <button className="bg-primary text-white px-2 py-1 rounded text-xs font-medium hover:bg-primary-700 transition-colors duration-200">
+                <Button
+                  type="button"
+                  variant="navy"
+                  className="px-2 py-1 text-xs font-medium text-white transition-colors duration-200 rounded bg-primary hover:bg-primary-700"
+                >
                   Quick View
-                </button>
+                </Button>
               </div>
             </div>
           </div>

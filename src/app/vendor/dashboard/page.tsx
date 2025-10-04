@@ -246,9 +246,9 @@ const VendorDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <div className="w-12 h-12 mx-auto mb-4 border-b-2 rounded-full animate-spin border-primary"></div>
           <p className="text-text-muted">Loading dashboard...</p>
         </div>
       </div>
@@ -257,9 +257,9 @@ const VendorDashboard: React.FC = () => {
 
   if (!vendorData || !dashboardData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
-          <p className="text-text-primary text-lg mb-4">
+          <p className="mb-4 text-lg text-text-primary">
             Failed to load dashboard
           </p>
           <button
@@ -288,7 +288,7 @@ const VendorDashboard: React.FC = () => {
         <main className="max-w-[85vw] mx-auto px-0 md:px-4 py-6">
           {/* Welcome Section */}
           <div className="mb-8">
-            <h1 className="font-heading font-bold text-2xl text-text-primary mb-2">
+            <h1 className="mb-2 text-2xl font-bold font-heading text-text-primary">
               Welcome back, {vendorData?.business_name}! 👋
             </h1>
             <p className="text-text-muted">
@@ -297,7 +297,7 @@ const VendorDashboard: React.FC = () => {
           </div>
 
           {/* Dashboard Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
             {/* Stats Cards */}
             <div className="lg:col-span-8">
               <DashboardStats stats={dashboardData.stats} />

@@ -1094,6 +1094,7 @@ const VendorAuth: React.FC = () => {
     }
   };
 
+  // demo login as a vendor with google
   const handleGoogleAuth = async () => {
     setIsLoading(true);
     showNotification("info", "Connecting with Google, please wait...");
@@ -1199,6 +1200,20 @@ const VendorAuth: React.FC = () => {
               {isLogin
                 ? "Sign in to your vendor account"
                 : "Create your storefront and reach more customers"}
+            </p>
+          </div>
+
+          {/* Toggle Auth Mode */}
+          <div className="mb-8 text-center">
+            <p className="text-gray-600">
+              {isLogin ? "Don't have an account?" : "Already have an account?"}
+              <button
+                type="button"
+                onClick={toggleAuthMode}
+                className="ml-1 font-medium text-blue-600 hover:underline"
+              >
+                {isLogin ? "Sign Up" : "Sign In"}
+              </button>
             </p>
           </div>
 
@@ -1329,7 +1344,7 @@ const VendorAuth: React.FC = () => {
                             required
                           >
                             <option value="">Select country</option>
-                            {countries.map((country) => (
+                            {countries.map(country => (
                               <option key={country.value} value={country.value}>
                                 {country.label}
                               </option>
@@ -1361,7 +1376,7 @@ const VendorAuth: React.FC = () => {
                                 ? "Select state"
                                 : "Select country first"}
                             </option>
-                            {getAvailableStates().map((state) => (
+                            {getAvailableStates().map(state => (
                               <option key={state.value} value={state.value}>
                                 {state.label}
                               </option>
@@ -1390,7 +1405,7 @@ const VendorAuth: React.FC = () => {
                         required
                       >
                         <option value="">Select business type</option>
-                        {businessTypes.map((type) => (
+                        {businessTypes.map(type => (
                           <option key={type.value} value={type.value}>
                             {type.label}
                           </option>
@@ -1474,11 +1489,14 @@ const VendorAuth: React.FC = () => {
                         id="remember"
                         type="checkbox"
                         checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
+                        onChange={e => setRememberMe(e.target.checked)}
                         disabled={isLoading}
                         className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
                       />
-                      <Label htmlFor="remember" className="text-sm text-gray-600">
+                      <Label
+                        htmlFor="remember"
+                        className="text-sm text-gray-600"
+                      >
                         Remember me
                       </Label>
                     </div>
@@ -1560,20 +1578,6 @@ const VendorAuth: React.FC = () => {
               </Button>
             </CardContent>
           </Card>
-
-          {/* Toggle Auth Mode */}
-          <div className="text-center">
-            <p className="text-gray-600">
-              {isLogin ? "Don't have an account?" : "Already have an account?"}
-              <button
-                type="button"
-                onClick={toggleAuthMode}
-                className="ml-1 font-medium text-blue-600 hover:underline"
-              >
-                {isLogin ? "Sign Up" : "Sign In"}
-              </button>
-            </p>
-          </div>
 
           {/* Location Detection Info */}
           {!isLogin && (

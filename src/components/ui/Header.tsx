@@ -8,6 +8,8 @@ import { ShoppingCart, Store, X } from "lucide-react";
 import "./custom.css";
 import CartSystem from "../../app/CartSystem/page";
 import { useAuth } from "@/context/AuthContext";
+import Skeleton from "../skeleton";
+import Button from "../Button";
 
 type OptionType = "shopping" | "vendor" | null;
 
@@ -36,41 +38,10 @@ const Header: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
-  const { logout, user } = useAuth();
+  const { logout, user, isLoggedIn, isLoading } = useAuth();
 
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedOption, setSelectedOption] = useState<OptionType>(null);
-
-  // ✅ Session-based login state
-  const [isSessionLoggedIn, setIsSessionLoggedIn] = useState(false);
-  const [sessionUserData, setSessionUserData] = useState<any>(null);
-
-  useEffect(() => {
-    const checkSessionLogin = () => {
-      if (typeof window !== "undefined") {
-        const sessionEmail = sessionStorage.getItem("RSEmail");
-        const sessionUser = sessionStorage.getItem("RSUser");
-
-        if (sessionEmail) {
-          setIsSessionLoggedIn(true);
-          if (sessionUser) {
-            try {
-              setSessionUserData(JSON.parse(sessionUser));
-            } catch (error) {
-              console.error("Error parsing session user data:", error);
-            }
-          }
-        } else {
-          setIsSessionLoggedIn(false);
-          setSessionUserData(null);
-        }
-      }
-    };
-
-    checkSessionLogin();
-    window.addEventListener("storage", checkSessionLogin);
-    return () => window.removeEventListener("storage", checkSessionLogin);
-  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -180,13 +151,6 @@ const Header: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      if (typeof window !== "undefined") {
-        sessionStorage.removeItem("RSEmail");
-        sessionStorage.removeItem("RSToken");
-        sessionStorage.removeItem("RSUser");
-      }
-      setIsSessionLoggedIn(false);
-      setSessionUserData(null);
       await logout();
       setIsOpen(false);
     } catch (error) {
@@ -202,22 +166,17 @@ const Header: React.FC = () => {
   const showBackButton =
     pathname === "/product-detail" || pathname === "/create-listing";
 
-  // Handle both "name" and "fullname"
   const getFirstName = () => {
-    const fullName =
-      user?.name ||
-      user?.fullname ||
-      sessionUserData?.name ||
-      sessionUserData?.fullname;
-    return fullName.split(" ")[0];
+    const fullName = user?.name;
+    return fullName ? fullName.split(" ")[0] : "User";
   };
 
   const renderAuthenticatedButtons = () => (
     <>
       <span className="hidden text-sm text-gray-600 lg:block">
-        {`Welcome, ${getFirstName() || "User"}`}
+        {`Welcome, ${getFirstName()}`}
       </span>
-      
+
       <button
         onClick={handleCartOpen}
         className="relative p-2 transition-colors duration-200 rounded-lg hover:bg-surface-secondary"
@@ -228,26 +187,32 @@ const Header: React.FC = () => {
         <div className="absolute w-2 h-2 bg-red-500 rounded-full -top-1 -right-1 border-1 border-surface"></div>
       </button>
 
-
-      <button
+      <Button
+        type="button"
         onClick={handleLogout}
         className="flex items-center px-4 py-2 font-medium text-white transition-colors duration-200 bg-red-600 rounded-lg hover:bg-red-700"
         title="Logout"
       >
         <Icon name="LogOut" size={16} className="mr-2" />
         Logout
-      </button>
+      </Button>
     </>
   );
 
   const renderUnauthenticatedButtons = () => (
-    <button
+    <Button
+      type="button"
+      variant="navy"
       onClick={openModal}
-      className="flex items-center px-4 py-2 space-x-2 font-medium text-white transition-all duration-200 rounded-lg bg-primary hover:bg-primary/80"
+      className="flex items-center text-sm transition-all duration-200"
       aria-label="Get Started"
     >
       Get Started
-    </button>
+    </Button>
+  );
+
+  const renderLoadingSkeleton = () => (
+    <Skeleton type="rect" width="150px" height="30px" />
   );
 
   return (
@@ -277,11 +242,14 @@ const Header: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-2">
-          <div className="items-center hidden gap-2 sm:flex gap-x-4">
-            {isSessionLoggedIn
+          <div className="items-center hidden gap-2 sm:flex gap-x-3">
+            {isLoading
+              ? renderLoadingSkeleton()
+              : isLoggedIn
               ? renderAuthenticatedButtons()
               : renderUnauthenticatedButtons()}
 
+            {/* modal */}
             {isModalOpen && (
               <div
                 className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 animate-fade-in"
@@ -369,6 +337,7 @@ const Header: React.FC = () => {
             )}
           </div>
 
+          {/* mobile dropdown */}
           <div className="relative block sm:hidden" ref={dropdownRef}>
             <button
               onClick={() => setIsOpen(!isOpen)}
@@ -384,9 +353,11 @@ const Header: React.FC = () => {
 
             {isOpen && (
               <div className="absolute right-0 z-10 mt-2 overflow-hidden bg-white border rounded-lg shadow-xl top-full w-60 border-surface-border">
-                {isSessionLoggedIn ? (
+                {isLoading ? (
+                  <div className="p-3 text-sm text-gray-500">Loading...</div>
+                ) : isLoggedIn ? (
                   <>
-                    {(user || sessionUserData) && (
+                    {user && (
                       <div className="p-3 text-sm font-medium text-gray-700 border-b">
                         Welcome, {getFirstName()}
                       </div>
@@ -398,13 +369,14 @@ const Header: React.FC = () => {
                       <Icon name="ShoppingCart" size={16} className="mr-3" />
                       Shopping Cart
                     </button>
-                    <button
+                    <Button
+                      type="button"
                       onClick={handleLogout}
-                      className="flex items-center w-full p-3 text-sm font-medium text-left text-red-600 hover:bg-red-50"
+                      className="flex items-center w-full p-3 text-sm text-left text-red-600 hover:bg-red-50"
                     >
                       <Icon name="LogOut" size={16} className="mr-3" />
                       Logout
-                    </button>
+                    </Button>
                   </>
                 ) : (
                   <>
@@ -415,7 +387,8 @@ const Header: React.FC = () => {
                     >
                       Login
                     </Link>
-                    <button
+                    <Button
+                      type="button"
                       onClick={() => {
                         openModal();
                         setIsOpen(false);
@@ -423,7 +396,7 @@ const Header: React.FC = () => {
                       className="flex items-center w-full gap-2 p-3 text-sm font-medium text-left hover:bg-surface-secondary"
                     >
                       Get Started
-                    </button>
+                    </Button>
                   </>
                 )}
               </div>
@@ -434,7 +407,7 @@ const Header: React.FC = () => {
 
       {/* cart drawer */}
       {isCartOpen && (
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-50 w-full">
           <div
             className="fixed inset-0 bg-black bg-opacity-50"
             onClick={() => setIsCartOpen(false)}
@@ -445,7 +418,7 @@ const Header: React.FC = () => {
                 onClick={() => setIsCartOpen(false)}
                 className="float-right p-2 rounded hover:bg-gray-100"
               >
-                <X className="w-6 h-6" />
+                <X className="w-4 h-4" />
               </button>
               <CartSystem />
             </div>

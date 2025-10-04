@@ -1,21 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import {
-  Heart,
-  ShoppingCart,
-  Plus,
-  Minus,
-  Star,
-  Filter,
-  RefreshCw,
-  Grid3X3,
-  List,
-  X,
-} from "lucide-react";
-import ActionBar from "./components/ActionBar";
+import { Heart, ShoppingCart, Star, Filter, RefreshCw, X, LucideCircleArrowOutUpRight, LucideShoppingBag } from "lucide-react";
+import Skeleton from "@/components/skeleton";
+import api_endpoints from "@/hooks/api_endpoints";
+import ProductCard, { ProductCardSkeleton } from "./components/ProductCard";
+import Button from "@/components/Button";
+import { useRouter } from "next/navigation";
 
-// Type definitions
 interface Product {
   id: any;
   name: string;
@@ -31,19 +23,6 @@ interface Product {
   category: string;
   isWishlisted?: boolean;
   description: string;
-}
-
-interface CartItem {
-  id: number;
-  product_id: number;
-  quantity: number;
-  product: {
-    id: number;
-    product_name: string;
-    product_price: number;
-    images: string[];
-    category: string;
-  };
 }
 
 interface PriceRange {
@@ -74,14 +53,6 @@ type SortOption =
   | "popular"
   | "category";
 
-type FilterType =
-  | "category"
-  | "vendor"
-  | "priceRange"
-  | "rating"
-  | "availability";
-
-// API Response interfaces
 interface ApiVendor {
   business_name: string;
   email: string;
@@ -111,7 +82,110 @@ interface Notification {
   message: string;
 }
 
-// Notification Component
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "https://server.bizengo.com/api";
+
+// const api_endpoints = {
+//   FETCH_CART_ITEMS: "/cart",
+//   ADD_TO_CART_ITEMS: "/cart/add",
+//   FETCH_POPULAR_PRODUCTS: "/marketplace/popular-products",
+// };
+
+const apiCall = async (endpoint: string, options: RequestInit = {}) => {
+  const token =
+    typeof window !== "undefined" ? sessionStorage.getItem("RSToken") : "";
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    accept: "application/json",
+    ...(options.headers as Record<string, string>),
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `HTTP ${response.status}: ${errorText || "Request failed"}`
+    );
+  }
+
+  const contentType = response.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    return await response.json();
+  }
+  return null;
+};
+
+// ============= MOBILE ACTION BAR COMPONENT =============
+const ActionBar = ({
+  product,
+  cartQuantity,
+  onAddToCart,
+  onBuyNow,
+  onWishlistToggle,
+  isWishlisted,
+}: {
+  product: Product;
+  cartQuantity: number;
+  onAddToCart: () => void;
+  onBuyNow: () => void;
+  onWishlistToggle: () => void;
+  isWishlisted: boolean;
+}) => {
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg">
+      <div className="flex items-center justify-between p-4">
+        <div className="flex-1">
+          <h3 className="text-sm font-semibold text-gray-900 line-clamp-1">
+            {product.name}
+          </h3>
+          <p className="text-lg font-bold text-gray-900">
+            ₦{product.price.toLocaleString()}
+          </p>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={onWishlistToggle}
+            className={`p-3 rounded-lg transition-colors ${
+              isWishlisted
+                ? "bg-red-50 text-red-600"
+                : "bg-gray-100 text-gray-600"
+            }`}
+          >
+            <Heart
+              className={`w-5 h-5 ${isWishlisted ? "fill-current" : ""}`}
+            />
+          </button>
+
+          <button
+            onClick={onAddToCart}
+            className="flex items-center px-4 py-3 space-x-2 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+          >
+            <ShoppingCart className="w-5 h-5" />
+            <span>Add {cartQuantity > 0 ? `(${cartQuantity})` : ""}</span>
+          </button>
+
+          <button
+            onClick={onBuyNow}
+            className="px-4 py-3 font-semibold text-white bg-gray-800 rounded-lg hover:bg-gray-900"
+          >
+            Buy Now
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const NotificationToast = ({
   notification,
   onClose,
@@ -134,7 +208,7 @@ const NotificationToast = ({
 
   return (
     <div
-      className={`fixed top-20 right-4 z-1 p-4 rounded-lg border ${
+      className={`fixed top-20 right-4 z-50 p-4 rounded-lg border ${
         bgColors[notification.type]
       } shadow-lg max-w-sm`}
       style={{
@@ -156,117 +230,6 @@ const NotificationToast = ({
   );
 };
 
-// Product Card Component
-const ProductCard = ({
-  product,
-  onAddToCart,
-  onQuickView,
-  onAddToWishlist,
-  cartQuantities,
-}: {
-  product: Product;
-  onAddToCart: (product: Product) => void;
-  onQuickView: (product: Product) => void;
-  onAddToWishlist: (productId: number | string, isWishlisted: boolean) => void;
-  cartQuantities: { [key: number]: number };
-}) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const cartQuantity = cartQuantities[product.id] || 0;
-
-  return (
-    <div
-      className="z-0 overflow-hidden transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {/* Product Image */}
-      <div className="relative overflow-hidden bg-gray-100 aspect-square">
-        <img
-          src={product.image}
-          alt={product.name}
-          className="object-cover w-full h-full"
-          loading="lazy"
-        />
-
-        {/* Wishlist Button */}
-        <button
-          onClick={() => onAddToWishlist(product.id, !product.isWishlisted)}
-          className={`absolute z-20 top-3 right-3 p-2 rounded-full transition-all duration-200 ${
-            product.isWishlisted
-              ? "bg-white text-red-500"
-              : "bg-white/80 text-gray-600 hover:bg-white"
-          }`}
-        >
-          <Heart
-            className={`w-4 h-4 ${product.isWishlisted ? "fill-current" : ""}`}
-          />
-        </button>
-
-        {/* Quick View Button */}
-        {isHovered && (
-          <button
-            onClick={() => onQuickView(product)}
-            className="absolute inset-0 z-10 flex items-center justify-center font-medium text-white transition-opacity duration-200 opacity-0 bg-black/50 hover:opacity-100"
-          >
-            Quick View
-          </button>
-        )}
-      </div>
-
-      {/* Product Details */}
-      <div className="p-4">
-        <div className="mb-2">
-          <h3 className="text-sm font-semibold text-gray-900 line-clamp-2">
-            {product.name}
-          </h3>
-          <p className="text-xs text-gray-500">{product.vendor}</p>
-        </div>
-
-        {/* Rating */}
-        <div className="flex items-center mb-2 space-x-1">
-          <div className="flex items-center">
-            {[...Array(5)].map((_, i) => (
-              <Star
-                key={i}
-                className={`w-3 h-3 ${
-                  i < Math.floor(product.rating)
-                    ? "text-yellow-400 fill-current"
-                    : "text-gray-300"
-                }`}
-              />
-            ))}
-          </div>
-          <span className="text-xs text-gray-500">({product.reviewCount})</span>
-        </div>
-
-        {/* Price */}
-        <div className="mb-3">
-          <div className="flex items-center space-x-2">
-            <span className="text-lg font-bold text-gray-900">
-              ₦{product.price.toLocaleString()}
-            </span>
-            {product.salePrice && (
-              <span className="text-sm text-gray-500 line-through">
-                ₦{product.originalPrice?.toLocaleString()}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Add to Cart Button */}
-        <button
-          onClick={() => onAddToCart(product)}
-          className="flex items-center justify-center w-full px-4 py-2 space-x-2 font-medium text-white transition-colors duration-200 bg-blue-600 rounded-lg hover:bg-blue-700"
-        >
-          <ShoppingCart className="w-4 h-4" />
-          <span>Add to Cart {cartQuantity > 0 ? `(${cartQuantity})` : ""}</span>
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// Main Marketplace Component
 export default function MarketplaceBrowse() {
   const [products, setProducts] = useState<Product[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -286,6 +249,8 @@ export default function MarketplaceBrowse() {
     [key: number]: boolean;
   }>({});
 
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+
   const [filters, setFilters] = useState<Filters>({
     categories: [],
     vendors: [],
@@ -301,13 +266,7 @@ export default function MarketplaceBrowse() {
   const [sortBy, setSortBy] = useState<SortOption>("relevance");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // Get auth token from sessionStorage
-  const getAuthToken = () => {
-    if (typeof window !== "undefined") {
-      return sessionStorage.getItem("RSToken") || "";
-    }
-    return "";
-  };
+  const [isDisabled, setIsDisabled] = useState(false);
 
   // Add notification
   const addNotification = (
@@ -315,107 +274,15 @@ export default function MarketplaceBrowse() {
     message: string
   ) => {
     const id = Date.now().toString();
-    setNotifications((prev) => [...prev, { id, type, message }]);
+    setNotifications(prev => [...prev, { id, type, message }]);
   };
 
   // Remove notification
   const removeNotification = (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
-  // API call helper for cart operations
-  const cartApiCall = async (url: string, options: RequestInit = {}) => {
-    const token = getAuthToken();
-
-    if (!token) {
-      throw new Error("No authentication token found. Please log in again.");
-    }
-
-    const headers = {
-      accept: "application/json",
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      ...options.headers,
-    };
-
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Cart API Error:", response.status, errorText);
-      throw new Error(
-        `HTTP ${response.status}: ${errorText || "Request failed"}`
-      );
-    }
-
-    const contentType = response.headers.get("content-type");
-    if (contentType && contentType.includes("application/json")) {
-      return await response.json();
-    }
-    return null;
-  };
-
-  // Add to cart function
-  const addToCart = async (product: Product, quantity: number = 1) => {
-    try {
-      setIsAddingToCart((prev) => ({ ...prev, [product.id]: true }));
-
-      await cartApiCall("https://server.bizengo.com/api/cart/add", {
-        method: "POST",
-        body: JSON.stringify({
-          product_id: product.id,
-          quantity: quantity,
-        }),
-      });
-
-      // Update local cart quantities
-      setCartQuantities((prev) => ({
-        ...prev,
-        [product.id]: (prev[product.id] || 0) + quantity,
-      }));
-
-      addNotification("success", `${product.name} added to cart!`);
-    } catch (error: any) {
-      console.error("Error adding to cart:", error);
-
-      if (error.message.includes("No authentication token")) {
-        addNotification("error", "Please log in to add items to cart");
-      } else if (error.message.includes("401")) {
-        addNotification("error", "Session expired. Please log in again");
-      } else {
-        addNotification("error", "Failed to add item to cart");
-      }
-    } finally {
-      setIsAddingToCart((prev) => ({ ...prev, [product.id]: false }));
-    }
-  };
-
-  // Fetch current cart to get quantities
-  const fetchCartQuantities = async () => {
-    try {
-      const data = await cartApiCall("https://server.bizengo.com/api/cart");
-
-      // console.log(data);
-
-      const quantities: { [key: number]: number } = {};
-      (data.cart_items || []).forEach((item: any) => {
-        quantities[item.id] = item.quantity;
-      });
-
-      setCartQuantities(quantities);
-    } catch (error) {
-      console.error("Error fetching cart quantities:", error);
-      // Don't show error notification for this as it's background operation
-    }
-  };
-
-  // API URL
-  const API_URL = "https://server.bizengo.com/api/marketplace/popular-products";
-
-  // Function to transform API response to our Product interface
+  // Transform API response
   const transformApiProduct = (apiProduct: ApiProduct): Product => {
     return {
       id: apiProduct.id,
@@ -438,28 +305,17 @@ export default function MarketplaceBrowse() {
     };
   };
 
-  // Fetch products from API
+  // Fetch products
   const fetchProductsFromAPI = async (): Promise<Product[]> => {
     try {
       setFetchError(null);
-
-      const response = await fetch(API_URL, {
-        method: "GET",
-        headers: {
-          accept: "application/json",
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data: ApiResponse = await response.json();
+      const data: ApiResponse = await apiCall(
+        api_endpoints.FETCH_POPULAR_PRODUCTS
+      );
 
       const transformedProducts = data.products
         .filter(
-          (product) =>
+          product =>
             product.product_name &&
             product.product_price !== undefined &&
             product.vendor?.business_name
@@ -467,13 +323,67 @@ export default function MarketplaceBrowse() {
         .map(transformApiProduct);
 
       return transformedProducts;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching products:", error);
       setFetchError("Failed to load products. Please try again later.");
+
+      if (error.message.includes("401")) {
+        addNotification("error", "Session expired. Please log in again.");
+      }
+
       return [];
     }
   };
 
+  // Add to cart
+  const addToCart = async (product: Product, quantity: number = 1) => {
+    try {
+      setIsAddingToCart(prev => ({ ...prev, [product.id]: true }));
+
+      await apiCall(api_endpoints.ADD_TO_CART_ITEMS, {
+        method: "POST",
+        body: JSON.stringify({
+          product_id: product.id,
+          quantity: quantity,
+        }),
+      });
+
+      setCartQuantities(prev => ({
+        ...prev,
+        [product.id]: (prev[product.id] || 0) + quantity,
+      }));
+
+      addNotification("success", `${product.name} added to cart!`);
+    } catch (error: any) {
+      console.error("Error adding to cart:", error);
+
+      if (error.message.includes("401")) {
+        addNotification("error", "Please log in to add items to cart");
+      } else {
+        addNotification("error", "Failed to add item to cart");
+      }
+    } finally {
+      setIsAddingToCart(prev => ({ ...prev, [product.id]: false }));
+    }
+  };
+
+  // Fetch cart quantities
+  const fetchCartQuantities = async () => {
+    try {
+      const data = await apiCall(api_endpoints.FETCH_CART_ITEMS);
+
+      const quantities: { [key: number]: number } = {};
+      (data.cart_items || []).forEach((item: any) => {
+        quantities[item.product_id] = item.quantity;
+      });
+
+      setCartQuantities(quantities);
+    } catch (error) {
+      console.error("Error fetching cart quantities:", error);
+    }
+  };
+
+  // Detect mobile
   useEffect(() => {
     const handleResize = (): void => {
       setIsMobile(window.innerWidth < 768);
@@ -484,25 +394,25 @@ export default function MarketplaceBrowse() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Initial load of products and cart quantities
+  // Initial load
   useEffect(() => {
     const initializeData = async () => {
       setLoading(true);
       const fetchedProducts = await fetchProductsFromAPI();
       setAllProducts(fetchedProducts);
 
-      // Fetch cart quantities if user is logged in
-      if (getAuthToken()) {
+      if (typeof window !== "undefined" && sessionStorage.getItem("RSToken")) {
         await fetchCartQuantities();
       }
 
       setLoading(false);
+      setInitialLoadComplete(true);
     };
 
     initializeData();
   }, []);
 
-  // Filter and sort products when filters/search/sort changes
+  // Filter and sort
   useEffect(() => {
     loadProducts(true);
   }, [filters, sortBy, searchQuery, allProducts]);
@@ -515,10 +425,9 @@ export default function MarketplaceBrowse() {
 
       let filteredProducts = [...allProducts];
 
-      // Apply search filter
       if (searchQuery) {
         filteredProducts = filteredProducts.filter(
-          (product) =>
+          product =>
             product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             product.vendor.toLowerCase().includes(searchQuery.toLowerCase()) ||
             product.description
@@ -527,53 +436,47 @@ export default function MarketplaceBrowse() {
         );
       }
 
-      // Apply category filter
       if (filters.categories.length > 0) {
-        filteredProducts = filteredProducts.filter((product) =>
+        filteredProducts = filteredProducts.filter(product =>
           filters.categories.includes(product.category)
         );
       }
 
-      // Apply vendor filter
       if (filters.vendors.length > 0) {
-        filteredProducts = filteredProducts.filter((product) =>
+        filteredProducts = filteredProducts.filter(product =>
           filters.vendors.includes(
             product.vendor.toLowerCase().replace(/\s+/g, "")
           )
         );
       }
 
-      // Apply price range filter
       if (filters.priceRange.min || filters.priceRange.max) {
         const min = parseFloat(filters.priceRange.min) || 0;
         const max = parseFloat(filters.priceRange.max) || Infinity;
-        filteredProducts = filteredProducts.filter((product) => {
+        filteredProducts = filteredProducts.filter(product => {
           const price = product.salePrice || product.price;
           return price >= min && price <= max;
         });
       }
 
-      // Apply rating filter
       if (filters.minRating > 0) {
         filteredProducts = filteredProducts.filter(
-          (product) => product.rating >= filters.minRating
+          product => product.rating >= filters.minRating
         );
       }
 
-      // Apply availability filters
       if (filters.availability.inStock) {
         filteredProducts = filteredProducts.filter(
-          (product) => product.stock > 0
+          product => product.stock > 0
         );
       }
 
       if (filters.availability.onSale) {
         filteredProducts = filteredProducts.filter(
-          (product) => product.salePrice
+          product => product.salePrice
         );
       }
 
-      // Apply sorting
       switch (sortBy) {
         case "price-low":
           filteredProducts.sort(
@@ -609,7 +512,7 @@ export default function MarketplaceBrowse() {
       } else {
         const startIndex = currentPage * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
-        setProducts((prev) => [
+        setProducts(prev => [
           ...prev,
           ...filteredProducts.slice(startIndex, endIndex),
         ]);
@@ -623,7 +526,7 @@ export default function MarketplaceBrowse() {
 
   const handleLoadMore = useCallback(async (): Promise<void> => {
     if (!loading && hasMore) {
-      setCurrentPage((prev) => prev + 1);
+      setCurrentPage(prev => prev + 1);
       await loadProducts(false);
     }
   }, [loadProducts, loading, hasMore]);
@@ -632,13 +535,13 @@ export default function MarketplaceBrowse() {
     productId: number | string,
     isWishlisted: boolean
   ): void => {
-    setProducts((prev) =>
-      prev.map((product) =>
+    setProducts(prev =>
+      prev.map(product =>
         product.id === productId ? { ...product, isWishlisted } : product
       )
     );
-    setAllProducts((prev) =>
-      prev.map((product) =>
+    setAllProducts(prev =>
+      prev.map(product =>
         product.id === productId ? { ...product, isWishlisted } : product
       )
     );
@@ -650,9 +553,7 @@ export default function MarketplaceBrowse() {
   };
 
   const handleBuyNow = (product: Product): void => {
-    // Add to cart first, then redirect to checkout
     addToCart(product, 1);
-    // In a real app, you would navigate to checkout page
     addNotification("info", "Redirecting to checkout...");
   };
 
@@ -662,15 +563,20 @@ export default function MarketplaceBrowse() {
     setAllProducts(fetchedProducts);
     setCurrentPage(1);
 
-    // Refresh cart quantities
-    if (getAuthToken()) {
+    if (typeof window !== "undefined" && sessionStorage.getItem("RSToken")) {
       await fetchCartQuantities();
     }
   };
 
-  // Get unique categories and vendors for filters
-  const uniqueCategories = [...new Set(allProducts.map((p) => p.category))];
-  const uniqueVendors = [...new Set(allProducts.map((p) => p.vendor))];
+  // Navigate to details page
+  const router = useRouter()
+  
+  const handleNavigateToDetailPage = (item: Product) => {
+    router.push(`/product-detail?id=${item.id}`);
+  };
+
+  const uniqueCategories = [...new Set(allProducts.map(p => p.category))];
+  const uniqueVendors = [...new Set(allProducts.map(p => p.vendor))];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -693,8 +599,7 @@ export default function MarketplaceBrowse() {
         }
       `}</style>
 
-      {/* Notifications */}
-      {notifications.map((notification) => (
+      {notifications.map(notification => (
         <NotificationToast
           key={notification.id}
           notification={notification}
@@ -703,7 +608,6 @@ export default function MarketplaceBrowse() {
       ))}
 
       <div className="flex h-screen">
-        {/* Desktop Filter Sidebar */}
         {!isMobile && (
           <div className="overflow-y-auto bg-white border-r border-gray-200 w-60">
             <div className="p-4">
@@ -729,36 +633,45 @@ export default function MarketplaceBrowse() {
                 </button>
               </div>
 
-              {/* Categories */}
               <div className="mb-6">
                 <h3 className="mb-3 font-medium">Categories</h3>
                 <div className="space-y-2">
-                  {uniqueCategories.map((category) => (
-                    <label
-                      key={category}
-                      className="flex items-center space-x-2"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={filters.categories.includes(category)}
-                        onChange={(e) => {
-                          const newCategories = e.target.checked
-                            ? [...filters.categories, category]
-                            : filters.categories.filter((c) => c !== category);
-                          setFilters((prev) => ({
-                            ...prev,
-                            categories: newCategories,
-                          }));
-                        }}
-                        className="rounded"
-                      />
-                      <span className="text-sm capitalize">{category}</span>
-                    </label>
-                  ))}
+                  {!initialLoadComplete ? (
+                    <>
+                      {[...Array(3)].map((_, i) => (
+                        <div key={i} className="flex items-center space-x-2">
+                          <Skeleton type="rect" className="w-4 h-4" />
+                          <Skeleton type="text" className="w-24" />
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    uniqueCategories.map(category => (
+                      <label
+                        key={category}
+                        className="flex items-center space-x-2"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={filters.categories.includes(category)}
+                          onChange={e => {
+                            const newCategories = e.target.checked
+                              ? [...filters.categories, category]
+                              : filters.categories.filter(c => c !== category);
+                            setFilters(prev => ({
+                              ...prev,
+                              categories: newCategories,
+                            }));
+                          }}
+                          className="rounded"
+                        />
+                        <span className="text-sm capitalize">{category}</span>
+                      </label>
+                    ))
+                  )}
                 </div>
               </div>
-
-              {/* Price Range */}
+              {/* price section */}
               <div className="mb-6">
                 <h3 className="mb-3 font-medium">Price Range</h3>
                 <div className="flex space-x-2">
@@ -766,8 +679,8 @@ export default function MarketplaceBrowse() {
                     type="number"
                     placeholder="Min"
                     value={filters.priceRange.min}
-                    onChange={(e) =>
-                      setFilters((prev) => ({
+                    onChange={e =>
+                      setFilters(prev => ({
                         ...prev,
                         priceRange: { ...prev.priceRange, min: e.target.value },
                       }))
@@ -778,8 +691,8 @@ export default function MarketplaceBrowse() {
                     type="number"
                     placeholder="Max"
                     value={filters.priceRange.max}
-                    onChange={(e) =>
-                      setFilters((prev) => ({
+                    onChange={e =>
+                      setFilters(prev => ({
                         ...prev,
                         priceRange: { ...prev.priceRange, max: e.target.value },
                       }))
@@ -792,11 +705,8 @@ export default function MarketplaceBrowse() {
           </div>
         )}
 
-        {/* Main Content */}
         <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Header Controls */}
           <div className="bg-white border-b border-gray-200">
-            {/* Search and Controls */}
             <div className="px-4 py-3">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex-1 max-w-md">
@@ -804,13 +714,12 @@ export default function MarketplaceBrowse() {
                     type="text"
                     placeholder="Search products..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={e => setSearchQuery(e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
 
                 <div className="flex items-center ml-4 space-x-2">
-                  {/* Refresh Button */}
                   <button
                     onClick={handleRefreshProducts}
                     disabled={loading}
@@ -821,7 +730,6 @@ export default function MarketplaceBrowse() {
                     />
                   </button>
 
-                  {/* Mobile Filter Button */}
                   {isMobile && (
                     <button
                       onClick={() => setIsFilterPanelOpen(true)}
@@ -834,11 +742,10 @@ export default function MarketplaceBrowse() {
                 </div>
               </div>
 
-              {/* Results Info and Sort */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <span className="text-sm text-gray-600">
-                    {loading
+                    {loading && products.length === 0
                       ? "Loading..."
                       : `${products.length} products found`}
                   </span>
@@ -851,7 +758,7 @@ export default function MarketplaceBrowse() {
                   <span className="text-sm text-gray-600">Sort by:</span>
                   <select
                     value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as SortOption)}
+                    onChange={e => setSortBy(e.target.value as SortOption)}
                     className="px-3 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="relevance">Relevance</option>
@@ -867,11 +774,13 @@ export default function MarketplaceBrowse() {
             </div>
           </div>
 
-          {/* Product Grid */}
           <div className="flex-1 p-4 overflow-y-auto">
-            {loading && products.length === 0 ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="w-8 h-8 border-2 border-blue-500 rounded-full border-t-transparent animate-spin" />
+            {!initialLoadComplete ? (
+              // Show skeleton during initial load
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {[...Array(12)].map((_, i) => (
+                  <ProductCardSkeleton key={i} />
+                ))}
               </div>
             ) : products.length === 0 ? (
               <div className="py-12 text-center text-gray-500">
@@ -883,8 +792,8 @@ export default function MarketplaceBrowse() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {products.map((product) => (
+                <div className="grid grid-cols-1 gap-3 mb-24 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {products.map(product => (
                     <ProductCard
                       key={product.id}
                       product={product}
@@ -892,11 +801,12 @@ export default function MarketplaceBrowse() {
                       onQuickView={handleQuickView}
                       onAddToWishlist={handleAddToWishlist}
                       cartQuantities={cartQuantities}
+                      isAddingToCart={isAddingToCart}
                     />
                   ))}
                 </div>
 
-                {/* Load More Button */}
+                {/* load more */}
                 {hasMore && (
                   <div className="mt-8 text-center">
                     <button
@@ -906,7 +816,7 @@ export default function MarketplaceBrowse() {
                     >
                       {loading ? (
                         <div className="flex items-center space-x-2">
-                          <div className="w-4 h-4 border-2 border-white rounded-full border-t-transparent animate-spin" /> Load More
+                          <div className="w-4 h-4 border-2 border-white rounded-full border-t-transparent animate-spin" />
                           <span>Loading...</span>
                         </div>
                       ) : (
@@ -920,10 +830,16 @@ export default function MarketplaceBrowse() {
           </div>
         </div>
 
-        {/* Mobile Filter Panel */}
+        {/* mobile filter */}
         {isMobile && isFilterPanelOpen && (
-          <div className="fixed inset-0 z-50 bg-black bg-opacity-50" onClick={() => setIsFilterPanelOpen(false)}>
-            <div className="absolute top-0 right-0 h-full overflow-y-auto bg-white w-80">
+          <div
+            className="fixed inset-0 z-50 bg-black bg-opacity-50"
+            onClick={() => setIsFilterPanelOpen(false)}
+          >
+            <div
+              className="absolute top-0 right-0 h-full overflow-y-auto bg-white w-80"
+              onClick={e => e.stopPropagation()}
+            >
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-lg font-semibold">Filters</h2>
@@ -935,11 +851,10 @@ export default function MarketplaceBrowse() {
                   </button>
                 </div>
 
-                {/* Categories */}
                 <div className="mb-6">
                   <h3 className="mb-3 font-medium">Categories</h3>
                   <div className="space-y-2">
-                    {uniqueCategories.map((category) => (
+                    {uniqueCategories.map(category => (
                       <label
                         key={category}
                         className="flex items-center space-x-2"
@@ -947,13 +862,11 @@ export default function MarketplaceBrowse() {
                         <input
                           type="checkbox"
                           checked={filters.categories.includes(category)}
-                          onChange={(e) => {
+                          onChange={e => {
                             const newCategories = e.target.checked
                               ? [...filters.categories, category]
-                              : filters.categories.filter(
-                                  (c) => c !== category
-                                );
-                            setFilters((prev) => ({
+                              : filters.categories.filter(c => c !== category);
+                            setFilters(prev => ({
                               ...prev,
                               categories: newCategories,
                             }));
@@ -966,7 +879,7 @@ export default function MarketplaceBrowse() {
                   </div>
                 </div>
 
-                {/* Price Range */}
+                {/* price range */}
                 <div className="mb-6">
                   <h3 className="mb-3 font-medium">Price Range</h3>
                   <div className="flex space-x-2">
@@ -974,8 +887,8 @@ export default function MarketplaceBrowse() {
                       type="number"
                       placeholder="Min"
                       value={filters.priceRange.min}
-                      onChange={(e) =>
-                        setFilters((prev) => ({
+                      onChange={e =>
+                        setFilters(prev => ({
                           ...prev,
                           priceRange: {
                             ...prev.priceRange,
@@ -989,8 +902,8 @@ export default function MarketplaceBrowse() {
                       type="number"
                       placeholder="Max"
                       value={filters.priceRange.max}
-                      onChange={(e) =>
-                        setFilters((prev) => ({
+                      onChange={e =>
+                        setFilters(prev => ({
                           ...prev,
                           priceRange: {
                             ...prev.priceRange,
@@ -1003,7 +916,6 @@ export default function MarketplaceBrowse() {
                   </div>
                 </div>
 
-                {/* Apply Filters Button */}
                 <button
                   onClick={() => setIsFilterPanelOpen(false)}
                   className="w-full py-3 font-semibold text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
@@ -1015,7 +927,7 @@ export default function MarketplaceBrowse() {
           </div>
         )}
 
-        {/* Quick View Modal */}
+        {/* quick view */}
         {isQuickViewOpen && selectedProduct && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
             <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -1031,7 +943,6 @@ export default function MarketplaceBrowse() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  {/* Product Image */}
                   <div className="overflow-hidden bg-gray-100 rounded-lg aspect-square">
                     <img
                       src={selectedProduct.image}
@@ -1040,7 +951,6 @@ export default function MarketplaceBrowse() {
                     />
                   </div>
 
-                  {/* Product Details */}
                   <div>
                     <h3 className="mb-2 text-xl font-semibold">
                       {selectedProduct.name}
@@ -1049,7 +959,6 @@ export default function MarketplaceBrowse() {
                       {selectedProduct.vendor}
                     </p>
 
-                    {/* Rating */}
                     <div className="flex items-center mb-4 space-x-2">
                       <div className="flex items-center">
                         {[...Array(5)].map((_, i) => (
@@ -1068,45 +977,60 @@ export default function MarketplaceBrowse() {
                       </span>
                     </div>
 
-                    {/* Price */}
                     <div className="mb-4">
                       <span className="text-2xl font-bold text-gray-900">
                         ₦{selectedProduct.price.toLocaleString()}
                       </span>
                     </div>
 
-                    {/* Description */}
                     <p className="mb-6 text-gray-700">
                       {selectedProduct.description}
                     </p>
 
-                    {/* Action Buttons */}
                     <div className="space-y-3">
-                      <button
-                        onClick={() => {
-                          addToCart(selectedProduct);
-                          setIsQuickViewOpen(false);
-                        }}
-                        disabled={isAddingToCart[selectedProduct.id]}
-                        className="flex items-center justify-center w-full px-4 py-3 space-x-2 font-semibold text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                      >
-                        <ShoppingCart className="w-5 h-5" />
-                        <span>
-                          {isAddingToCart[selectedProduct.id]
-                            ? "Adding..."
-                            : "Add to Cart"}
-                        </span>
-                      </button>
+                      <div className="flex flex-col lg:gap-3 lg:flex-row">
+                        <Button
+                          type="button"
+                          variant="navy"
+                          onClick={() => {
+                            addToCart(selectedProduct);
+                            setIsQuickViewOpen(false);
+                          }}
+                          disabled={isAddingToCart[selectedProduct.id]}
+                          className="flex items-center justify-center w-full px-4 py-3 space-x-2 text-sm text-white transition-colors disabled:opacity-50"
+                        >
+                          <ShoppingCart className="w-5 h-5" />
+                          <span>
+                            {isAddingToCart[selectedProduct.id]
+                              ? "Adding..."
+                              : "Add to Cart"}
+                          </span>
+                        </Button>
 
-                      <button
+                        <Button
+                          type="button"
+                          variant="orange"
+                          onClick={() => {
+                            setIsDisabled(true);
+                            handleNavigateToDetailPage(selectedProduct);
+                          }}
+                          disabled={isDisabled}
+                          className="flex items-center justify-center w-full gap-2 px-4 text-sm transition-colors disabled:opacity-50"
+                        >
+                          <LucideCircleArrowOutUpRight className="w-4 h-4" />
+                          <span> {isDisabled ? "Viewing..." : "View Detail"}</span>
+                        </Button>
+                      </div>
+                      
+                      <Button
                         onClick={() => {
                           handleBuyNow(selectedProduct);
                           setIsQuickViewOpen(false);
                         }}
-                        className="w-full px-4 py-3 font-semibold text-white transition-colors bg-gray-800 rounded-lg hover:bg-gray-900"
+                        className="flex items-center w-full gap-2 py-3 text-sm transition-colors items-centerpx-4 hover:bg-slate-800 bg-slate-900"
                       >
-                        Buy Now
-                      </button>
+                        <LucideShoppingBag className="w-4 h-4" /> Buy Now
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -1115,7 +1039,7 @@ export default function MarketplaceBrowse() {
           </div>
         )}
 
-        {/* Mobile Action Bar - Only show when a product is selected */}
+        {/* mobile action bar */}
         {isMobile && selectedProduct && (
           <ActionBar
             product={selectedProduct}

@@ -25,10 +25,10 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
   onClose,
 }) => {
   const iconMap = {
-    success: <CheckCircle className="h-6 w-6 text-green-500" />,
-    error: <XCircle className="h-6 w-6 text-red-500" />,
-    warning: <AlertCircle className="h-6 w-6 text-yellow-500" />,
-    info: <AlertCircle className="h-6 w-6 text-blue-500" />,
+    success: <CheckCircle className="w-6 h-6 text-green-500" />,
+    error: <XCircle className="w-6 h-6 text-red-500" />,
+    warning: <AlertCircle className="w-6 h-6 text-yellow-500" />,
+    info: <AlertCircle className="w-6 h-6 text-blue-500" />,
   };
 
   // Auto-close after 3 seconds
@@ -41,7 +41,7 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-sm rounded-2xl shadow-lg">
+      <DialogContent className="z-50 max-w-sm shadow-lg rounded-2xl">
         <DialogHeader className="flex items-center gap-3">
           {iconMap[variant]}
           <div>

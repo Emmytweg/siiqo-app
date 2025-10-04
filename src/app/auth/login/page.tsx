@@ -11,7 +11,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Sparkles,
   Eye,
   EyeOff,
   ArrowLeft,
@@ -19,12 +18,12 @@ import {
   Loader2,
   CheckCircle,
   XCircle,
-  AlertTriangle,
   X,
-  Shield,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import api from "@/lib/api_client";
+import api_endpoints from "@/hooks/api_endpoints";
 
 const NotificationModal = ({
   type,
@@ -85,7 +84,7 @@ const NotificationModal = ({
       />
 
       <div
-        className={`relative bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 border-2 ${colors.border}`}
+        className={`relative rounded-xl shadow-2xl max-w-md w-full mx-4 border-2 ${colors.border}`}
       >
         {type !== "info" && (
           <button
@@ -96,7 +95,7 @@ const NotificationModal = ({
           </button>
         )}
 
-        <div className={`p-8 rounded-t-xl ${colors.bg}`}>
+        <div className={`p-8 rounded-xl ${colors.bg}`}>
           <div className="text-center">
             <div className="flex justify-center mb-4">{getIcon()}</div>
             <h3 className="mb-2 text-lg font-semibold text-gray-900">
@@ -106,7 +105,7 @@ const NotificationModal = ({
           </div>
         </div>
 
-        {type !== "info" && (
+        {/* {type !== "info" && (
           <div className="p-6 bg-white rounded-b-xl">
             <Button
               onClick={onClose}
@@ -115,7 +114,7 @@ const NotificationModal = ({
               OK
             </Button>
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );
@@ -140,7 +139,7 @@ const Login = () => {
   });
 
   const router = useRouter();
-
+  // notification helper.
   const showNotification = (
     type: "success" | "error" | "info",
     title: string,
@@ -183,41 +182,21 @@ const Login = () => {
 
     setIsLoading(true);
 
-    showNotification(
-      "info",
-      "Signing You In",
-      "Please wait while we verify your credentials..."
-    );
-
     try {
-      const response = await fetch(
-        "https://server.bizengo.com/api/auth/login",
-        {
-          method: "POST",
-          headers: {
-            accept: "application/json",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: email,
-            password: password,
-          }),
-        }
-      );
+      // Login request
+      const response = await api.post(api_endpoints.LOGIN, {
+        email,
+        password,
+      });
+      const data = response.data || response;
 
-      console.log("Response status:", response.status);
-      const data = await response.json();
-      console.log("Response data:", data);
+      // console.log("Login response:", data);
 
-      if (
-        response.ok &&
-        (data.status === "success" || data.success || response.status === 200)
-      ) {
+      if (data.access_token) {
+        // Store token and email
         if (typeof window !== "undefined") {
           sessionStorage.setItem("RSEmail", email);
-          if (data.access_token) {
-            sessionStorage.setItem("RSToken", data.access_token);
-          }
+          sessionStorage.setItem("RSToken", data.access_token);
           if (data.user) {
             sessionStorage.setItem("RSUser", JSON.stringify(data.user));
           }
@@ -225,8 +204,10 @@ const Login = () => {
 
         closeNotification();
 
+        // Check user role
         const userRole = data.user?.role;
 
+        // Handle admin users
         if (userRole && userRole.toLowerCase() === "admin") {
           if (data.access_token && typeof window !== "undefined") {
             localStorage.setItem("adminToken", data.access_token);
@@ -237,11 +218,13 @@ const Login = () => {
             showNotification(
               "success",
               "Admin Access Granted!",
-              `Welcome Administrator! Redirecting to admin panel...`
+              "Welcome Administrator! Redirecting to admin panel..."
             );
 
             setEmail("");
             setPassword("");
+
+            setIsLoading(false);
 
             setTimeout(() => {
               router.push("/Adminstration");
@@ -250,21 +233,15 @@ const Login = () => {
           return;
         }
 
+        // Fetch full profile for non-admin users
         try {
-          const profileResponse = await fetch(
-            "https://server.bizengo.com/api/user/profile",
-            {
-              headers: {
-                Authorization: `Bearer ${data.access_token}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
+          const profileResponse = await api.get(api_endpoints.PROFILE);
+          const profileData = profileResponse.data || profileResponse;
 
-          if (profileResponse.ok) {
-            const profileData = await profileResponse.json();
+          // console.log("Profile Data: ", profileData)
 
-            if (typeof window !== "undefined" && profileData) {
+          if (profileData) {
+            if (typeof window !== "undefined") {
               const existingUser = JSON.parse(
                 sessionStorage.getItem("RSUser") || "{}"
               );
@@ -275,7 +252,12 @@ const Login = () => {
             }
 
             const profileRole = profileData?.role || userRole;
+            const firstName =
+              profileData?.name?.split(" ")[0] ||
+              data.user?.name?.split(" ")[0] ||
+              "User";
 
+            // Handle vendor users
             if (profileRole && profileRole.toLowerCase() === "vendor") {
               setTimeout(() => {
                 showNotification(
@@ -287,65 +269,41 @@ const Login = () => {
                 setEmail("");
                 setPassword("");
 
+                setIsLoading(false);
+
                 setTimeout(() => {
                   router.push("/vendor/auth");
                 }, 3000);
               }, 500);
             } else {
+              // Regular user login success
               setTimeout(() => {
                 showNotification(
                   "success",
-                  "Welcome Back!",
+                  `Welcome Back ${firstName}!`,
                   profileData?.business_name
                     ? `Good to see you again, ${profileData.business_name}! Redirecting to your dashboard...`
-                    : "Successfully signed in to your account. Redirecting to marketplace..."
+                    : "Successfully signed in to your account. Redirecting you to marketplace..."
                 );
 
                 setEmail("");
                 setPassword("");
 
+                setIsLoading(false);
+
                 setTimeout(() => {
-                  try {
-                    const redirectUrl =
-                      sessionStorage.getItem("redirectUrl") || "/marketplace";
-                    sessionStorage.removeItem("redirectUrl");
-                    window.location.href = redirectUrl;
-                  } catch (error) {
-                    console.error("Redirect error:", error);
-                    window.location.href = "/marketplace";
-                  }
-                }, 1500);
-              }, 500);
-            }
-          } else {
-            console.error("Failed to fetch user profile");
-
-            setTimeout(() => {
-              showNotification(
-                "success",
-                "Login Successful!",
-                data.message || "Welcome back! Redirecting to your dashboard..."
-              );
-
-              setEmail("");
-              setPassword("");
-
-              setTimeout(() => {
-                try {
                   const redirectUrl =
                     sessionStorage.getItem("redirectUrl") || "/marketplace";
                   sessionStorage.removeItem("redirectUrl");
                   window.location.href = redirectUrl;
-                } catch (error) {
-                  console.error("Redirect error:", error);
-                  window.location.href = "/marketplace";
-                }
-              }, 1500);
-            }, 500);
+                }, 1500);
+              }, 500);
+            }
           }
-        } catch (profileError) {
+        } catch (profileError: any) {
           console.error("Error fetching user profile:", profileError);
 
+          // Continue with basic login if profile fetch fails
           setTimeout(() => {
             showNotification(
               "success",
@@ -356,72 +314,65 @@ const Login = () => {
             setEmail("");
             setPassword("");
 
+            setIsLoading(false);
+
+            closeNotification();
+
             setTimeout(() => {
-              try {
-                const redirectUrl =
-                  sessionStorage.getItem("redirectUrl") || "/marketplace";
-                sessionStorage.removeItem("redirectUrl");
-                window.location.href = redirectUrl;
-              } catch (error) {
-                console.error("Redirect error:", error);
-                window.location.href = "/marketplace";
-              }
+              const redirectUrl =
+                sessionStorage.getItem("redirectUrl") || "/marketplace";
+              sessionStorage.removeItem("redirectUrl");
+              window.location.href = redirectUrl;
             }, 1500);
           }, 500);
         }
       } else {
-        let errorMessage = "Invalid email or password. Please try again.";
-        let errorTitle = "Login Failed";
-
-        if (data.message) {
-          errorMessage = data.message;
-        } else if (data.error) {
-          errorMessage = data.error;
-        } else if (data.errors && Array.isArray(data.errors)) {
-          errorMessage = data.errors.join(", ");
-        }
-
-        if (response.status === 400) {
-          errorTitle = "Invalid Request";
-        } else if (response.status === 401) {
-          errorTitle = "Authentication Failed";
-          errorMessage =
-            "Invalid email or password. Please check your credentials.";
-        } else if (response.status === 403) {
-          errorTitle = "Access Denied";
-          errorMessage = "Your account may be suspended or not verified.";
-        } else if (response.status === 404) {
-          errorTitle = "Account Not Found";
-          errorMessage = "No account found with this email address.";
-        } else if (response.status === 429) {
-          errorTitle = "Too Many Attempts";
-          errorMessage = "Too many login attempts. Please try again later.";
-        } else if (response.status === 500) {
-          errorTitle = "Server Error";
-          errorMessage =
-            "Our servers are experiencing issues. Please try again later.";
-        }
-
-        closeNotification();
-
-        setTimeout(() => {
-          showNotification("error", errorTitle, errorMessage);
-        }, 500);
+        throw new Error("No access token received");
       }
     } catch (error: any) {
       console.error("Login error:", error);
 
-      let errorMessage = "Failed to sign in. Please try again.";
+      let errorMessage = "Invalid email or password. Please try again.";
       let errorTitle = "Login Failed";
 
-      if (error.name === "TypeError" && error.message.includes("fetch")) {
+      // Handle Axios error responses
+      if (error.response) {
+        const status = error.response.status;
+        const data = error.response.data;
+
+        if (data?.message) {
+          errorMessage = data.message;
+        } else if (data?.error) {
+          errorMessage = data.error;
+        } else if (data?.errors && Array.isArray(data.errors)) {
+          errorMessage = data.errors.join(", ");
+        }
+
+        if (status === 400) {
+          errorTitle = "Invalid Request";
+        } else if (status === 401) {
+          errorTitle = "Authentication Failed";
+          errorMessage =
+            "Invalid email or password. Please check your credentials.";
+        } else if (status === 403) {
+          errorTitle = "Access Denied";
+          errorMessage = "Your account may be suspended or not verified.";
+        } else if (status === 404) {
+          errorTitle = "Account Not Found";
+          errorMessage = "No account found with this email address.";
+        } else if (status === 429) {
+          errorTitle = "Too Many Attempts";
+          errorMessage = "Too many login attempts. Please try again later.";
+        } else if (status === 500) {
+          errorTitle = "Server Error";
+          errorMessage =
+            "Our servers are experiencing issues. Please try again later.";
+        }
+      } else if (error.request) {
+        // Network error
         errorTitle = "Connection Error";
         errorMessage =
           "Unable to connect to our servers. Please check your internet connection and try again.";
-      } else if (error.message.includes("timeout")) {
-        errorTitle = "Request Timeout";
-        errorMessage =
-          "The request took too long to complete. Please check your connection and try again.";
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -430,11 +381,13 @@ const Login = () => {
 
       setTimeout(() => {
         showNotification("error", errorTitle, errorMessage);
+        setIsLoading(false);
       }, 500);
-    } finally {
-      setIsLoading(false);
     }
   };
+
+  // disable button if input field is empty
+  const isButtonDisabled = isLoading || !email || !password;
 
   return (
     <>
@@ -459,7 +412,7 @@ const Login = () => {
           </div>
 
           <Card className="relative border border-gray-200 shadow-xl bg-white/80 backdrop-blur-sm">
-            <CardHeader className="pb-2 text-center">
+            <CardHeader className="pb-2 mb-5 text-center">
               <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl">
                 <MapPin className="w-6 h-6 text-white" />
               </div>
@@ -467,7 +420,17 @@ const Login = () => {
               <CardDescription>Sign in to access your account</CardDescription>
             </CardHeader>
 
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-10">
+              <div className="text-sm text-center text-gray-600">
+                Don't have an account?{" "}
+                <Link
+                  href="/auth/signup"
+                  className="font-medium text-blue-600 hover:text-blue-700"
+                >
+                  Sign up here
+                </Link>
+              </div>
+
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address *</Label>
@@ -536,11 +499,11 @@ const Login = () => {
                 <Button
                   type="submit"
                   className="w-full transition-all duration-200 h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={isLoading}
+                  disabled={isButtonDisabled}
                 >
                   {isLoading ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                       Signing in...
                     </>
                   ) : (
@@ -552,16 +515,6 @@ const Login = () => {
                   <p>* Required fields</p>
                 </div>
               </form>
-
-              <div className="text-sm text-center text-gray-600">
-                Don't have an account?{" "}
-                <Link
-                  href="/auth/signup"
-                  className="font-medium text-blue-600 hover:text-blue-700"
-                >
-                  Sign up here
-                </Link>
-              </div>
             </CardContent>
           </Card>
         </div>

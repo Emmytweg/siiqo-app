@@ -1,46 +1,29 @@
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import api from "@/lib/api_client";
 import api_endpoints from "./api_endpoints";
-
-interface CartItem {
-  id: number;
-  product_id: number;
-  quantity: number;
-  subtotal: number;
-  available_stock: number;
-  display_image: string | null;
-  product: {
-    id: number;
-    product_name: string;
-    unit_price: number;
-    images: string[];
-    category: string;
-  };
-}
-
-interface Notification {
-  id: string;
-  type: "success" | "error" | "info";
-  message: string;
-}
+import type { CartItem, AppNotification } from "@/types/cart";
 
 export const useCartManagement = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPrice, setTotalPrice] = useState(0);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
-  const addNotification = (type: Notification["type"], message: string) => {
-    const id = crypto.randomUUID();
-    setNotifications(prev => [...prev, { id, type, message }]);
-  };
+  // --- callbacks ---
+  const addNotification = useCallback(
+    (type: AppNotification["type"], message: string) => {
+      const id = crypto.randomUUID();
+      setNotifications(prev => [...prev, { id, type, message }]);
+    },
+    []
+  );
 
-  const removeNotification = (id: string) => {
+  const removeNotification = useCallback((id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
-  };
+  }, []);
 
-  const fetchCart = async () => {
+  const fetchCart = useCallback(async () => {
     try {
       setIsLoading(true);
       const data: any = await api.get(api_endpoints.FETCH_CART_ITEMS);
@@ -79,54 +62,63 @@ export const useCartManagement = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [addNotification]);
 
-  const addToCart = async (productId: number, quantity = 1) => {
-    try {
-      setIsLoading(true);
-      await api.post(api_endpoints.ADD_TO_CART_ITEMS, {
-        product_id: productId,
-        quantity,
-      });
-      addNotification("success", "Item added to cart!");
-      await fetchCart();
-    } catch {
-      addNotification("error", "Failed to add item to cart");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const addToCart = useCallback(
+    async (productId: number, quantity = 1) => {
+      try {
+        setIsLoading(true);
+        await api.post(api_endpoints.ADD_TO_CART_ITEMS, {
+          product_id: productId,
+          quantity,
+        });
+        addNotification("success", "Item added to cart!");
+        await fetchCart();
+      } catch {
+        addNotification("error", "Failed to add item to cart");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [addNotification, fetchCart]
+  );
 
-  const updateCartItem = async (itemId: number, quantity: number) => {
-    if (quantity < 1) return deleteCartItem(itemId);
-    try {
-      setIsLoading(true);
-      await api.put(`${api_endpoints.UPDATE_CART_ITEMS}/${itemId}`, {
-        quantity,
-      });
-      addNotification("success", "Cart updated successfully!");
-      await fetchCart();
-    } catch {
-      addNotification("error", "Failed to update cart item");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const updateCartItem = useCallback(
+    async (itemId: number, quantity: number) => {
+      if (quantity < 1) return deleteCartItem(itemId);
+      try {
+        setIsLoading(true);
+        await api.put(`${api_endpoints.UPDATE_CART_ITEMS}/${itemId}`, {
+          quantity,
+        });
+        addNotification("success", "Cart updated successfully!");
+        await fetchCart();
+      } catch {
+        addNotification("error", "Failed to update cart item");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [addNotification, fetchCart]
+  );
 
-  const deleteCartItem = async (itemId: number) => {
-    try {
-      setIsLoading(true);
-      await api.delete(`${api_endpoints.DELETE_CART_ITEMS}/${itemId}`);
-      addNotification("success", "Item removed from cart");
-      await fetchCart();
-    } catch {
-      addNotification("error", "Failed to remove item");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const deleteCartItem = useCallback(
+    async (itemId: number) => {
+      try {
+        setIsLoading(true);
+        await api.delete(`${api_endpoints.DELETE_CART_ITEMS}/${itemId}`);
+        addNotification("success", "Item removed from cart");
+        await fetchCart();
+      } catch {
+        addNotification("error", "Failed to remove item");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [addNotification, fetchCart]
+  );
 
-  const clearCart = async () => {
+  const clearCart = useCallback(async () => {
     if (!window.confirm("Clear your entire cart?")) return;
     try {
       setIsLoading(true);
@@ -140,19 +132,35 @@ export const useCartManagement = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [addNotification]);
 
-  return {
-    isLoading,
-    cartItems,
-    totalItems,
-    totalPrice,
-    notifications,
-    fetchCart,
-    addToCart,
-    updateCartItem,
-    deleteCartItem,
-    clearCart,
-    removeNotification,
-  };
+  // --- stable return object for better performance. ---
+  return useMemo(
+    () => ({
+      isLoading,
+      cartItems,
+      totalItems,
+      totalPrice,
+      notifications,
+      fetchCart,
+      addToCart,
+      updateCartItem,
+      deleteCartItem,
+      clearCart,
+      removeNotification,
+    }),
+    [
+      isLoading,
+      cartItems,
+      totalItems,
+      totalPrice,
+      notifications,
+      fetchCart,
+      addToCart,
+      updateCartItem,
+      deleteCartItem,
+      clearCart,
+      removeNotification,
+    ]
+  );
 };

@@ -600,7 +600,7 @@ const Signup = () => {
           </div>
 
           <Card className="border border-gray-200 shadow-xl bg-white/80 backdrop-blur-sm">
-            <CardHeader className="pb-2 text-center">
+            <CardHeader className="pb-2 mb-5 text-center">
               <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl">
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
@@ -612,36 +612,49 @@ const Signup = () => {
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="space-y-6">
-              <form onSubmit={handleSignup} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name *</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    type="text"
-                    placeholder="John Doe"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    required
-                    disabled={isLoading}
-                    className="h-11"
-                  />
-                </div>
+            <CardContent className="space-y-10">
+              <div className="text-sm text-center text-gray-600">
+                Already have an account?{" "}
+                <Link
+                  href="/auth/login"
+                  className="font-medium text-blue-600 hover:text-blue-700"
+                >
+                  Sign in here
+                </Link>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address *</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="john@example.com"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    required
-                    disabled={isLoading}
-                    className="h-11"
-                  />
+              {/* Registration form */}
+              <form onSubmit={handleSignup} className="space-y-4">
+                <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+                  <div className="w-full space-y-2 md:flex-1">
+                    <Label htmlFor="name">Full Name *</Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      type="text"
+                      placeholder="John Doe"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      required
+                      disabled={isLoading}
+                      className="h-11"
+                    />
+                  </div>
+
+                  <div className="w-full space-y-2 md:flex-1">
+                    <Label htmlFor="email">Email Address *</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      placeholder="john@example.com"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      required
+                      disabled={isLoading}
+                      className="h-11"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -661,7 +674,7 @@ const Signup = () => {
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between min-h-[24px]">
                       <Label htmlFor="country">Country *</Label>
                       <div className="flex items-center gap-2">
                         {locationDetected && (
@@ -701,7 +714,9 @@ const Signup = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="state">State *</Label>
+                    <div className="min-h-[24px] flex items-center">
+                      <Label htmlFor="state">State *</Label>
+                    </div>
                     <Input
                       id="state"
                       name="state"
@@ -739,71 +754,74 @@ const Signup = () => {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password *</Label>
-                  <div className="relative">
+                {/* password field */}
+                <div className="flex flex-col items-start justify-between gap-4 md:flex-row">
+                  <div className="w-full space-y-2 md:flex-1">
+                    <Label htmlFor="password">Password *</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Create a strong password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        required
+                        disabled={isLoading}
+                        className="pr-10 h-11"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        disabled={isLoading}
+                        className="absolute text-gray-500 -translate-y-1/2 right-3 top-1/2 hover:text-gray-700 disabled:opacity-50"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                    <PasswordStrengthBar
+                      strength={passwordStrengthScore}
+                      password={formData.password}
+                    />
+                  </div>
+
+                  <div className="w-full space-y-2 md:flex-1">
+                    <Label htmlFor="confirmPassword">Confirm Password *</Label>
                     <Input
-                      id="password"
-                      name="password"
+                      id="confirmPassword"
+                      name="confirmPassword"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Create a strong password"
-                      value={formData.password}
+                      placeholder="Confirm your password"
+                      value={formData.confirmPassword}
                       onChange={handleInputChange}
                       required
                       disabled={isLoading}
-                      className="pr-10 h-11"
+                      className="h-11"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      disabled={isLoading}
-                      className="absolute text-gray-500 -translate-y-1/2 right-3 top-1/2 hover:text-gray-700 disabled:opacity-50"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
+                    {formData.confirmPassword && (
+                      <div className="flex items-center gap-2 mt-1">
+                        {passwordsMatch ? (
+                          <>
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                            <p className="text-xs text-green-600">
+                              Passwords match!
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="w-4 h-4 text-red-500" />
+                            <p className="text-xs text-red-500">
+                              Passwords do not match.
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <PasswordStrengthBar
-                    strength={passwordStrengthScore}
-                    password={formData.password}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                  <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Confirm your password"
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    required
-                    disabled={isLoading}
-                    className="h-11"
-                  />
-                  {formData.confirmPassword && (
-                    <div className="flex items-center gap-2 mt-1">
-                      {passwordsMatch ? (
-                        <>
-                          <CheckCircle className="w-4 h-4 text-green-500" />
-                          <p className="text-xs text-green-600">
-                            Passwords match!
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="w-4 h-4 text-red-500" />
-                          <p className="text-xs text-red-500">
-                            Passwords do not match.
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  )}
                 </div>
 
                 <Button
@@ -837,16 +855,6 @@ const Signup = () => {
                   </p>
                 </div>
               </form>
-
-              <div className="text-sm text-center text-gray-600">
-                Already have an account?{" "}
-                <Link
-                  href="/auth/login"
-                  className="font-medium text-blue-600 hover:text-blue-700"
-                >
-                  Sign in here
-                </Link>
-              </div>
             </CardContent>
           </Card>
         </div>

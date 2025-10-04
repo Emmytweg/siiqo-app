@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Icon from "@/components/ui/AppIcon";
 import Image from "@/components/ui/AppImage";
+import Button from "@/components/Button";
+import Skeleton from "@/components/skeleton";
 
 // Updated interface to match API response
 interface Product {
@@ -136,7 +138,7 @@ const NearbyDeals: React.FC<NearbyDealsProps> = ({ onRefresh }) => {
         </button>
       </div>
 
-      <div className="overflow-x-auto scrollbar-hide">
+      <div className="overflow-x-auto scrollbar-hide custom-scrollbar custom-scrollbar-height">
         <div className="flex pb-4 space-x-4">
           {isLoading && products.length === 0 ? (
             // Loading skeleton
@@ -147,10 +149,23 @@ const NearbyDeals: React.FC<NearbyDealsProps> = ({ onRefresh }) => {
               >
                 <div className="w-full h-48 bg-gray-300 rounded-t-lg"></div>
                 <div className="p-4">
-                  <div className="h-4 mb-2 bg-gray-300 rounded"></div>
-                  <div className="w-24 h-6 mb-2 bg-gray-300 rounded"></div>
-                  <div className="w-32 h-4 mb-3 bg-gray-300 rounded"></div>
-                  <div className="h-8 bg-gray-300 rounded"></div>
+                  <Skeleton
+                    type="text"
+                    className="mb-2 bg-gray-300 rounded -4"
+                  />
+                  <Skeleton
+                    type="text"
+                    className="h-4 mb-2 bg-gray-300 rounded"
+                  />
+                  <Skeleton
+                    type="text"
+                    className="w-24 h-6 mb-2 bg-gray-300 rounded"
+                  />
+                  <Skeleton
+                    type="text"
+                    className="w-32 h-4 mb-3 bg-gray-300 rounded"
+                  />
+                  <Skeleton type="text" className="h-8 bg-gray-300 rounded" />
                 </div>
               </div>
             ))
@@ -159,7 +174,7 @@ const NearbyDeals: React.FC<NearbyDealsProps> = ({ onRefresh }) => {
               No products available
             </div>
           ) : (
-            products.map((product) => {
+            products.map(product => {
               const dealData = generateDealData(product);
 
               return (
@@ -228,9 +243,12 @@ const NearbyDeals: React.FC<NearbyDealsProps> = ({ onRefresh }) => {
                       <span className="text-sm text-text-secondary">
                         {product.vendor?.business_name ?? "Unknown Vendor"}
                       </span>
-                      <button className="px-3 py-1 text-sm font-medium text-white transition-colors duration-200 rounded-lg bg-primary hover:bg-primary-700">
+                      <Button
+                        variant="navy"
+                        className="px-3 py-1 text-sm font-medium text-white transition-colors duration-200 rounded-lg bg-primary hover:bg-primary-700"
+                      >
                         View Deal
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>

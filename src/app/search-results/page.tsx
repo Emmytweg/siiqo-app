@@ -371,13 +371,13 @@ const SearchResults = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="fixed top-100 left-0 right-0 z-[250] bg-white border-b border-border">
-        <div className="px-4 md:px-6 py-3">
+        <div className="px-4 py-3 md:px-6">
           <div className="flex items-center space-x-3">
-            <div className="flex-1 relative">
+            <div className="relative flex-1">
               <Icon
                 name="Search"
                 size={18}
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary"
+                className="absolute transform -translate-y-1/2 left-3 top-1/2 text-text-secondary"
               />
               <input
                 type="text"
@@ -388,12 +388,12 @@ const SearchResults = () => {
                 onKeyPress={(e) =>
                   e.key === "Enter" && handleSearchSubmit(searchQuery)
                 }
-                className="w-full pl-10 pr-4 py-2 bg-surface-secondary border border-border rounded-lg text-sm placeholder-text-secondary focus:outline-none focus:bg-surface focus:border-primary-500 focus:ring-2 focus:ring-primary-500 transition-all duration-200"
+                className="w-full py-2 pl-10 pr-4 text-sm transition-all duration-200 border rounded-lg bg-surface-secondary border-border placeholder-text-secondary focus:outline-none focus:bg-surface focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-border-light transition-colors duration-200"
+                  className="absolute p-1 transition-colors duration-200 transform -translate-y-1/2 rounded-full right-3 top-1/2 hover:bg-border-light"
                 >
                   <Icon name="X" size={14} className="text-text-secondary" />
                 </button>
@@ -402,7 +402,7 @@ const SearchResults = () => {
 
             <button
               onClick={() => setIsFilterOpen(true)}
-              className="p-2 rounded-lg border border-border hover:bg-surface-secondary transition-colors duration-200 relative"
+              className="relative p-2 transition-colors duration-200 border rounded-lg border-border hover:bg-surface-secondary"
             >
               <Icon
                 name="SlidersHorizontal"
@@ -410,7 +410,7 @@ const SearchResults = () => {
                 className="text-text-primary"
               />
               {activeFilters.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-accent text-white text-xs rounded-full flex items-center justify-center">
+                <span className="absolute flex items-center justify-center w-5 h-5 text-xs text-white rounded-full -top-1 -right-1 bg-accent">
                   {activeFilters.length}
                 </span>
               )}
@@ -418,14 +418,14 @@ const SearchResults = () => {
 
             <button
               onClick={() => handleViewModeChange("map")}
-              className="p-2 rounded-lg border border-border hover:bg-surface-secondary transition-colors duration-200"
+              className="p-2 transition-colors duration-200 border rounded-lg border-border hover:bg-surface-secondary"
             >
               <Icon name="Map" size={20} className="text-text-primary" />
             </button>
 
             <button
               onClick={handleRetry}
-              className="p-2 rounded-lg border border-border hover:bg-surface-secondary transition-colors duration-200"
+              className="p-2 transition-colors duration-200 border rounded-lg border-border hover:bg-surface-secondary"
               title="Refresh results"
             >
               <Icon
@@ -452,17 +452,17 @@ const SearchResults = () => {
 
       <div className="flex">
         {/* Desktop Sidebar Filters */}
-        <div className="hidden lg:block w-80 border-r border-border bg-surface">
+        <div className="hidden border-r lg:block w-80 border-border bg-surface">
           <div className="sticky top-32 h-[calc(100vh-8rem)] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-heading font-semibold text-text-primary">
+                <h3 className="text-lg font-semibold font-heading text-text-primary">
                   Filters
                 </h3>
                 {activeFilters.length > 0 && (
                   <button
                     onClick={clearAllFilters}
-                    className="text-sm text-primary hover:text-primary-700 transition-colors duration-200"
+                    className="text-sm transition-colors duration-200 text-primary hover:text-primary-700"
                   >
                     Clear All
                   </button>
@@ -478,15 +478,15 @@ const SearchResults = () => {
         <div className="flex-1">
           {/* Active Filters */}
           {activeFilters.length > 0 && (
-            <div className="px-4 md:px-6 py-3 bg-surface-secondary border-b border-border">
-              <div className="flex items-center space-x-2 flex-wrap gap-2">
+            <div className="px-4 py-3 border-b md:px-6 bg-surface-secondary border-border">
+              <div className="flex flex-wrap items-center gap-2 space-x-2">
                 <span className="text-sm text-text-secondary">
                   Active filters:
                 </span>
                 {activeFilters.map((filter) => (
                   <div
                     key={filter.id}
-                    className="flex items-center space-x-1 bg-primary-50 text-primary px-3 py-1 rounded-full text-sm"
+                    className="flex items-center px-3 py-1 space-x-1 text-sm rounded-full bg-primary-50 text-primary"
                   >
                     <span>{filter.label}</span>
                     <button
@@ -499,7 +499,7 @@ const SearchResults = () => {
                 ))}
                 <button
                   onClick={clearAllFilters}
-                  className="text-sm text-text-secondary hover:text-text-primary transition-colors duration-200"
+                  className="text-sm transition-colors duration-200 text-text-secondary hover:text-text-primary"
                 >
                   Clear all
                 </button>
@@ -508,12 +508,12 @@ const SearchResults = () => {
           )}
 
           {/* Quick Filters - Mobile */}
-          <div className="lg:hidden px-4 py-3 border-b border-border bg-white">
+          <div className="px-4 py-3 bg-white border-b lg:hidden border-border">
             <QuickFilters onApplyFilter={handleQuickFilter} />
           </div>
 
           {/* Sort and Results Count */}
-          <div className="px-4 md:px-6 py-4 border-b border-border bg-surface">
+          <div className="px-4 py-4 border-b md:px-6 border-border bg-surface">
             <div className="flex items-center justify-between">
               <div className="text-sm text-text-secondary">
                 {isLoading
@@ -532,7 +532,7 @@ const SearchResults = () => {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="text-sm border border-border rounded-lg px-3 py-1 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200"
+                  className="px-3 py-1 text-sm transition-colors duration-200 border rounded-lg border-border focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
                   {sortOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -545,53 +545,53 @@ const SearchResults = () => {
           </div>
 
           {/* Products Grid */}
-          <div className="px-4 md:px-6 py-6">
+          <div className="px-4 py-6 md:px-6">
             {isLoading ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {Array.from({ length: 10 }).map((_, index) => (
                   <div key={index} className="animate-pulse">
-                    <div className="bg-surface-secondary rounded-lg aspect-square mb-3"></div>
+                    <div className="mb-3 rounded-lg bg-surface-secondary aspect-square"></div>
                     <div className="space-y-2">
-                      <div className="h-4 bg-surface-secondary rounded"></div>
-                      <div className="h-3 bg-surface-secondary rounded w-2/3"></div>
-                      <div className="h-3 bg-surface-secondary rounded w-1/2"></div>
+                      <div className="h-4 rounded bg-surface-secondary"></div>
+                      <div className="w-2/3 h-3 rounded bg-surface-secondary"></div>
+                      <div className="w-1/2 h-3 rounded bg-surface-secondary"></div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : error ? (
-              <div className="text-center py-16">
-                <div className="w-24 h-24 bg-surface-secondary rounded-full flex items-center justify-center mx-auto mb-6">
+              <div className="py-16 text-center">
+                <div className="flex items-center justify-center w-24 h-24 mx-auto mb-6 rounded-full bg-surface-secondary">
                   <Icon
                     name="AlertCircle"
                     size={48}
                     className="text-destructive"
                   />
                 </div>
-                <h3 className="text-xl font-heading font-semibold text-text-primary mb-2">
+                <h3 className="mb-2 text-xl font-semibold font-heading text-text-primary">
                   Failed to Load Products
                 </h3>
-                <p className="text-text-secondary mb-6">{error}</p>
+                <p className="mb-6 text-text-secondary">{error}</p>
                 <button
                   onClick={handleRetry}
-                  className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-700 transition-colors duration-200"
+                  className="px-6 py-2 text-white transition-colors duration-200 rounded-lg bg-primary hover:bg-primary-700"
                 >
                   Try Again
                 </button>
               </div>
             ) : displayProducts.length === 0 ? (
-              <div className="text-center py-16">
-                <div className="w-24 h-24 bg-surface-secondary rounded-full flex items-center justify-center mx-auto mb-6">
+              <div className="py-16 text-center">
+                <div className="flex items-center justify-center w-24 h-24 mx-auto mb-6 rounded-full bg-surface-secondary">
                   <Icon
                     name="Search"
                     size={48}
                     className="text-text-secondary"
                   />
                 </div>
-                <h3 className="text-xl font-heading font-semibold text-text-primary mb-2">
+                <h3 className="mb-2 text-xl font-semibold font-heading text-text-primary">
                   No results found
                 </h3>
-                <p className="text-text-secondary mb-6">
+                <p className="mb-6 text-text-secondary">
                   {searchQuery
                     ? `No products found for "${searchQuery}". Try adjusting your search terms or filters.`
                     : "Try adjusting your filters or search for something else."}
@@ -600,21 +600,21 @@ const SearchResults = () => {
                   {activeFilters.length > 0 && (
                     <button
                       onClick={clearAllFilters}
-                      className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-700 transition-colors duration-200"
+                      className="px-6 py-2 text-white transition-colors duration-200 rounded-lg bg-primary hover:bg-primary-700"
                     >
                       Clear Filters
                     </button>
                   )}
                   <button
                     onClick={() => setSearchQuery("")}
-                    className="border border-border text-text-primary px-6 py-2 rounded-lg hover:bg-surface-secondary transition-colors duration-200"
+                    className="px-6 py-2 transition-colors duration-200 border rounded-lg border-border text-text-primary hover:bg-surface-secondary"
                   >
                     Clear Search
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
                 {displayProducts.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -628,10 +628,10 @@ const SearchResults = () => {
 
           {/* Load More */}
           {!isLoading && !error && displayProducts.length > 0 && (
-            <div className="px-4 md:px-6 py-6 text-center">
+            <div className="px-4 py-6 text-center md:px-6">
               <button
                 onClick={handleRetry}
-                className="bg-surface border border-border text-text-primary px-8 py-3 rounded-lg hover:bg-surface-secondary transition-colors duration-200"
+                className="px-8 py-3 transition-colors duration-200 border rounded-lg bg-surface border-border text-text-primary hover:bg-surface-secondary"
               >
                 Refresh Results
               </button>
