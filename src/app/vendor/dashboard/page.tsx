@@ -91,6 +91,8 @@ const VendorDashboard: React.FC = () => {
 
     // Load vendor data
     const vendor = JSON.parse(localStorage.getItem("vendorAuth") || "{}");
+    console.log("Dashboard data: ", vendor);
+    
     setVendorData(vendor);
 
     // Load dashboard data
