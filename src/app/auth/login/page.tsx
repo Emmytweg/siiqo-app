@@ -1,10 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, ArrowLeft, Loader2, MapPin } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  ArrowLeft,
+  Loader2,
+  MapPin,
+  X,
+  ShoppingCart,
+} from "lucide-react";
 
 import { loginSchema, LoginFormValues } from "@/lib/Validation/LoginSchema";
 import { useLogin } from "@/hooks/useLogin";
@@ -20,8 +28,119 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 
+// Role Redirect Modal
+const RoleRedirectModal = ({
+  show,
+  onRedirect,
+  onClose,
+}: {
+  show: boolean;
+  onRedirect: () => void;
+  onClose: () => void;
+}) => {
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  if (!show) return null;
+
+  const handleRedirect = () => {
+    setIsRedirecting(true);
+    // Simulate loading delay before redirect
+    setTimeout(() => {
+      onRedirect();
+    }, 1000);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <div className="relative w-full max-w-md mx-4 bg-white border-2 border-orange-200 shadow-2xl rounded-xl">
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute text-gray-400 transition-colors top-4 right-4 hover:text-gray-600"
+          disabled={isRedirecting}
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        {/* Content */}
+        <div className="p-8 rounded-t-xl bg-orange-50">
+          <div className="text-center">
+            <div className="flex justify-center mb-4">
+              <ShoppingCart className="w-12 h-12 text-orange-500" />
+            </div>
+            <h3 className="mb-2 text-lg font-semibold text-gray-900">
+              You&apos;re a Vendor!
+            </h3>
+            <p className="leading-relaxed text-gray-700">
+              We detected that you have a vendor account. This is the buyer
+              login page. Please use the vendor login to access your{" "}
+              <span className="font-bold">vendor</span> account.
+            </p>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="p-6 space-y-3 bg-white rounded-b-xl">
+          <Button
+            type="button"
+            title="Go to vendor login"
+            variant="orange"
+            onClick={handleRedirect}
+            disabled={isRedirecting}
+            className="flex items-center justify-center w-full gap-2 text-sm"
+          >
+            {isRedirecting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Redirecting...
+              </>
+            ) : (
+              "Go to Vendor Login"
+            )}
+          </Button>
+
+          <Button
+            title="stay here"
+            variant="outline"
+            type="button"
+            onClick={onClose}
+            disabled={isRedirecting}
+            className="w-full text-sm"
+          >
+            Stay Here
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  
+  useEffect(() => {
+    if (showRoleModal) {
+      // Disable scroll
+      document.body.style.overflow = "hidden";
+    } else {
+      // Re-enable scroll
+      document.body.style.overflow = "";
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showRoleModal]);
+  
   const {
     register,
     handleSubmit,
@@ -35,7 +154,9 @@ const LoginPage = () => {
     },
   });
 
-  const { onSubmit, isLoading } = useLogin();
+  const { onSubmit, isLoading } = useLogin({
+    onRoleMismatch: () => setShowRoleModal(true),
+  });
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-4 py-20 bg-gradient-to-br from-blue-50 via-white to-green-50">
@@ -153,6 +274,13 @@ const LoginPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Role Redirect Modal for Vendor login attempt */}
+      <RoleRedirectModal
+        show={showRoleModal}
+        onRedirect={() => (window.location.href = "/vendor/auth")}
+        onClose={() => setShowRoleModal(false)}
+      />
     </div>
   );
 };

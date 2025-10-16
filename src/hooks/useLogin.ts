@@ -5,9 +5,7 @@ import axios from "axios";
 import { toast } from "@/hooks/use-toast";
 import { loginUser, storeAuthData } from "@/lib/auth";
 
-
-
-export const useLogin = () => {
+export const useLogin = (options?: { onRoleMismatch?: () => void }) => {
     const [isLoading, setIsLoading] = useState(false);
 
     const handleRedirect = () => {
@@ -36,12 +34,8 @@ export const useLogin = () => {
                 storeAuthData(data, values.rememberMe ?? false, values.email);
                 handleRedirect();
             } else {
-                toast({
-                    variant: "destructive",
-                    title: "Login Failed",
-                    description:
-                        data.message || "Unable to complete login. Please try again.",
-                });
+                // If a Vendor tried to login here
+                options?.onRoleMismatch?.();
             }
         } catch (error: any) {
             console.error("Login error full:", error);

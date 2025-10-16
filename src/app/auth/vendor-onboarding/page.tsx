@@ -76,13 +76,13 @@ const VendorOnboarding = () => {
     if (isCompleted) {
       const timer = setTimeout(() => {
         router.push("/vendor/auth");
-      }, 5000);
+      }, 10000);
       return () => clearTimeout(timer);
     }
   }, [isCompleted, router]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-20 bg-gradient-to-br from-blue-50 via-white to-green-50">
+    <div className="flex flex-col items-center justify-center min-h-screen p-6 border lg:p-20 bg-gradient-to-br from-blue-50 via-white to-green-50">
       <AnimatePresence>
         {!isCompleted ? (
           <motion.form
@@ -186,7 +186,7 @@ const VendorOnboarding = () => {
               approval. Once approved, you&apos;ll receive a confirmation email.
             </p>
             <p className="mt-4 text-sm text-gray-500">
-              Redirecting you to the vendor login page in 5 seconds...
+              Redirecting you to the vendor login page in 10 seconds...
             </p>
           </motion.div>
         )}
