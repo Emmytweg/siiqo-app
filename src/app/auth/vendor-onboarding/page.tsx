@@ -10,7 +10,7 @@ import {
 import InputField from "@/components/Input";
 import Dropdown from "@/app/auth/signup/components/DropDown";
 import Button from "@/components/Button";
-import { vendorOnboarding, uploadFile } from "@/services/api";
+import { vendorOnboarding } from "@/services/api";
 import {
   Loader2,
   CheckCircle2,
@@ -102,6 +102,8 @@ const SuccessScreen = () => (
 const VendorOnboarding = () => {
   const router = useRouter();
   const [isCompleted, setIsCompleted] = useState(false);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
 
   const {
     register,
@@ -148,27 +150,20 @@ const VendorOnboarding = () => {
     }
   }, [locationDetected, location, setValue]);
 
-  const handleImageUpload = async (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const response = await uploadFile(formData);
-      return response.data.url;
-    } catch (error) {
-      console.error("Image upload error:", error);
-      toast({
-        variant: "destructive",
-        title: "Image Upload Failed",
-        description: "Could not upload image. Please try again.",
-      });
-      throw error;
-    }
-  };
-
   const onSubmit = async (data: VendorOnboardingData) => {
+    const formData = new FormData();
+    Object.keys(data).forEach((key) => {
+      formData.append(key, (data as any)[key]);
+    });
+    if (logoFile) {
+      formData.append("logo_url", logoFile);
+    }
+    if (bannerFile) {
+      formData.append("banner_url", bannerFile);
+    }
+
     try {
-      await vendorOnboarding(data);
+      await vendorOnboarding(formData);
 
       toast({
         title: "Vendor Onboarding Successful",
@@ -353,8 +348,10 @@ const VendorOnboarding = () => {
 
               <ImageUpload
                 label="Logo*"
-                onUpload={handleImageUpload}
-                onUrlChange={(url) => setValue("logo_url", url)}
+                onFileChange={(file) => {
+                  setLogoFile(file);
+                  setValue("logo_url", file.name);
+                }}
               />
               {errors.logo_url && (
                 <p className="text-sm text-red-500">
@@ -364,8 +361,10 @@ const VendorOnboarding = () => {
 
               <ImageUpload
                 label="Banner*"
-                onUpload={handleImageUpload}
-                onUrlChange={(url) => setValue("banner_url", url)}
+                onFileChange={(file) => {
+                  setBannerFile(file);
+                  setValue("banner_url", file.name);
+                }}
               />
               {errors.banner_url && (
                 <p className="text-sm text-red-500">

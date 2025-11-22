@@ -426,7 +426,7 @@ const OrderManagement: React.FC = () => {
       const token = getVendorToken();
       if (token) {
         // Example API call (adjust endpoint as needed):
-        // await fetch(`https://server.siiqo.com/api/vendor/orders/${orderId}/status`, {
+        // await fetch(`https://server.bizengo.com/api/vendor/orders/${orderId}/status`, {
         //   method: 'PUT',
         //   headers: {
         //     'Content-Type': 'application/json',

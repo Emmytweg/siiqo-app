@@ -5,14 +5,16 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface ImageUploadProps {
   label: string;
-  onUpload: (file: File) => Promise<string>;
-  onUrlChange: (url: string) => void;
+  onUpload?: (file: File) => Promise<string>;
+  onUrlChange?: (url: string) => void;
+  onFileChange?: (file: File) => void;
 }
 
 const ImageUpload: React.FC<ImageUploadProps> = ({
   label,
   onUpload,
   onUrlChange,
+  onFileChange,
 }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadUrl, setUploadUrl] = useState<string | null>(null);
@@ -24,17 +26,25 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   ) => {
     const file = event.target.files?.[0];
     if (file) {
+      if (onFileChange) {
+        onFileChange(file);
+      }
       setUploading(true);
       setError(null);
       setFileName(file.name);
-      try {
-        const url = await onUpload(file);
-        setUploadUrl(url);
-        onUrlChange(url);
-      } catch (err) {
-        setError("Upload failed. Please try again.");
-      } finally {
+      if (onUpload && onUrlChange) {
+        try {
+          const url = await onUpload(file);
+          setUploadUrl(url);
+          onUrlChange(url);
+        } catch (err) {
+          setError("Upload failed. Please try again.");
+        } finally {
+          setUploading(false);
+        }
+      } else {
         setUploading(false);
+        setUploadUrl("file selected");
       }
     }
   };
@@ -46,7 +56,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       </label>
       <div className="flex items-center justify-center w-full">
         <label
-          htmlFor="dropzone-file"
+          htmlFor={label}
           className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100"
         >
           <div className="flex flex-col items-center justify-center pt-5 pb-6">
@@ -105,7 +115,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
             </AnimatePresence>
           </div>
           <input
-            id="dropzone-file"
+            id={label}
             type="file"
             className="hidden"
             onChange={handleFileChange}

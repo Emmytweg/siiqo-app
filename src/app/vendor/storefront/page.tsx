@@ -25,8 +25,8 @@ const VendorStorefront: React.FC = () => {
 
   useEffect(() => {
     // Check if vendor is authenticated
-    const isLoggedIn = localStorage.getItem("isVendorLoggedIn");
-    if (!isLoggedIn) {
+    const token = localStorage.getItem("vendorToken");
+    if (!token) {
       router.push("../auth");
       return;
     }
@@ -49,7 +49,7 @@ const loadStorefrontData = async () => {
     }
 
     const res = await fetch(
-      "https://server.siiqo.com/api/vendor/storefront",
+      "https://server.bizengo.com/api/vendor/storefront",
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -147,7 +147,7 @@ const loadStorefrontData = async () => {
       };
 
       const res = await fetch(
-        "https://server.siiqo.com/api/vendor/storefront",
+        "https://server.bizengo.com/api/vendor/storefront",
         {
           method: "PUT",
           headers: {
@@ -198,7 +198,7 @@ const handlePublishStorefront = async () => {
     };
 
     const res = await fetch(
-      "https://server.siiqo.com/api/vendor/storefront",
+      "https://server.bizengo.com/api/vendor/storefront",
       {
         method: "PUT",
         headers: {

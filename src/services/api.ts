@@ -63,7 +63,11 @@ export const fetchCartItems = () => {
 };
 
 export const vendorOnboarding = (data: any) => {
-  return apiClient.patch("/user/switch-to-vendor", data);
+  const headers: any = {};
+  if (data instanceof FormData) {
+    headers["Content-Type"] = "multipart/form-data";
+  }
+  return apiClient.patch("/user/switch-to-vendor", data, { headers });
 };
 
 export const uploadFile = (formData: FormData) => {

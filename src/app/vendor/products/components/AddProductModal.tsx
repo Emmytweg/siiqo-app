@@ -79,7 +79,7 @@ const uploadImageToServer = async (file: File): Promise<{ url: string }> => {
   formData.append("files", file);
 
   const response = await fetch(
-    "https://server.siiqo.com/api/vendor/upload-file",
+    "https://server.bizengo.com/api/vendor/upload-file",
     {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
