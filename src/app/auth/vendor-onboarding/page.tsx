@@ -353,9 +353,9 @@ const VendorOnboarding = () => {
                   setValue("logo_url", file.name);
                 }}
               />
-              {errors.logo_url && (
+              {errors.logo_url?.message && (
                 <p className="text-sm text-red-500">
-                  {errors.logo_url.message}
+                  {errors.logo_url.message as string}
                 </p>
               )}
 
@@ -366,9 +366,9 @@ const VendorOnboarding = () => {
                   setValue("banner_url", file.name);
                 }}
               />
-              {errors.banner_url && (
+              {errors.banner_url?.message && (
                 <p className="text-sm text-red-500">
-                  {errors.banner_url.message}
+                  {errors.banner_url.message as string}
                 </p>
               )}
             </div>
