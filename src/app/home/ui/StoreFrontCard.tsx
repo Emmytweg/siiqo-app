@@ -255,55 +255,33 @@ export const StorefrontCard = ({ storefront }: { storefront: Storefront }) => {
 
         </div>
 
-        {storefront.vendor && (
-
-          <div className="pt-3 mt-3 border-t border-gray-100">
-
+        <div className="pt-3 mt-3 border-t border-gray-100">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-
-              <div className="flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-orange-500 rounded-full">
-
-                {storefront.vendor.firstname.charAt(0)}
-
-              </div>
-
-                            <span className="text-sm text-gray-700">
-
-                              {storefront.vendor.firstname} {storefront.vendor.lastname}
-
-                            </span>
-
-                            {storefront.ratings > 0 && (
-
-                              <div className="flex items-center space-x-1 text-xs text-gray-800">
-
-                                <Star className="w-3 h-3 text-orange-400 fill-current" />
-
-                                <span>{storefront.ratings.toFixed(1)}</span>
-
-                              </div>
-
-                            )}
-
+              {storefront.vendor && (
+                <div className="flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-orange-500 rounded-full">
+                  {storefront.vendor.firstname.charAt(0)}
+                </div>
+              )}
+              <span className="text-sm text-gray-700">
+                {storefront.vendor?.firstname} {storefront.vendor?.lastname}
+              </span>
             </div>
-
+            <div className="flex items-center space-x-2">
+              {storefront.ratings > 0 && (
+                <div className="flex items-center space-x-1 text-xs text-gray-800">
+                  <Star className="w-3 h-3 text-orange-400 fill-current" />
+                  <span>{storefront.ratings.toFixed(1)}</span>
+                </div>
+              )}
+              <Button
+                onClick={handleClick}
+                className="w-fit px-3 py-1 text-xs font-medium text-white transition-colors duration-200 rounded-lg bg-primary hover:bg-primary-700"
+              >
+                View Store
+              </Button>
+            </div>
           </div>
-
-        )}
-
-        <div className="flex items-center justify-between mt-4">
-          {storefront.ratings > 0 && (
-            <div className="flex items-center space-x-1 text-sm text-gray-800">
-              <Star className="w-4 h-4 text-orange-400 fill-current" />
-              <span>{storefront.ratings.toFixed(1)}</span>
-            </div>
-          )}
-          <Button
-            onClick={handleClick}
-            className="w-fit px-3 py-1 text-xs font-medium text-white transition-colors duration-200 rounded-lg bg-primary hover:bg-primary-700"
-          >
-            View Store
-          </Button>
         </div>
 
       </div>
