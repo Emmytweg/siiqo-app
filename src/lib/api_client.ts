@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "https://server.bizengo.com/api";
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "/api";
 
 const api = axios.create({
     baseURL: apiBaseUrl,

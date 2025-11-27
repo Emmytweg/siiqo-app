@@ -25,7 +25,7 @@ const LandingPage: React.FC = () => {
       try {
         const data: APIResponse = await storefrontService.getStorefronts();
         console.log("Storefronts response:", data);
-        if (data && data.storefronts) {
+        if (data && Array.isArray(data.storefronts)) {
           setStorefronts(data.storefronts);
         } else {
           setStorefronts([]);
