@@ -1,3 +1,4 @@
+// src/app/user-profile/components/MyListings.tsx
 "use client";
 
 import React, { useState } from 'react';
@@ -129,11 +130,11 @@ const MyListings = () => {
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'active':
-                return 'bg-success-50 text-success border-success-100';
+                return 'bg-white text-success border-success-100';
             case 'sold':
-                return 'bg-primary-50 text-primary border-primary-100';
+                return 'bg-[#E0921C] text-primary border-[#E0921C] ';
             case 'expired':
-                return 'bg-error-50 text-error border-error-100';
+                return 'bg-red-500 text-error border-red-500';
             default:
                 return 'bg-surface-secondary text-text-secondary border-border';
         }
@@ -163,19 +164,19 @@ const MyListings = () => {
     return (
         <div className="space-y-4">
             {/* Filter Tabs */}
-            <div className="flex space-x-1 bg-surface-secondary rounded-lg p-1">
+            <div className="flex justify-between overflow-x-scroll md:px-4 md:overflow-x-hidden space-x-2 bg-transparent">
                 {filterOptions.map((option) => (
                     <button
                         key={option.value}
                         onClick={() => setFilter(option.value)}
-                        className={`flex-1 flex items-center justify-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${filter === option.value
+                        className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 whitespace-nowrap ${filter === option.value
                             ? 'bg-surface text-text-primary shadow-sm'
-                            : 'text-text-secondary hover:text-text-primary'
+                            : 'bg-surface-secondary text-text-secondary hover:text-text-primary'
                             }`}
                     >
-                        <span>{option.label}</span>
-                        <span className={`px-2 py-1 rounded-full text-xs ${filter === option.value
-                            ? 'bg-primary text-white' : 'bg-border text-text-tertiary'
+                        {option.label}
+                        <span className={`absolute top-1 -right-2 w-4 h-4 rounded-full text-xs font-semibold flex items-center justify-center ${filter === option.value
+                            ? 'bg-[#E0921C] text-white' : 'bg-border text-text-tertiary'
                             }`}>
                             {option.count}
                         </span>
@@ -184,114 +185,149 @@ const MyListings = () => {
             </div>
 
             {/* Listings Grid */}
-            {filteredListings.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {filteredListings.map((listing) => (
-                        <div
-                            key={listing.id}
-                            className="bg-surface border border-border rounded-lg overflow-hidden hover:shadow-elevation-2 transition-shadow duration-200"
-                        >
-                            <div className="relative w-full h-48">
-                                <Image
-                                    src={listing.image}
-                                    fill
-                                    alt={listing.title}
-                                    // The w-full h-48 are now on the parent
-                                    className="object-cover" // Keep styling for the image itself
-                                    // Add sizes prop. Assuming 100vw minus some padding/margins
-                                    // If it's in a grid, you'll need to be more precise based on grid column widths.
-                                    // For a general full-width card, 100vw is a good starting point.
-                                    sizes="(max-width: 600px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                />
-                                <div className="absolute top-3 left-3">
-                                    <span className={`px-2 py-1 rounded-full bg-gray-50 text-xs font-medium border ${getStatusColor(listing.status)}`}>
-                                        {getStatusLabel(listing.status)}
-                                    </span>
-                                </div>
-                                <div className="absolute top-3 right-3 flex space-x-2">
-                                    <button className="p-2 bg-surface bg-opacity-90 rounded-full hover:bg-opacity-100 transition-colors duration-200">
-                                        <Icon name="Edit" size={14} className="text-text-primary" />
-                                    </button>
-                                    <button className="p-2 bg-surface bg-opacity-90 rounded-full hover:bg-opacity-100 transition-colors duration-200">
-                                        <Icon name="MoreVertical" size={14} className="text-text-primary" />
-                                    </button>
-                                </div>
-                            </div>
+                        {filteredListings.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
+                                {filteredListings.map((listing) => (
+                                    <div
+                                        key={listing.id}
+                                        className="bg-surface border border-border rounded-lg overflow-hidden hover:shadow-elevation-2 transition-shadow duration-200 flex flex-col h-full"
+                                    >
+                                        {/* Image */}
+                                        <div className="relative w-full h-36 sm:h-44 md:h-48 lg:h-56">
+                                            <Image
+                                                src={listing.image}
+                                                fill
+                                                alt={listing.title}
+                                                className="object-cover"
+                                                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                            />
+                                            <div className="absolute top-3 left-3">
+                                                <span
+                                                    className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                                                        listing.status
+                                                    )}`}
+                                                >
+                                                    {getStatusLabel(listing.status)}
+                                                </span>
+                                            </div>
 
-                            <div className="p-4">
-                                <div className="flex items-start justify-between mb-2">
-                                    <h3 className="font-medium text-text-primary line-clamp-2 flex-1">
-                                        {listing.title}
-                                    </h3>
-                                </div>
-
-                                <div className="flex items-center space-x-2 mb-3">
-                                    <span className="text-lg font-semibold text-text-primary">
-                                        ${listing.price}
-                                    </span>
-                                    {listing.originalPrice && listing.originalPrice > listing.price && (
-                                        <span className="text-sm text-text-tertiary line-through">
-                                            ${listing.originalPrice}
-                                        </span>
-                                    )}
-                                </div>
-
-                                <div className="flex items-center justify-between text-sm text-text-secondary mb-3">
-                                    <span>{listing.category} • {listing.condition}</span>
-                                    <span>{formatDate(listing.datePosted)}</span>
-                                </div>
-
-                                {listing.status === 'sold' && listing.soldDate && (
-                                    <div className="text-sm text-success mb-3">
-                                        Sold on {formatDate(listing.soldDate)}
-                                    </div>
-                                )}
-
-                                {/* Stats */}
-                                <div className="flex items-center justify-between pt-3 border-t border-border">
-                                    <div className="flex items-center space-x-4 text-sm text-text-secondary">
-                                        <div className="flex items-center space-x-1">
-                                            <Icon name="Eye" size={14} />
-                                            <span>{listing.views}</span>
-                                        </div>
-                                        <div className="flex items-center space-x-1">
-                                            <Icon name="Heart" size={14} />
-                                            <span>{listing.likes}</span>
-                                        </div>
-                                        <div className="flex items-center space-x-1">
-                                            <Icon name="MessageCircle" size={14} />
-                                            <span>{listing.messages}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex space-x-2">
-                                        {listing.status === 'active' && (
-                                            <>
-                                                <button className="text-primary hover:underline text-sm">
-                                                    Edit
+                                            {/* top-right quick actions: icons on mobile, full buttons on sm+ */}
+                                            <div className="absolute top-3 right-3 flex items-center space-x-2">
+                                                <button
+                                                    aria-label="Edit listing"
+                                                    className="p-2 bg-surface bg-opacity-90 rounded-full hover:bg-opacity-100 transition-colors duration-200"
+                                                >
+                                                    <Icon name="Edit" size={14} className="text-text-primary" />
                                                 </button>
-                                                <button className="text-text-secondary hover:text-text-primary text-sm">
-                                                    Share
+                                                <button
+                                                    aria-label="More options"
+                                                    className="p-2 bg-surface bg-opacity-90 rounded-full hover:bg-opacity-100 transition-colors duration-200"
+                                                >
+                                                    <Icon name="MoreVertical" size={14} className="text-text-primary" />
                                                 </button>
-                                            </>
-                                        )}
-                                        {listing.status === 'expired' && (
-                                            <button className="text-primary hover:underline text-sm">
-                                                Relist
-                                            </button>
-                                        )}
-                                        {listing.status === 'sold' && (
-                                            <button className="text-text-secondary hover:text-text-primary text-sm">
-                                                View
-                                            </button>
-                                        )}
+                                            </div>
+                                        </div>
+
+                                        {/* Body */}
+                                        <div className="p-3 sm:p-4 flex-1 flex flex-col">
+                                            <div className="mb-1 sm:mb-2">
+                                                <h3 className="font-medium text-text-primary text-sm sm:text-base line-clamp-2">
+                                                    {listing.title}
+                                                </h3>
+                                            </div>
+
+                                            <div className="flex items-center space-x-2 mb-2">
+                                                <span className="text-base sm:text-lg font-semibold text-text-primary">
+                                                    ${listing.price}
+                                                </span>
+                                                {listing.originalPrice && listing.originalPrice > listing.price && (
+                                                    <span className="text-xs sm:text-sm text-text-tertiary line-through">
+                                                        ${listing.originalPrice}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div className="flex items-center justify-between text-xs sm:text-sm text-text-secondary mb-2">
+                                                <span className="truncate text-ellipsis">
+                                                    {listing.category} • {listing.condition}
+                                                </span>
+                                                <span className="whitespace-nowrap ml-2">{formatDate(listing.datePosted)}</span>
+                                            </div>
+
+                                            {listing.status === 'sold' && listing.soldDate && (
+                                                <div className="text-sm text-success mb-2">
+                                                    Sold on {formatDate(listing.soldDate)}
+                                                </div>
+                                            )}
+
+                                            {/* Stats & actions */}
+                                            <div className="flex items-center justify-between gap-2 mt-auto pt-3 border-t border-border">
+                                                <div className="flex items-center space-x-4 text-sm text-text-secondary">
+                                                    <div className="flex items-center space-x-1 text-xs sm:text-sm">
+                                                        <Icon name="Eye" size={14} />
+                                                        <span>{listing.views}</span>
+                                                    </div>
+                                                    <div className="flex items-center space-x-1 text-xs sm:text-sm">
+                                                        <Icon name="Heart" size={14} />
+                                                        <span>{listing.likes}</span>
+                                                    </div>
+                                                    {/* hide messages on very small screens to save space */}
+                                                    <div className="hidden sm:flex items-center space-x-1 text-xs sm:text-sm">
+                                                        <Icon name="MessageCircle" size={14} />
+                                                        <span>{listing.messages}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center space-x-2 shrink-0">
+                                                    {/* On very small screens show compact icon menu, on sm+ show text actions */}
+                                                    <button
+                                                        aria-label="More actions"
+                                                        className="p-2 rounded-md bg-surface sm:hidden"
+                                                    >
+                                                        <Icon name="MoreVertical" size={16} />
+                                                    </button>
+
+                                                    {listing.status === 'active' && (
+                                                        <>
+                                                            <button className="hidden sm:inline text-primary hover:underline text-sm">
+                                                                Edit
+                                                            </button>
+                                                            <button className="hidden sm:inline text-text-secondary hover:text-text-primary text-sm">
+                                                                Share
+                                                            </button>
+                                                            {/* mobile-friendly icon for quick share */}
+                                                            <button className="inline sm:hidden p-2 rounded-md bg-surface" aria-label="Share">
+                                                                <Icon name="Share" size={16} />
+                                                            </button>
+                                                        </>
+                                                    )}
+
+                                                    {listing.status === 'expired' && (
+                                                        <>
+                                                            <button className="text-primary hover:underline text-sm">
+                                                                <span className="hidden sm:inline">Relist</span>
+                                                                <span className="inline sm:hidden">
+                                                                    <Icon name="RefreshCw" size={16} />
+                                                                </span>
+                                                            </button>
+                                                        </>
+                                                    )}
+
+                                                    {listing.status === 'sold' && (
+                                                        <button className="text-text-secondary hover:text-text-primary text-sm">
+                                                            <span className="hidden sm:inline">View</span>
+                                                            <span className="inline sm:hidden">
+                                                                <Icon name="Eye" size={16} />
+                                                            </span>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
+                                ))}
                             </div>
-                        </div>
-                    ))}
-                </div>
-            ) : (
+                        ) : (
                 <div className="text-center py-12">
                     <div className="w-16 h-16 bg-surface-secondary rounded-full flex items-center justify-center mx-auto mb-4">
                         <Icon name="Package" size={24} className="text-text-tertiary" />

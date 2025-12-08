@@ -1,3 +1,4 @@
+// src/app/marketplace/components/ActionBar.tsx
 "use client";
 
 import { Heart, ShoppingCart } from "lucide-react";

@@ -1,3 +1,4 @@
+// src/app/search-results/components/MapViewToggle.tsx
 "use client";
 
 import React, { useState } from 'react';

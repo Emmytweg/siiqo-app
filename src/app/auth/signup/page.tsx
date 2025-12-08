@@ -1,4 +1,3 @@
-
 "use client";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -29,27 +28,18 @@ import { SignupResponse } from "@/types/auth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+// Utility for password strength
 const passwordStrength = (password: string): number => {
   let score = 0;
-  if (password.length >= 8) {
-    score++;
-  }
-  if (password.match(/[a-z]+/)) {
-    score++;
-  }
-  if (password.match(/[A-Z]+/)) {
-    score++;
-  }
-  if (password.match(/[0-9]+/)) {
-    score++;
-  }
-  if (password.match(/[^a-zA-Z0-9]+/)) {
-    score++;
-  }
-
+  if (password.length >= 8) score++;
+  if (password.match(/[a-z]+/)) score++;
+  if (password.match(/[A-Z]+/)) score++;
+  if (password.match(/[0-9]+/)) score++;
+  if (password.match(/[^a-zA-Z0-9]+/)) score++;
   return score;
 };
 
+// Password Strength Bar Component
 const PasswordStrengthBar = ({
   strength,
   password,
@@ -154,17 +144,13 @@ const NotificationModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={type !== "info" ? onClose : undefined}
       />
-
-      {/* Modal */}
       <div
         className={`relative bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 border-2 ${colors.border}`}
       >
-        {/* Close button - only show for non-info modals */}
         {type !== "info" && (
           <button
             onClick={onClose}
@@ -173,19 +159,13 @@ const NotificationModal = ({
             <X className="w-5 h-5" />
           </button>
         )}
-
-        {/* Content */}
         <div className={`p-8 rounded-t-xl ${colors.bg}`}>
           <div className="text-center">
             <div className="flex justify-center mb-4">{getIcon()}</div>
-            <h3 className="mb-2 text-lg font-semibold text-gray-900">
-              {title}
-            </h3>
+            <h3 className="mb-2 text-lg font-semibold text-gray-900">{title}</h3>
             <p className="leading-relaxed text-gray-700">{message}</p>
           </div>
         </div>
-
-        {/* Actions - only show for non-info modals */}
         {type !== "info" && (
           <div className="p-6 bg-white rounded-b-xl">
             <Button
@@ -231,7 +211,6 @@ const Signup = () => {
   });
   const router = useRouter();
 
-  // Auto-detect location on component mount
   useEffect(() => {
     detectLocation();
   }, []);
@@ -248,20 +227,16 @@ const Signup = () => {
     }
   }, [formData.password, formData.confirmPassword]);
 
-  // Location detection function
+  // Location detection logic
   const detectLocation = async () => {
     if (formData.country && formData.state && locationDetected) {
-      return; // Don't re-detect if already filled and detected
+      return;
     }
-
     setLocationDetecting(true);
     try {
-      // Use multiple fallback services for better reliability
       const response = await fetch("https://ipapi.co/json/");
-
       if (response.ok) {
         const data = await response.json();
-
         if (data.country_name && data.region) {
           setFormData((prev) => ({
             ...prev,
@@ -276,77 +251,34 @@ const Signup = () => {
         throw new Error("Primary location service failed");
       }
     } catch (error) {
-      // Fallback to alternative service
+      // Use fallback
       try {
         const fallbackResponse = await fetch("https://ip-api.com/json/");
-
         if (fallbackResponse.ok) {
           const fallbackData = await fallbackResponse.json();
-
-          if (
-            fallbackData.status === "success" &&
-            fallbackData.country &&
-            fallbackData.regionName
-          ) {
+          if (fallbackData.status === "success" && fallbackData.country && fallbackData.regionName) {
             setFormData((prev) => ({
               ...prev,
               country: fallbackData.country,
               state: fallbackData.regionName,
             }));
             setLocationDetected(true);
-          } else {
-            throw new Error("Fallback location service failed");
           }
-        } else {
-          throw new Error("Fallback location service failed");
         }
       } catch (fallbackError) {
-        // Second fallback
-        try {
-          const secondFallbackResponse = await fetch("https://ipinfo.io/json");
-
-          if (secondFallbackResponse.ok) {
-            const secondFallbackData = await secondFallbackResponse.json();
-
-            if (secondFallbackData.country && secondFallbackData.region) {
-              // Convert country code to country name if needed
-              const countryName =
-                secondFallbackData.country === "NG"
-                  ? "Nigeria"
-                  : secondFallbackData.country === "US"
-                  ? "United States"
-                  : secondFallbackData.country === "GB"
-                  ? "United Kingdom"
-                  : secondFallbackData.country === "CA"
-                  ? "Canada"
-                  : secondFallbackData.country;
-
-              setFormData((prev) => ({
-                ...prev,
-                country: countryName,
-                state: secondFallbackData.region,
-              }));
-              setLocationDetected(true);
-            }
-          }
-        } catch (secondFallbackError) {
-          console.log("Location detection failed, user can enter manually");
-        }
+        console.log("Location detection failed.");
       }
     } finally {
       setLocationDetecting(false);
     }
   };
 
-  // Show notification function
   const showNotification = (
     type: "success" | "error" | "info",
     title: string,
     message: string
   ) => {
     setNotification({ type, title, message, show: true });
-
-    // Auto hide after 5 seconds for non-info messages
     if (type !== "info") {
       setTimeout(() => {
         setNotification((prev) => ({ ...prev, show: false }));
@@ -354,7 +286,6 @@ const Signup = () => {
     }
   };
 
-  // Close notification function
   const closeNotification = () => {
     setNotification((prev) => ({ ...prev, show: false }));
   };
@@ -366,7 +297,6 @@ const Signup = () => {
     });
   };
 
-  // Manual location refresh
   const handleLocationRefresh = () => {
     setLocationDetected(false);
     detectLocation();
@@ -375,48 +305,23 @@ const Signup = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation
     if (formData.password !== formData.confirmPassword) {
-      showNotification(
-        "error",
-        "Password Mismatch",
-        "Passwords do not match. Please check and try again."
-      );
+      showNotification("error", "Password Mismatch", "Passwords do not match.");
       return;
     }
 
     if (passwordStrengthScore < 3) {
-      showNotification(
-        "error",
-        "Weak Password",
-        "Please create a stronger password with at least 8 characters, including uppercase, lowercase, numbers, and special characters."
-      );
+      showNotification("error", "Weak Password", "Please use a stronger password.");
       return;
     }
 
-    if (
-      !formData.name ||
-      !formData.email ||
-      !formData.phone ||
-      !formData.country ||
-      !formData.state
-    ) {
-      showNotification(
-        "error",
-        "Missing Information",
-        "Please fill in all required fields."
-      );
+    if (!formData.name || !formData.email || !formData.phone || !formData.country || !formData.state) {
+      showNotification("error", "Missing Information", "Please fill in all required fields.");
       return;
     }
 
     setIsLoading(true);
-
-    // Show loading notification
-    showNotification(
-      "info",
-      "Creating Your Account",
-      "Please wait while we set up your account. This may take a few moments..."
-    );
+    showNotification("info", "Creating Your Account", "Please wait while we set up your account...");
 
     try {
       const requestBody: any = {
@@ -433,110 +338,59 @@ const Signup = () => {
       }
 
       console.log("Sending signup request...", requestBody);
-
       const response = await authService.signup(requestBody);
-      const data: SignupResponse = response.data;
+      const data: SignupResponse = response; // Assuming axios response.data comes directly or via service wrapper
 
-      console.log("Response data:", data);
-
-      // Check for success status
-      if (data && data.status === "success") {
-        // Close loading modal first
+      // Handle Success
+      if (data && (data.status === "success" || (data as any).success)) {
         closeNotification();
-
         setTimeout(() => {
-          // Store email for OTP verification
           sessionStorage.setItem("RSEmail", formData.email);
-
-          // Success notification
           showNotification(
             "success",
             "Account Created Successfully!",
-            data.message ||
-              "Please check your email for the OTP verification code."
+            data.message || "Please check your email for the OTP verification code."
           );
-
-          // Clear form data
           setFormData({
-            name: "",
-            email: "",
-            password: "",
-            confirmPassword: "",
-            phone: "",
-            country: "",
-            state: "",
-            referral_code: "",
+            name: "", email: "", password: "", confirmPassword: "", phone: "", country: "", state: "", referral_code: "",
           });
-
-          // Redirect to OTP verification
           setTimeout(() => {
-            router.push(
-              `/auth/verify-otp?email=${encodeURIComponent(formData.email)}`
-            );
+            router.push(`/auth/verify-otp?email=${encodeURIComponent(formData.email)}`);
           }, 2000);
         }, 500);
       } else {
-        // Handle API error responses
-        let errorMessage = "Failed to create account. Please try again.";
-        let errorTitle = "Signup Failed";
-
-        if (data && data.message) {
-          errorMessage = data.message;
-        } else if (data && data.error) {
-          errorMessage = data.error;
-        } else if (data && data.errors && Array.isArray(data.errors)) {
-          errorMessage = data.errors.join(", ");
-        }
-
-        // Close loading modal first
-        closeNotification();
-
-        setTimeout(() => {
-          showNotification("error", errorTitle, errorMessage);
-        }, 500);
+        // Handle Logic Failure (Status not success)
+        throw new Error(data.message || data.error || "Signup failed");
       }
     } catch (error: any) {
-      console.error("Signup error:", error);
+      console.error("Signup error catch block:", error);
+      closeNotification();
 
       let errorMessage = "Failed to create account. Please try again.";
-      let errorTitle = "Connection Error";
+      let errorTitle = "Signup Failed";
 
-      if (error.response) {
-        const { data, status } = error.response;
-        if (status === 400) {
-          errorTitle = "Invalid Information";
-          if (data.message.toLowerCase().includes("email")) {
-            errorMessage =
-              "This email address is already registered or invalid.";
-          } else if (data.message.toLowerCase().includes("phone")) {
-            errorMessage =
-              "This phone number is already registered or invalid.";
-          } else {
-            errorMessage = data.message;
-          }
-        } else if (status === 409) {
-          errorTitle = "Account Already Exists";
-          errorMessage =
-            "An account with this email or phone number already exists. Please try logging in instead.";
-        } else if (status === 422) {
-          errorTitle = "Validation Error";
-          errorMessage =
-            data.message || "Please check your information and try again.";
-        } else if (status === 500) {
-          errorTitle = "Server Error";
-          errorMessage =
-            "Our servers are experiencing issues. Please try again later.";
-        } else {
-          errorMessage = data.message || "An unknown error occurred.";
-        }
-      } else if (error.request) {
-        errorMessage = "No response from server. Please check your network connection.";
-      } else {
-        errorMessage = error.message;
+      // 409 HANDLING (CONFLICT)
+      if (error.response?.status === 409 || error.status === 409) {
+        errorTitle = "Account Already Exists";
+        errorMessage = "An account with this email or phone number already exists. Please Log In.";
+      } 
+      // 400 HANDLING (BAD REQUEST)
+      else if (error.response?.status === 400 || error.status === 400) {
+        errorTitle = "Invalid Information";
+        const msg = error.response?.data?.message || error.message;
+        if (msg.toLowerCase().includes("email")) errorMessage = "Invalid or registered email.";
+        else if (msg.toLowerCase().includes("phone")) errorMessage = "Invalid or registered phone number.";
+        else errorMessage = msg;
       }
-
-      // Close loading modal first
-      closeNotification();
+      // NETWORK / SERVER ERROR
+      else if (error.request && !error.response) {
+        errorTitle = "Network Error";
+        errorMessage = "Could not reach the server. Check your connection.";
+      }
+      // GENERIC MESSAGE FALLBACK
+      else {
+         errorMessage = error.response?.data?.message || error.message || "An unknown error occurred.";
+      }
 
       setTimeout(() => {
         showNotification("error", errorTitle, errorMessage);
@@ -573,12 +427,8 @@ const Signup = () => {
               <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl">
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
-              <CardTitle className="text-2xl font-bold">
-                Create Your Account
-              </CardTitle>
-              <CardDescription>
-                Join thousands of Nigerian business owners
-              </CardDescription>
+              <CardTitle className="text-2xl font-bold">Create Your Account</CardTitle>
+              <CardDescription>Join thousands of Nigerian business owners</CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-6">
@@ -586,48 +436,24 @@ const Signup = () => {
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name *</Label>
                   <Input
-                    id="name"
-                    name="name"
-                    type="text"
-                    placeholder="John Doe"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    required
-                    disabled={isLoading}
-                    className="h-11"
+                    id="name" name="name" type="text" placeholder="John Doe"
+                    value={formData.name} onChange={handleInputChange} required disabled={isLoading} className="h-11"
                   />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address *</Label>
                   <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="john@example.com"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    required
-                    disabled={isLoading}
-                    className="h-11"
+                    id="email" name="email" type="email" placeholder="john@example.com"
+                    value={formData.email} onChange={handleInputChange} required disabled={isLoading} className="h-11"
                   />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number *</Label>
                   <Input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    placeholder="08012345678"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    required
-                    disabled={isLoading}
-                    className="h-11"
+                    id="phone" name="phone" type="tel" placeholder="08012345678"
+                    value={formData.phone} onChange={handleInputChange} required disabled={isLoading} className="h-11"
                   />
                 </div>
-
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -635,186 +461,73 @@ const Signup = () => {
                       <div className="flex items-center gap-2">
                         {locationDetected && (
                           <div className="flex items-center gap-1 text-xs text-green-600">
-                            <MapPin className="w-3 h-3" />
-                            <span>Auto-detected</span>
+                            <MapPin className="w-3 h-3" /> <span>Auto-detected</span>
                           </div>
                         )}
-                        <button
-                          type="button"
-                          onClick={handleLocationRefresh}
-                          disabled={locationDetecting || isLoading}
-                          className="p-1 text-gray-500 transition-colors hover:text-gray-700 disabled:opacity-50"
-                          title="Detect location"
-                        >
-                          <RefreshCw
-                            className={`h-3 w-3 ${
-                              locationDetecting ? "animate-spin" : ""
-                            }`}
-                          />
+                        <button type="button" onClick={handleLocationRefresh} disabled={locationDetecting || isLoading} className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-50">
+                          <RefreshCw className={`h-3 w-3 ${locationDetecting ? "animate-spin" : ""}`} />
                         </button>
                       </div>
                     </div>
                     <Input
-                      id="country"
-                      name="country"
-                      type="text"
-                      placeholder={
-                        locationDetecting ? "Detecting..." : "Nigeria"
-                      }
-                      value={formData.country}
-                      onChange={handleInputChange}
-                      required
-                      disabled={isLoading || locationDetecting}
-                      className="h-11"
+                      id="country" name="country" type="text" placeholder={locationDetecting ? "Detecting..." : "Nigeria"}
+                      value={formData.country} onChange={handleInputChange} required disabled={isLoading || locationDetecting} className="h-11"
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="state">State *</Label>
                     <Input
-                      id="state"
-                      name="state"
-                      type="text"
-                      placeholder={locationDetecting ? "Detecting..." : "Lagos"}
-                      value={formData.state}
-                      onChange={handleInputChange}
-                      required
-                      disabled={isLoading || locationDetecting}
-                      className="h-11"
+                      id="state" name="state" type="text" placeholder={locationDetecting ? "Detecting..." : "Lagos"}
+                      value={formData.state} onChange={handleInputChange} required disabled={isLoading || locationDetecting} className="h-11"
                     />
                   </div>
                 </div>
-
-                {locationDetecting && (
-                  <div className="flex items-center gap-2 text-xs text-blue-600">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    <span>Detecting your location...</span>
-                  </div>
-                )}
-
                 <div className="space-y-2">
-                  <Label htmlFor="referral_code">
-                    Referral Code (Optional)
-                  </Label>
+                  <Label htmlFor="referral_code">Referral Code (Optional)</Label>
                   <Input
-                    id="referral_code"
-                    name="referral_code"
-                    type="text"
-                    placeholder="ABCD1234"
-                    value={formData.referral_code}
-                    onChange={handleInputChange}
-                    disabled={isLoading}
-                    className="h-11"
+                    id="referral_code" name="referral_code" type="text" placeholder="ABCD1234"
+                    value={formData.referral_code} onChange={handleInputChange} disabled={isLoading} className="h-11"
                   />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="password">Password *</Label>
                   <div className="relative">
                     <Input
-                      id="password"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Create a strong password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      required
-                      disabled={isLoading}
-                      className="pr-10 h-11"
+                      id="password" name="password" type={showPassword ? "text" : "password"} placeholder="Create a strong password"
+                      value={formData.password} onChange={handleInputChange} required disabled={isLoading} className="pr-10 h-11"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      disabled={isLoading}
-                      className="absolute text-gray-500 -translate-y-1/2 right-3 top-1/2 hover:text-gray-700 disabled:opacity-50"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} disabled={isLoading} className="absolute text-gray-500 -translate-y-1/2 right-3 top-1/2 hover:text-gray-700">
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
-                  <PasswordStrengthBar
-                    strength={passwordStrengthScore}
-                    password={formData.password}
-                  />
+                  <PasswordStrengthBar strength={passwordStrengthScore} password={formData.password} />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Confirm Password *</Label>
                   <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Confirm your password"
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    required
-                    disabled={isLoading}
-                    className="h-11"
+                    id="confirmPassword" name="confirmPassword" type={showPassword ? "text" : "password"} placeholder="Confirm your password"
+                    value={formData.confirmPassword} onChange={handleInputChange} required disabled={isLoading} className="h-11"
                   />
                   {formData.confirmPassword && (
                     <div className="flex items-center gap-2 mt-1">
                       {passwordsMatch ? (
-                        <>
-                          <CheckCircle className="w-4 h-4 text-green-500" />
-                          <p className="text-xs text-green-600">
-                            Passwords match!
-                          </p>
-                        </>
+                        <> <CheckCircle className="w-4 h-4 text-green-500" /> <p className="text-xs text-green-600">Passwords match!</p> </>
                       ) : (
-                        <>
-                          <XCircle className="w-4 h-4 text-red-500" />
-                          <p className="text-xs text-red-500">
-                            Passwords do not match.
-                          </p>
-                        </>
+                        <> <XCircle className="w-4 h-4 text-red-500" /> <p className="text-xs text-red-500">Passwords do not match.</p> </>
                       )}
                     </div>
                   )}
                 </div>
-
                 <Button
                   type="submit"
-                  className="w-full transition-all duration-200 h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={
-                    isLoading || !passwordsMatch || passwordStrengthScore < 3
-                  }
+                  className="w-full transition-all duration-200 h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50"
+                  disabled={isLoading || !passwordsMatch || passwordStrengthScore < 3}
                 >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Creating Account...
-                    </>
-                  ) : (
-                    "Create Account"
-                  )}
+                  {isLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating Account...</> : "Create Account"}
                 </Button>
-
-                {/* Validation hints */}
-                <div className="space-y-1 text-xs text-gray-500">
-                  <p>* Required fields</p>
-                  <p>
-                    Password must be strong (at least 8 characters with mixed
-                    case, numbers, and symbols)
-                  </p>
-                  <p className="flex items-center gap-1">
-                    <MapPin className="w-3 h-3" />
-                    Location is auto-detected for your convenience. You can edit
-                    if needed.
-                  </p>
-                </div>
               </form>
-
               <div className="text-sm text-center text-gray-600">
-                Already have an account?{" "}
-                <Link
-                  href="/auth/login"
-                  className="font-medium text-blue-600 hover:text-blue-700"
-                >
-                  Sign in here
-                </Link>
+                Already have an account? <Link href="/auth/login" className="font-medium text-blue-600 hover:text-blue-700">Sign in here</Link>
               </div>
             </CardContent>
           </Card>

@@ -36,6 +36,13 @@ export interface Product {
   category: string;
   isWishlisted: boolean;
   description: string;
+  seller: string;
+  distance: number;
+  condition: string;
+  isVerified: boolean;
+  availability: string;
+  location: string;
+  postedDate: string;
 }
 
 export interface PriceRange {
@@ -55,6 +62,11 @@ export interface Filters {
   priceRange: PriceRange;
   minRating: number;
   availability: AvailabilityFilters;
+    value: any;
+  type: string;
+  id: string;
+  label: string;
+
 }
 
 export type SortOption =

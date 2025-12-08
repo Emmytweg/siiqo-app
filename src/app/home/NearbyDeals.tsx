@@ -1,12 +1,13 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Icon from "@/components/ui/AppIcon";
-import Image from "@/components/ui/AppImage";
-import Button from "@/components/Button";
-import Skeleton from "@/components/skeleton";
+import { RefreshCw } from "lucide-react";
 import { productService } from "@/services/productService";
 import { Product, APIResponse } from "@/types/products";
-
+// import NearbyDealCard, { DealData } from "./NearbyDealsProdCard"; // Ensure path is correct
+import Skeleton from "@/components/skeleton";
+import NearbyDealCard, {DealData} from "./ui/NearbyDealsProdCard";
 interface NearbyDealsProps {
   onRefresh: () => Promise<void>;
 }
@@ -18,13 +19,16 @@ const NearbyDeals: React.FC<NearbyDealsProps> = ({ onRefresh }) => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchProducts = async () => {
+    setIsLoading(true);
     try {
       setError(null);
       const data: APIResponse = await productService.getProducts();
-      setProducts(data.products);
+      setProducts(data.products || []);
     } catch (err) {
       console.error("Error fetching products:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch products");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -32,8 +36,9 @@ const NearbyDeals: React.FC<NearbyDealsProps> = ({ onRefresh }) => {
     fetchProducts();
   }, []);
 
-  const generateDealData = (product: Product) => {
-    const seed = product.id;
+  const generateDealData = (product: Product): DealData => {
+    // Generate consistent pseudo-random data based on product ID
+    const seed = typeof product.id === 'string' ? parseInt(product.id, 10) || 123 : product.id;
     const random = (min: number, max: number) =>
       Math.floor((Math.sin(seed * 9999) * 10000) % (max - min + 1)) + min;
 
@@ -45,14 +50,14 @@ const NearbyDeals: React.FC<NearbyDealsProps> = ({ onRefresh }) => {
     return {
       originalPrice,
       discount,
-      distance: `${(random(1, 20) / 10).toFixed(1)} miles`,
+      distance: `${(random(1, 20) / 10).toFixed(1)} km`,
       rating: random(40, 50) / 10,
       condition: ["New", "Like New", "Open Box"][random(0, 2)],
     };
   };
 
-  const handleDealClick = (product: Product) => {
-    router.push(`/product-detail?id=${product.id}`);
+  const handleDealClick = (id: number) => {
+    router.push(`/product-detail?id=${id}`);
   };
 
   const handleRefresh = async () => {
@@ -69,157 +74,88 @@ const NearbyDeals: React.FC<NearbyDealsProps> = ({ onRefresh }) => {
 
   if (error) {
     return (
-      <div className="py-8 text-center">
-        <p className="mb-4 text-text-secondary">
-          Failed to load products: {error}
+      <div className="py-12 flex flex-col items-center justify-center bg-gray-50 rounded-2xl border border-gray-100">
+        <p className="mb-4 text-gray-500 text-sm">
+          Oops! Could not load nearby deals.
         </p>
         <button
           onClick={handleRefresh}
-          className="px-4 py-2 text-white transition-colors duration-200 rounded-lg bg-primary hover:bg-primary-700"
+          className="px-5 py-2 text-sm font-medium text-white transition-colors duration-200 rounded-full bg-[#E0921C] hover:bg-[#c78219] shadow-md"
         >
-          Retry
+          Try Again
         </button>
       </div>
     );
   }
 
   return (
-    <div className="relative">
-      <div className="absolute hidden md:block -top-12 right-12">
+    <div className="relative w-full">
+      {/* Header Section (Optional context if needed, otherwise kept minimal) */}
+      <div className="flex items-center justify-end mb-4 px-1">
         <button
           onClick={handleRefresh}
           disabled={isLoading}
-          className="flex items-center px-3 py-2 space-x-2 transition-colors duration-200 text-text-secondary hover:text-text-primary"
+          className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors disabled:opacity-50"
         >
-          <Icon
-            name="RefreshCw"
-            size={16}
-            className={isLoading ? "animate-spin" : ""}
-          />
-          <span className="text-sm">Refresh</span>
+          <RefreshCw size={12} className={isLoading ? "animate-spin" : ""} />
+          <span>Refresh Deals</span>
         </button>
       </div>
 
-      <div className="overflow-x-auto scrollbar-hide custom-scrollbar custom-scrollbar-height">
-        <div className="flex pb-4 space-x-4">
-          {isLoading && products.length === 0 ? (
+      {/* Scroll Container */}
+      <div className="overflow-x-auto pb-8 pt-2 -mx-4 px-4 scrollbar-hide">
+        <div className="flex gap-6 w-max">
+          {isLoading ? (
+            // Skeleton Loading State
             Array.from({ length: 4 }).map((_, index) => (
-              <div
-                key={index}
-                className="flex-shrink-0 border rounded-lg w-72 bg-surface border-border animate-pulse"
-              >
-                <div className="w-full h-48 bg-gray-300 rounded-t-lg"></div>
-                <div className="p-4">
-                  <Skeleton
-                    type="text"
-                    className="mb-2 bg-gray-300 rounded -4"
-                  />
-                  <Skeleton
-                    type="text"
-                    className="h-4 mb-2 bg-gray-300 rounded"
-                  />
-                  <Skeleton
-                    type="text"
-                    className="w-24 h-6 mb-2 bg-gray-300 rounded"
-                  />
-                  <Skeleton
-                    type="text"
-                    className="w-32 h-4 mb-3 bg-gray-300 rounded"
-                  />
-                  <Skeleton type="text" className="h-8 bg-gray-300 rounded" />
-                </div>
-              </div>
+              <DealCardSkeleton key={index} />
             ))
           ) : products.length === 0 ? (
-            <div className="flex-shrink-0 py-8 text-center w-72 text-text-secondary">
-              No products available
+            <div className="w-full flex items-center justify-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200 min-w-[300px]">
+              No deals found in your area.
             </div>
           ) : (
-            products.map(product => {
-              const dealData = generateDealData(product);
-
-              return (
-                <div
-                  key={product.id}
-                  onClick={() => handleDealClick(product)}
-                  className="flex-shrink-0 transition-all duration-200 border rounded-lg cursor-pointer w-72 bg-surface border-border hover:shadow-elevation-2"
-                >
-                  <div className="relative w-full h-48 overflow-hidden rounded-t-lg">
-                    <Image
-                      src={
-                        product.images[0] ||
-                        "https://via.placeholder.com/400x300?text=No+Image"
-                      }
-                      alt={product.product_name}
-                      fill={true}
-                      className="object-cover"
-                      sizes="288px"
-                    />
-                    <div className="absolute px-2 py-1 text-xs font-medium text-black rounded-full top-3 left-3 bg-accent">
-                      {dealData.discount}% OFF
-                    </div>
-                    <div className="absolute px-2 py-1 text-xs text-white bg-black bg-opacity-50 rounded-full top-3 right-3">
-                      {dealData.distance}
-                    </div>
-                  </div>
-
-                  <div className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="flex-1 text-base font-medium text-text-primary line-clamp-2">
-                        {product.product_name}
-                      </h3>
-                      <button className="p-1 ml-2 transition-colors duration-200 rounded-full hover:bg-surface-secondary">
-                        <Icon
-                          name="Heart"
-                          size={16}
-                          className="text-text-secondary"
-                        />
-                      </button>
-                    </div>
-
-                    <div className="flex items-center mb-2 space-x-2">
-                      <span className="text-lg font-semibold text-text-primary">
-                        ₦{product.product_price.toLocaleString()}
-                      </span>
-                      <span className="text-sm line-through text-text-secondary">
-                        ₦{dealData.originalPrice.toLocaleString()}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between mb-3 text-sm text-text-secondary">
-                      <span className="px-2 py-1 text-xs rounded-full bg-success-50 text-success">
-                        {dealData.condition}
-                      </span>
-                      <div className="flex items-center space-x-1">
-                        <Icon
-                          name="Star"
-                          size={12}
-                          className="fill-current text-warning"
-                        />
-                        <span>{dealData.rating.toFixed(1)}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-text-secondary">
-                        {product.vendor?.business_name ?? "Unknown Vendor"}
-                      </span>
-                      <Button
-                        variant="navy"
-                        className="px-3 py-1 text-sm font-medium text-white transition-colors duration-200 rounded-lg bg-primary hover:bg-primary-700"
-                      >
-                        View Deal
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
+            // Product Cards
+            products.map((product) => (
+              <NearbyDealCard
+                key={product.id}
+                product={product}
+                dealData={generateDealData(product)}
+                onClick={handleDealClick}
+              />
+            ))
           )}
         </div>
       </div>
     </div>
   );
 };
+
+// --- Skeleton Component ---
+const DealCardSkeleton = () => (
+  <div className="w-72 flex-shrink-0 bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+    <div className="h-48 bg-gray-100 relative">
+      <Skeleton height="100%" />
+    </div>
+    <div className="p-4">
+      <div className="flex justify-between items-center mb-3">
+        <Skeleton width={80} height={12} />
+        <Skeleton width={30} height={12} />
+      </div>
+      <Skeleton width="90%" height={20} className="mb-3" />
+      <div className="flex gap-2 mb-4">
+        <Skeleton width={40} height={16} />
+        <Skeleton width={60} height={16} />
+      </div>
+      <div className="flex justify-between items-end border-t border-gray-100 pt-3">
+        <div>
+           <Skeleton width={40} height={12} className="mb-1" />
+           <Skeleton width={70} height={20} />
+        </div>
+        <Skeleton type="circle" width={32} height={32} />
+      </div>
+    </div>
+  </div>
+);
 
 export default NearbyDeals;

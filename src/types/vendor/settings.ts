@@ -1,3 +1,5 @@
+// types/vendor/settings
+
 export interface UserProfileData {
   id: number;
   name: string;

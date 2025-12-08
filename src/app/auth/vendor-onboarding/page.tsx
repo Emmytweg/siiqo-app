@@ -122,8 +122,8 @@ const VendorOnboarding = () => {
       business_type: "",
       country: "",
       state: "",
-      logo_url: "",
-      banner_url: "",
+      logo_url: undefined, // Changed from "" to undefined
+      banner_url: undefined, // Changed from "" to undefined
       cac_registration_number: "",
       business_id: "",
       website: "",
@@ -160,34 +160,29 @@ const VendorOnboarding = () => {
     }
   }, [locationDetected, location, setValue]);
 
-  const handleImageUpload = async (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const response = await uploadFile(formData);
-      return response.data.url;
-    } catch (error) {
-      console.error("Image upload error:", error);
-      toast({
-        variant: "destructive",
-        title: "Image Upload Failed",
-        description: "Could not upload image. Please try again.",
-      });
-      throw error;
-    }
-  };
-
+  // Handle direct file changes
+  // Note: We don't necessarily need to upload immediately here if the backend expects multipart/form-data
+  // But if your backend requires a URL string, you'd enable the upload logic.
+  // Assuming the `vendorOnboarding` endpoint handles multipart files directly:
+  
   const onSubmit = async (data: VendorOnboardingData) => {
     const formData = new FormData();
+    
+    // Iterate and append only valid values
     Object.keys(data).forEach((key) => {
-      formData.append(key, (data as any)[key]);
+      const value = (data as any)[key];
+      // Skip logo/banner URL strings as we send files, and skip empty optional strings
+      if (key !== "logo_url" && key !== "banner_url" && value !== undefined && value !== null && value !== "") {
+        formData.append(key, value);
+      }
     });
+
+    // Append Files manually if they exist
     if (logoFile) {
-      formData.append("logo_url", logoFile);
+      formData.append("logo_url", logoFile); // Ensure key matches backend expectation (e.g., 'logo' or 'logo_url')
     }
     if (bannerFile) {
-      formData.append("banner_url", bannerFile);
+      formData.append("banner_url", bannerFile); // Ensure key matches backend expectation
     }
 
     try {
@@ -199,6 +194,7 @@ const VendorOnboarding = () => {
           "Your store profile has been successfully created! Redirecting...",
       });
 
+      // Clear session only if successful
       sessionStorage.removeItem("RSEmail");
       sessionStorage.removeItem("RSToken");
       sessionStorage.removeItem("RSUser");
@@ -379,7 +375,8 @@ const VendorOnboarding = () => {
                 label="Logo"
                 onFileChange={(file) => {
                   setLogoFile(file);
-                  setValue("logo_url", file.name);
+                  // Manually clear error if user selects file
+                  if(file) setValue("logo_url", "file_selected", { shouldValidate: true }); 
                 }}
               />
               {errors.logo_url && errors.logo_url.message && (
@@ -392,7 +389,7 @@ const VendorOnboarding = () => {
                 label="Banner"
                 onFileChange={(file) => {
                   setBannerFile(file);
-                  setValue("banner_url", file.name);
+                  if(file) setValue("banner_url", "file_selected", { shouldValidate: true });
                 }}
               />
               {errors.banner_url && errors.banner_url.message && (

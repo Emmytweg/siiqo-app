@@ -1,3 +1,4 @@
+// src/app/user-profile/components/MyListings.tsx
 "use client";
 
 import React, { useState } from 'react';
@@ -177,19 +178,19 @@ const PurchaseHistory = () => {
     return (
         <div className="space-y-4">
             {/* Filter Tabs */}
-            <div className="flex space-x-1 bg-surface-secondary rounded-lg p-1">
+           <div className="flex justify-between overflow-x-scroll md:px-4 md:overflow-x-hidden space-x-2 bg-transparent">
                 {filterOptions.map((option) => (
                     <button
                         key={option.value}
                         onClick={() => setFilter(option.value)}
-                        className={`flex-1 flex items-center justify-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${filter === option.value
+                        className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 whitespace-nowrap ${filter === option.value
                             ? 'bg-surface text-text-primary shadow-sm'
-                            : 'text-text-secondary hover:text-text-primary'
+                            : 'bg-surface-secondary text-text-secondary hover:text-text-primary'
                             }`}
                     >
-                        <span>{option.label}</span>
-                        <span className={`px-2 py-1 rounded-full text-xs ${filter === option.value
-                            ? 'bg-primary text-white' : 'bg-border text-text-tertiary'
+                        {option.label}
+                        <span className={`absolute top-1 -right-2 w-4 h-4 rounded-full text-xs font-semibold flex items-center justify-center ${filter === option.value
+                            ? 'bg-[#E0921C] text-white' : 'bg-border text-text-tertiary'
                             }`}>
                             {option.count}
                         </span>
@@ -199,44 +200,44 @@ const PurchaseHistory = () => {
 
             {/* Purchase History List */}
             {filteredPurchases.length > 0 ? (
-                <div className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4 space-y-3 md:space-y-4">
                     {filteredPurchases.map((purchase) => (
                         <div
                             key={purchase.id}
-                            className="bg-surface border border-border rounded-lg p-4 hover:shadow-elevation-1 transition-shadow duration-200"
+                            className="bg-surface border border-border rounded-lg p-3 md:p-4 hover:shadow-elevation-1 transition-shadow duration-200"
                         >
-                            <div className="flex items-start space-x-4">
-                                <div className="relative w-16 h-16 md:w-20 md:h-20 flex-shrink-0">
+                            <div className="flex flex-col md:flex-row md:items-start gap-3 md:gap-4">
+                                <div className="relative w-full md:w-20 md:h-20 md:flex-shrink-0 aspect-square md:aspect-auto">
                                     <Image
                                         src={purchase.image}
-                                        fill // Fill the parent div
+                                        fill
                                         alt={purchase.title}
-                                        className="object-cover rounded-lg" // Styling classes for the image itself
-                                        sizes="(max-width: 768px) 64px, 80px" // Add sizes prop for better performance
+                                        className="object-cover rounded-lg"
+                                        sizes="(max-width: 768px) 100vw, 80px"
                                     />
                                 </div>
 
                                 <div className="flex-1 min-w-0">
-                                    <div className="flex items-start justify-between mb-2">
+                                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 md:gap-0 mb-2">
                                         <div className="flex-1">
-                                            <h3 className="font-medium text-text-primary line-clamp-2 mb-1">
+                                            <h3 className="font-medium text-text-primary line-clamp-2 mb-1 text-sm md:text-base">
                                                 {purchase.title}
                                             </h3>
-                                            <div className="flex items-center space-x-2 text-sm text-text-secondary">
-                                                <div className="relative w-4 h-4">
+                                            <div className="flex items-center space-x-2 text-xs md:text-sm text-text-secondary">
+                                                <div className="relative w-4 h-4 flex-shrink-0">
                                                     <Image
                                                         src={purchase.sellerAvatar}
-                                                        fill // Fill the parent div
+                                                        fill
                                                         alt={purchase.seller}
-                                                        className="rounded-full object-cover" // Styling for the avatar
-                                                        sizes="16px" // Add sizes prop
+                                                        className="rounded-full object-cover"
+                                                        sizes="16px"
                                                     />
                                                 </div>
-                                                <span>{purchase.seller}</span>
+                                                <span className="line-clamp-1">{purchase.seller}</span>
                                             </div>
                                         </div>
-                                        <div className="text-right ml-4">
-                                            <div className="text-lg font-semibold text-text-primary">
+                                        <div className="text-right md:ml-4">
+                                            <div className="text-base md:text-lg font-semibold text-text-primary">
                                                 ${purchase.price}
                                             </div>
                                             <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(purchase.status)}`}>
@@ -246,8 +247,8 @@ const PurchaseHistory = () => {
                                     </div>
 
                                     {/* Purchase Details */}
-                                    <div className="space-y-2 text-sm text-text-secondary">
-                                        <div className="flex items-center justify-between">
+                                    <div className="space-y-1 md:space-y-2 text-xs md:text-sm text-text-secondary">
+                                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-1">
                                             <span>Purchased on {formatDate(purchase.purchaseDate)}</span>
                                             {purchase.trackingNumber && (
                                                 <span className="font-mono text-xs">#{purchase.trackingNumber}</span>
@@ -292,27 +293,27 @@ const PurchaseHistory = () => {
                                     </div>
 
                                     {/* Action Buttons */}
-                                    <div className="flex items-center justify-between pt-3 mt-3 border-t border-border">
-                                        <div className="flex space-x-3">
+                                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-0 pt-3 md:pt-3 mt-3 border-t border-border">
+                                        <div className="flex flex-wrap gap-2 md:gap-3">
                                             {purchase.status === 'in_transit' && (
-                                                <button className="text-primary hover:underline text-sm font-medium">
+                                                <button className="text-primary hover:underline text-xs md:text-sm font-medium">
                                                     Track Package
                                                 </button>
                                             )}
 
                                             {purchase.canReorder && (
-                                                <button className="text-primary hover:underline text-sm font-medium">
+                                                <button className="text-primary hover:underline text-xs md:text-sm font-medium">
                                                     Reorder
                                                 </button>
                                             )}
 
                                             {purchase.canReview && (
-                                                <button className="text-primary hover:underline text-sm font-medium">
+                                                <button className="text-primary hover:underline text-xs md:text-sm font-medium">
                                                     Write Review
                                                 </button>
                                             )}
 
-                                            <button className="text-text-secondary hover:text-text-primary text-sm font-medium">
+                                            <button className="text-text-secondary hover:text-text-primary text-xs md:text-sm font-medium">
                                                 View Details
                                             </button>
                                         </div>

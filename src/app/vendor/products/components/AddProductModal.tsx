@@ -1,3 +1,6 @@
+/* AddProductWizard.tsx */
+"use client";
+
 import React, {
   useState,
   useEffect,
@@ -5,6 +8,7 @@ import React, {
   FormEvent,
   DragEvent,
 } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Icon from "@/components/AppIcon";
 import Image from "@/components/ui/AppImage";
 import Button from "@/components/ui/new/Button";
@@ -12,14 +16,17 @@ import Input from "@/components/ui/new/Input";
 import Select from "@/components/ui/new/NewSelect";
 import { vendorService } from "@/services/vendorService";
 
-// --- Type Definitions ---
-interface ProductDimensions {
+/* ===========================
+   Types
+   =========================== */
+
+export interface ProductDimensions {
   length: string;
   width: string;
   height: string;
 }
 
-interface ManagedImage {
+export interface ManagedImage {
   id: number;
   file?: File;
   url: string;
@@ -48,9 +55,25 @@ export interface ProductFormData {
   seoDescription: string;
   tags: string[];
   images: ManagedImage[];
+  location?: string;
+  availableFrom?: string; // ISO date
+  availableTo?: string; // ISO date
+  publish?: boolean;
 }
 
-interface AddProductModalProps {
+/* Step descriptor type */
+type WizardStep =
+  | "photos"
+  | "details"
+  | "pricing"
+  | "inventory"
+  | "seo"
+  | "location"
+  | "availability"
+  | "preview";
+
+/* Component props */
+interface AddProductWizardProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (formData: ProductFormData) => void;
@@ -58,29 +81,25 @@ interface AddProductModalProps {
   loading?: boolean;
 }
 
+/* Select option type */
 interface SelectOption {
   value: string;
   label: string;
 }
 
-interface Tab {
-  id: string;
-  label: string;
-  icon: string;
-}
+/* ===========================
+   Constants / Helpers
+   =========================== */
 
-// --- Helper Functions ---
+const MAX_IMAGES = 10;
 
 const uploadImageToServer = async (file: File): Promise<{ url: string }> => {
-  try {
-    const response = await vendorService.uploadImage(file);
-    if (!response.urls || response.urls.length === 0) {
-      throw new Error("API did not return an image URL.");
-    }
-    return { url: response.urls[0] };
-  } catch (error: any) {
-    throw new Error(error.message || "Upload failed");
+  // kept your same vendorService upload usage; vendorService.uploadImage should return { urls: [string] } or similar
+  const response = await vendorService.uploadImage(file);
+  if (!response.urls || response.urls.length === 0) {
+    throw new Error("API did not return an image URL.");
   }
+  return { url: response.urls[0] };
 };
 
 const initialFormData: ProductFormData = {
@@ -102,24 +121,36 @@ const initialFormData: ProductFormData = {
   seoDescription: "",
   tags: [],
   images: [],
+  location: "",
+  availableFrom: "",
+  availableTo: "",
+  publish: false,
 };
 
-const AddProductModal: React.FC<AddProductModalProps> = ({
+/* ===========================
+   Component
+   =========================== */
+
+const AddProductWizard: React.FC<AddProductWizardProps> = ({
   isOpen,
   onClose,
   onSave,
   editingProduct = null,
   loading = false,
 }) => {
-  const [activeTab, setActiveTab] = useState<string>("basic");
-  const [formData, setFormData] = useState<ProductFormData>(initialFormData);
+  const [currentStep, setCurrentStep] = useState<WizardStep>("photos");
+  const [formData, setFormData] =
+    useState<ProductFormData>(initialFormData);
   const [dragActive, setDragActive] = useState<boolean>(false);
   const [uploadErrors, setUploadErrors] = useState<string[]>([]);
+  const [saveAsDraft, setSaveAsDraft] = useState<boolean>(false);
 
   const categoryOptions: SelectOption[] = [
     { value: "electronics", label: "Electronics" },
     { value: "clothing", label: "Clothing" },
     { value: "home", label: "Home & Garden" },
+    { value: "beauty", label: "Beauty" },
+    { value: "sports", label: "Sports" },
   ];
 
   const statusOptions: SelectOption[] = [
@@ -133,24 +164,27 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     { value: "hidden", label: "Hidden" },
   ];
 
-  const tabs: Tab[] = [
-    { id: "basic", label: "Basic Info", icon: "Info" },
-    { id: "images", label: "Images", icon: "Image" },
-    { id: "pricing", label: "Pricing", icon: "DollarSign" },
-    { id: "inventory", label: "Inventory", icon: "Package" },
-    { id: "seo", label: "SEO", icon: "Search" },
-  ];
-
+  /* When modal opens — prefill if editing or reset */
   useEffect(() => {
     if (isOpen) {
       if (editingProduct) {
         setFormData({
+          ...initialFormData,
           name: editingProduct.name || "",
           description: editingProduct.description || "",
           category: editingProduct.category || "electronics",
-          price: (editingProduct.price / 100).toString() || "",
-          comparePrice: (editingProduct.comparePrice / 100)?.toString() || "",
-          cost: (editingProduct.cost / 100)?.toString() || "",
+          price:
+            typeof editingProduct.price === "number"
+              ? (editingProduct.price / 100).toString()
+              : editingProduct.price || "",
+          comparePrice:
+            typeof editingProduct.comparePrice === "number"
+              ? (editingProduct.comparePrice / 100).toString()
+              : editingProduct.comparePrice || "",
+          cost:
+            typeof editingProduct.cost === "number"
+              ? (editingProduct.cost / 100).toString()
+              : editingProduct.cost || "",
           sku: editingProduct.sku || "",
           barcode: editingProduct.barcode || "",
           stock: editingProduct.stock?.toString() || "",
@@ -168,22 +202,29 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           seoTitle: editingProduct.seoTitle || "",
           seoDescription: editingProduct.seoDescription || "",
           tags: editingProduct.tags || [],
-          images: (editingProduct.images || []).map(
+          images: (editingProduct.images || []).slice(0, MAX_IMAGES).map(
             (img: any, index: number) => ({
               id: Date.now() + index,
               url: typeof img === "string" ? img : img.url,
               alt: "Existing image",
               isUploaded: true,
+              isUploading: false,
             })
           ),
+          location: editingProduct.location || "",
+          availableFrom: editingProduct.availableFrom || "",
+          availableTo: editingProduct.availableTo || "",
+          publish: !!editingProduct.publish,
         });
       } else {
         setFormData(initialFormData);
       }
-      setActiveTab("basic");
+      setCurrentStep("photos");
       setUploadErrors([]);
     }
   }, [isOpen, editingProduct]);
+
+  /* ---------- Input handlers ---------- */
 
   const handleInputChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -206,10 +247,14 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     }));
   };
 
+  /* ---------- Image upload / drag & drop ---------- */
+
   const handleImageUpload = (files: FileList | null) => {
     if (!files) return;
     setUploadErrors([]);
-    Array.from(files).forEach((file) => {
+    const incoming = Array.from(files).slice(0, MAX_IMAGES - formData.images.length);
+
+    incoming.forEach((file) => {
       const tempId = Date.now() + Math.random();
       const tempImage: ManagedImage = {
         id: tempId,
@@ -219,7 +264,9 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         isUploading: true,
         isUploaded: false,
       };
+
       setFormData((prev) => ({ ...prev, images: [...prev.images, tempImage] }));
+
       uploadImageToServer(file)
         .then((result) => {
           setFormData((prev) => ({
@@ -237,7 +284,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
             ),
           }));
         })
-        .catch((error) => {
+        .catch((error: any) => {
           console.error("Image upload failed:", error);
           setFormData((prev) => ({
             ...prev,
@@ -245,10 +292,17 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           }));
           setUploadErrors((prev) => [
             ...prev,
-            `Failed to upload ${file.name}: ${error.message}`,
+            `Failed to upload ${file.name}: ${error.message || "Upload error"}`,
           ]);
         });
     });
+
+    if (incoming.length === 0 && formData.images.length >= MAX_IMAGES) {
+      setUploadErrors((prev) => [
+        ...prev,
+        `Maximum of ${MAX_IMAGES} images allowed.`,
+      ]);
+    }
   };
 
   const removeImage = (imageId: number) => {
@@ -271,377 +325,652 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     setDragActive(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleImageUpload(e.dataTransfer.files);
+      e.dataTransfer.clearData();
     }
   };
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (formData.images.some((img) => img.isUploading)) {
+  /* ---------- Step helpers ---------- */
+
+  const steps: { id: WizardStep; label: string; icon?: string }[] = [
+    { id: "photos", label: "Photos", icon: "Image" },
+    { id: "details", label: "Details", icon: "Info" },
+    { id: "pricing", label: "Pricing", icon: "DollarSign" },
+    { id: "inventory", label: "Inventory", icon: "Package" },
+    { id: "seo", label: "SEO", icon: "Search" },
+    { id: "location", label: "Location", icon: "MapPin" },
+    { id: "availability", label: "Availability", icon: "Calendar" },
+    { id: "preview", label: "Preview", icon: "Eye" },
+  ];
+
+  const goNext = () => {
+    const idx = steps.findIndex((s) => s.id === currentStep);
+    if (idx < steps.length - 1) setCurrentStep(steps[idx + 1].id);
+  };
+  const goBack = () => {
+    const idx = steps.findIndex((s) => s.id === currentStep);
+    if (idx > 0) setCurrentStep(steps[idx - 1].id);
+  };
+
+  /* ---------- Submit / Save ---------- */
+
+  const hasUploadingImages = formData.images.some((img) => img.isUploading);
+
+  const handleSubmit = (e?: FormEvent) => {
+    if (e) e.preventDefault();
+    if (hasUploadingImages) {
       alert("Please wait for all images to finish uploading.");
       return;
     }
-    onSave(formData);
+    // keep the published flag
+    const payload = { ...formData };
+    onSave(payload);
   };
 
   if (!isOpen) return null;
 
-  const hasUploadingImages = formData.images.some((img) => img.isUploading);
+  /* ===========================
+     UI
+     =========================== */
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-card border border-border rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between p-6 border-b border-border">
-          <h2 className="text-xl font-semibold text-foreground">
-            {editingProduct ? "Edit Product" : "Add New Product"}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 transition-colors rounded-md hover:bg-muted"
-          >
-            <Icon name="X" size={20} />
-          </button>
+    <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 bg-black/50">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
+ className="bg-card border border-border rounded-lg w-full max-w-4xl max-h-[80vh] md:max-h-[90vh]  flex flex-col mb-10 mt-14 md:mt-0 md:ml-12"        role="dialog"
+        aria-modal="true"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 md:p-6 border-b border-border">
+          <div className="flex items-center gap-3">
+            <h3 className="text-lg font-semibold">
+              {editingProduct ? "Edit Product" : "Create Listing"}
+            </h3>
+            <p className="text-xs text-muted-foreground hidden sm:block">
+              {currentStep.toUpperCase()}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setSaveAsDraft(true);
+                handleSubmit();
+              }}
+              className="text-xs w-full px-3 py-1 rounded-md border border-border hover:bg-muted"
+              disabled={loading || hasUploadingImages}
+            >
+              Save draft
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFormData((p) => ({ ...p, publish: true }));
+                handleSubmit();
+              }}
+              className="text-sm px-3 py-1 rounded-md bg-primary text-white hover:opacity-95"
+              disabled={loading || hasUploadingImages}
+            >
+              Publish
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-2 ml-2 rounded-md hover:bg-muted"
+              aria-label="Close"
+            >
+              <Icon name="X" size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Stepper nav */}
+        <div className="hidden md:flex items-center gap-2 px-4 py-3 border-b border-border overflow-x-auto">
+          {steps.map((s) => {
+            const idx = steps.findIndex((x) => x.id === s.id) + 1;
+            const active = s.id === currentStep;
+            return (
+              <button
+                key={s.id}
+                onClick={() => setCurrentStep(s.id)}
+                className={`flex items-center gap-2 px-3 py-1 rounded-md transition ${
+                  active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/50"
+                }`}
+              >
+                <span className="text-xs font-medium">{idx}.</span>
+                <span className="text-sm">{s.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         <form
-          onSubmit={handleSubmit}
-          className="flex flex-col flex-1 overflow-hidden"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (currentStep === "preview") handleSubmit(e);
+            else goNext();
+          }}
+          className="flex-1 overflow-hidden flex flex-col"
         >
-          <div className="border-b border-border">
-            <div className="flex overflow-x-auto">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === tab.id
-                      ? "border-primary text-primary"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  }`}
+          <div className="flex-1 overflow-y-auto p-6">
+            <AnimatePresence mode="wait">
+              {/* PHOTOS */}
+              {currentStep === "photos" && (
+                <motion.div
+                  key="photos"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.22 }}
                 >
-                  <Icon name={tab.icon} size={16} />
-                  <span>{tab.label}</span>
+                  <div className="space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="text-base font-semibold">Add Photos</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Add up to {MAX_IMAGES} photos. The first photo will
+                          be your main image.
+                        </p>
+                      </div>
+                      <div className="text-xs w-[30%] md:w-[10%] text-muted-foreground">
+                        <span>{formData.images.length}</span> / {MAX_IMAGES}
+                      </div>
+                    </div>
+
+                    {uploadErrors.length > 0 && (
+                      <div className="p-3 text-sm border rounded-lg bg-error/10 border-error/20 text-error">
+                        {uploadErrors.map((err, i) => (
+                          <p key={i}>{err}</p>
+                        ))}
+                      </div>
+                    )}
+
+                    <div
+                      onDragEnter={handleDrag}
+                      onDragLeave={handleDrag}
+                      onDragOver={handleDrag}
+                      onDrop={handleDrop}
+                      className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                        dragActive ? "border-primary bg-primary/5" : "border-border"
+                      }`}
+                    >
+                      <Icon name="Upload" size={40} className="mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Drag and drop images here, or click to select from device
+                      </p>
+
+                      <div className="flex gap-2 items-center justify-center">
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          id="wizard-image-input"
+                          className="hidden"
+                          onChange={(e) => handleImageUpload(e.target.files)}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => document.getElementById("wizard-image-input")?.click()}
+                          disabled={hasUploadingImages || formData.images.length >= MAX_IMAGES}
+                        >
+                          {hasUploadingImages ? "Uploading..." : "Upload from gallery"}
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => document.getElementById("wizard-image-input")?.click()}
+                        >
+                          Take Photo
+                        </Button>
+                      </div>
+                    </div>
+
+                    {formData.images.length > 0 && (
+                      <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {formData.images.map((image) => (
+                          <motion.div
+                            key={image.id}
+                            layout
+                            initial={{ opacity: 0, scale: 0.98 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.96 }}
+                            className="relative rounded-lg overflow-hidden bg-muted/5"
+                          >
+                            <Image
+                              src={image.url}
+                              alt={image.alt}
+                              className="object-cover w-full h-32 sm:h-36"
+                            />
+                            {image.isUploading && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                                <div className="w-8 h-8 border-t-2 border-b-2 border-white rounded-full animate-spin" />
+                              </div>
+                            )}
+
+                            <div className="absolute top-2 right-2 flex gap-2">
+                              {!image.isUploading && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeImage(image.id)}
+                                  className="p-1 text-white rounded-full bg-red-600/90 hover:bg-red-700 transition"
+                                  aria-label="Remove image"
+                                >
+                                  <Icon name="X" size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* DETAILS */}
+              {currentStep === "details" && (
+                <motion.div
+                  key="details"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.22 }}
+                >
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="text-base font-semibold">Basic Details</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Title, description and category
+                      </p>
+                    </div>
+
+                    <Input
+                      label="Product Title"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      placeholder="Enter product title"
+                      required
+                    />
+
+                    <div>
+                      <label className="block mb-2 text-sm font-medium text-foreground">
+                        Description
+                      </label>
+                      <textarea
+                        name="description"
+                        value={formData.description}
+                        onChange={handleInputChange}
+                        placeholder="Add descriptive details about your product"
+                        rows={6}
+                        className="w-full px-3 py-2 border rounded-lg border-border bg-background"
+                      />
+                    </div>
+
+                    <Select
+                      label="Category"
+                      options={categoryOptions}
+                      value={formData.category}
+                      onChange={(value) => handleSelectChange("category", value as string)}
+                      placeholder="Select category"
+                      required
+                    />
+                  </div>
+                </motion.div>
+              )}
+
+              {/* PRICING */}
+              {currentStep === "pricing" && (
+                <motion.div
+                  key="pricing"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.22 }}
+                >
+                  <div className="space-y-6">
+                    <h4 className="text-base font-semibold">Pricing</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Input
+                        label="Price (₦ / currency)"
+                        name="price"
+                        type="number"
+                        value={formData.price}
+                        onChange={handleInputChange}
+                        placeholder="0.00"
+                        step="0.01"
+                        required
+                      />
+                      <Input
+                        label="Compare at Price"
+                        name="comparePrice"
+                        type="number"
+                        value={formData.comparePrice}
+                        onChange={handleInputChange}
+                        placeholder="0.00"
+                        step="0.01"
+                      />
+                      <Input
+                        label="Cost per Item"
+                        name="cost"
+                        type="number"
+                        value={formData.cost}
+                        onChange={handleInputChange}
+                        placeholder="0.00"
+                        step="0.01"
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* INVENTORY */}
+              {currentStep === "inventory" && (
+                <motion.div
+                  key="inventory"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.22 }}
+                >
+                  <div className="space-y-6">
+                    <h4 className="text-base font-semibold">Inventory</h4>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Input
+                        label="SKU"
+                        name="sku"
+                        value={formData.sku}
+                        onChange={handleInputChange}
+                        placeholder="Enter SKU"
+                      />
+                      <Input
+                        label="Barcode"
+                        name="barcode"
+                        value={formData.barcode}
+                        onChange={handleInputChange}
+                        placeholder="Enter barcode"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Input
+                        label="Stock Quantity"
+                        name="stock"
+                        type="number"
+                        value={formData.stock}
+                        onChange={handleInputChange}
+                        placeholder="0"
+                        min="0"
+                        required
+                      />
+                      <Input
+                        label="Low Stock Threshold"
+                        name="lowStockThreshold"
+                        type="number"
+                        value={formData.lowStockThreshold}
+                        onChange={handleInputChange}
+                        placeholder="10"
+                        min="0"
+                      />
+                    </div>
+
+                    <div>
+                      <h5 className="font-medium text-foreground">Shipping</h5>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+                        <Input
+                          label="Weight (kg)"
+                          name="weight"
+                          type="number"
+                          value={formData.weight}
+                          onChange={handleInputChange}
+                          placeholder="0.0"
+                          step="0.1"
+                        />
+                        <Input
+                          label="Length (cm)"
+                          name="length"
+                          type="number"
+                          value={formData.dimensions.length}
+                          onChange={(e) => handleDimensionChange("length", e.target.value)}
+                          placeholder="0"
+                        />
+                        <Input
+                          label="Width (cm)"
+                          name="width"
+                          type="number"
+                          value={formData.dimensions.width}
+                          onChange={(e) => handleDimensionChange("width", e.target.value)}
+                          placeholder="0"
+                        />
+                        <Input
+                          label="Height (cm)"
+                          name="height"
+                          type="number"
+                          value={formData.dimensions.height}
+                          onChange={(e) => handleDimensionChange("height", e.target.value)}
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* SEO */}
+              {currentStep === "seo" && (
+                <motion.div
+                  key="seo"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.22 }}
+                >
+                  <div className="space-y-4">
+                    <h4 className="text-base font-semibold">SEO</h4>
+
+                    <Input
+                      label="SEO Title"
+                      name="seoTitle"
+                      value={formData.seoTitle}
+                      onChange={handleInputChange}
+                      placeholder="Enter SEO title"
+                    />
+                    <div>
+                      <label className="block mb-2 text-sm font-medium text-foreground">
+                        SEO Description
+                      </label>
+                      <textarea
+                        name="seoDescription"
+                        value={formData.seoDescription}
+                        onChange={handleInputChange}
+                        placeholder="Enter SEO description"
+                        rows={3}
+                        className="w-full px-3 py-2 border rounded-lg border-border bg-background"
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* LOCATION */}
+              {currentStep === "location" && (
+                <motion.div
+                  key="location"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.22 }}
+                >
+                  <div className="space-y-4">
+                    <h4 className="text-base font-semibold">Location</h4>
+                    <Input
+                      label="Location (optional)"
+                      name="location"
+                      value={formData.location || ""}
+                      onChange={handleInputChange}
+                      placeholder="City, State, or Address"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      If you want buyers to pick up locally or show location in
+                      the listing, enter it here.
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* AVAILABILITY */}
+              {currentStep === "availability" && (
+                <motion.div
+                  key="availability"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.22 }}
+                >
+                  <div className="space-y-4">
+                    <h4 className="text-base font-semibold">Availability</h4>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block mb-1 text-sm font-medium">Available From</label>
+                        <input
+                          type="date"
+                          name="availableFrom"
+                          value={formData.availableFrom || ""}
+                          onChange={(e) => setFormData((p) => ({ ...p, availableFrom: e.target.value }))}
+                          className="w-full px-3 py-2 border rounded-lg border-border bg-background"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block mb-1 text-sm font-medium">Available To</label>
+                        <input
+                          type="date"
+                          name="availableTo"
+                          value={formData.availableTo || ""}
+                          onChange={(e) => setFormData((p) => ({ ...p, availableTo: e.target.value }))}
+                          className="w-full px-3 py-2 border rounded-lg border-border bg-background"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* PREVIEW */}
+              {currentStep === "preview" && (
+                <motion.div
+                  key="preview"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.22 }}
+                >
+                  <div className="space-y-4">
+                    <h4 className="text-base font-semibold">Preview</h4>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="md:col-span-2 space-y-4">
+                        <div className="rounded-lg border border-border p-4">
+                          <h5 className="font-semibold">{formData.name || "Product Title"}</h5>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {formData.description || "Product description preview..."}
+                          </p>
+                          <p className="mt-2 text-sm text-muted-foreground">Category: {formData.category}</p>
+                          <p className="mt-1 text-lg font-bold">{formData.price ? `₦${formData.price}` : "$0.00"}</p>
+                        </div>
+
+                        <div>
+                          <h6 className="font-medium">Images</h6>
+                          <div className="mt-2 grid grid-cols-3 gap-2">
+                            {formData.images.slice(0, 6).map((img) => (
+                              <Image key={img.id} src={img.url} alt={img.alt} className="object-cover w-full h-24 rounded" />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-border p-4">
+                        <p className="text-sm text-muted-foreground">Status: {formData.status}</p>
+                        <p className="text-sm mt-1">Visibility: {formData.visibility}</p>
+                        <p className="text-sm mt-1">Stock: {formData.stock || 0}</p>
+                        <p className="text-sm mt-1">SKU: {formData.sku || "-"}</p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Footer nav */}
+          <div className="border-t border-border p-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={goBack}
+                disabled={steps.findIndex((s) => s.id === currentStep) === 0}
+                className="px-3 py-2 rounded-md border border-border hover:bg-muted disabled:opacity-50"
+              >
+                Back
+              </button>
+
+              {currentStep !== "preview" && (
+                <button
+                  type="button"
+                  onClick={goNext}
+                  className="px-4 py-2 rounded-md bg-primary text-white hover:opacity-95"
+                >
+                  Next
                 </button>
-              ))}
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="text-sm text-muted-foreground mr-4 hidden sm:block">
+                {formData.images.length} images • {formData.stock || 0} in stock
+              </div>
+
+              {/* <button
+                type="button"
+                onClick={() => {
+                  // quick-save current progress as draft without leaving wizard
+                  setFormData((p) => ({ ...p, status: "draft" }));
+                  onSave({ ...formData, status: "draft" });
+                }}
+                className="px-3 py-2 rounded-md border border-border hover:bg-muted"
+                disabled={hasUploadingImages}
+              >
+                Save progress
+              </button> */}
+
+              {currentStep === "preview" ? (
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-md bg-success text-white hover:opacity-95"
+                  disabled={loading || hasUploadingImages}
+                >
+                  {loading ? "Saving..." : "Save & Publish"}
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-md bg-primary text-white hover:opacity-95"
+                >
+                  Continue
+                </button>
+              )}
             </div>
           </div>
-          <div className="flex-1 p-6 overflow-y-auto">
-            {activeTab === "basic" && (
-              <div className="space-y-6">
-                <Input
-                  label="Product Name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  placeholder="Enter product name"
-                  required
-                />
-                <div>
-                  <label className="block mb-2 text-sm font-medium text-foreground">
-                    Description
-                  </label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    placeholder="Enter product description"
-                    rows={4}
-                    className="w-full px-3 py-2 border rounded-lg border-border bg-background"
-                  />
-                </div>
-                <Select
-                  label="Category"
-                  options={categoryOptions}
-                  value={formData.category}
-                  onChange={(value) =>
-                    handleSelectChange("category", value as string)
-                  }
-                  placeholder="Select category"
-                  required
-                />
-                <div className="grid grid-cols-2 gap-4">
-                  <Select
-                    label="Status"
-                    options={statusOptions}
-                    value={formData.status}
-                    onChange={(value) =>
-                      handleSelectChange(
-                        "status",
-                        value as ProductFormData["status"]
-                      )
-                    }
-                  />
-                  <Select
-                    label="Visibility"
-                    options={visibilityOptions}
-                    value={formData.visibility}
-                    onChange={(value) =>
-                      handleSelectChange(
-                        "visibility",
-                        value as ProductFormData["visibility"]
-                      )
-                    }
-                  />
-                </div>
-              </div>
-            )}
-
-            {activeTab === "images" && (
-              <div className="space-y-6">
-                {uploadErrors.length > 0 && (
-                  <div className="p-3 text-sm border rounded-lg bg-error/10 border-error/20 text-error">
-                    {uploadErrors.map((err, i) => (
-                      <p key={i}>{err}</p>
-                    ))}
-                  </div>
-                )}
-                <div>
-                  <label className="block mb-2 text-sm font-medium text-foreground">
-                    Product Images
-                  </label>
-                  <div
-                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                      dragActive
-                        ? "border-primary bg-primary/5"
-                        : "border-border"
-                    }`}
-                    onDragEnter={handleDrag}
-                    onDragLeave={handleDrag}
-                    onDragOver={handleDrag}
-                    onDrop={handleDrop}
-                  >
-                    <Icon
-                      name="Upload"
-                      size={48}
-                      className="mx-auto mb-4 text-muted-foreground"
-                    />
-                    <p className="mb-2 text-muted-foreground">
-                      Drag and drop images here, or click to select
-                    </p>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={(e) => handleImageUpload(e.target.files)}
-                      className="hidden"
-                      id="image-upload-input"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() =>
-                        document.getElementById("image-upload-input")?.click()
-                      }
-                      disabled={hasUploadingImages}
-                    >
-                      {hasUploadingImages ? "Uploading..." : "Choose Files"}
-                    </Button>
-                  </div>
-                </div>
-                {formData.images.length > 0 && (
-                  <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                    {formData.images.map((image) => (
-                      <div
-                        key={image.id}
-                        className="relative group aspect-square"
-                      >
-                        <Image
-                          src={image.url}
-                          alt={image.alt}
-                          className="object-cover w-full h-full rounded-lg"
-                        />
-                        {image.isUploading && (
-                          <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/60">
-                            <div className="w-8 h-8 border-t-2 border-b-2 border-white rounded-full animate-spin"></div>
-                          </div>
-                        )}
-                        {!image.isUploading && (
-                          <button
-                            type="button"
-                            onClick={() => removeImage(image.id)}
-                            className="absolute p-1 text-white transition-opacity bg-red-600 rounded-full opacity-0 top-1 right-1 group-hover:opacity-100"
-                          >
-                            <Icon name="X" size={14} />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === "pricing" && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <Input
-                    label="Price"
-                    name="price"
-                    type="number"
-                    value={formData.price}
-                    onChange={handleInputChange}
-                    placeholder="0.00"
-                    step="0.01"
-                    required
-                  />
-                  <Input
-                    label="Compare at Price"
-                    name="comparePrice"
-                    type="number"
-                    value={formData.comparePrice}
-                    onChange={handleInputChange}
-                    placeholder="0.00"
-                    step="0.01"
-                  />
-                  <Input
-                    label="Cost per Item"
-                    name="cost"
-                    type="number"
-                    value={formData.cost}
-                    onChange={handleInputChange}
-                    placeholder="0.00"
-                    step="0.01"
-                  />
-                </div>
-              </div>
-            )}
-
-            {activeTab === "inventory" && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <Input
-                    label="SKU"
-                    name="sku"
-                    value={formData.sku}
-                    onChange={handleInputChange}
-                    placeholder="Enter SKU"
-                  />
-                  <Input
-                    label="Barcode"
-                    name="barcode"
-                    value={formData.barcode}
-                    onChange={handleInputChange}
-                    placeholder="Enter barcode"
-                  />
-                </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <Input
-                    label="Stock Quantity"
-                    name="stock"
-                    type="number"
-                    value={formData.stock}
-                    onChange={handleInputChange}
-                    placeholder="0"
-                    min="0"
-                    required
-                  />
-                  <Input
-                    label="Low Stock Threshold"
-                    name="lowStockThreshold"
-                    type="number"
-                    value={formData.lowStockThreshold}
-                    onChange={handleInputChange}
-                    placeholder="10"
-                    min="0"
-                  />
-                </div>
-                <div className="space-y-4">
-                  <h4 className="font-medium text-foreground">
-                    Shipping Information
-                  </h4>
-                  <Input
-                    label="Weight (kg)"
-                    name="weight"
-                    type="number"
-                    value={formData.weight}
-                    onChange={handleInputChange}
-                    placeholder="0.0"
-                    step="0.1"
-                  />
-                  <div className="grid grid-cols-3 gap-4">
-                    <Input
-                      label="Length (cm)"
-                      type="number"
-                      value={formData.dimensions.length}
-                      onChange={(e) =>
-                        handleDimensionChange("length", e.target.value)
-                      }
-                      placeholder="0"
-                    />
-                    <Input
-                      label="Width (cm)"
-                      type="number"
-                      value={formData.dimensions.width}
-                      onChange={(e) =>
-                        handleDimensionChange("width", e.target.value)
-                      }
-                      placeholder="0"
-                    />
-                    <Input
-                      label="Height (cm)"
-                      type="number"
-                      value={formData.dimensions.height}
-                      onChange={(e) =>
-                        handleDimensionChange("height", e.target.value)
-                      }
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "seo" && (
-              <div className="space-y-6">
-                <Input
-                  label="SEO Title"
-                  name="seoTitle"
-                  value={formData.seoTitle}
-                  onChange={handleInputChange}
-                  placeholder="Enter SEO title"
-                />
-                <div>
-                  <label className="block mb-2 text-sm font-medium text-foreground">
-                    SEO Description
-                  </label>
-                  <textarea
-                    name="seoDescription"
-                    value={formData.seoDescription}
-                    onChange={handleInputChange}
-                    placeholder="Enter SEO description"
-                    rows={3}
-                    className="w-full px-3 py-2 border rounded-lg border-border bg-background"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center justify-end p-6 space-x-3 border-t border-border bg-card">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="default"
-              disabled={loading || hasUploadingImages}
-            >
-              {loading
-                ? "Saving..."
-                : hasUploadingImages
-                ? "Uploading..."
-                : "Save Product"}
-            </Button>
-          </div>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 };
 
-export default AddProductModal;
+export default AddProductWizard;

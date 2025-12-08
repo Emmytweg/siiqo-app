@@ -1,244 +1,412 @@
 "use client";
-import React, { useEffect, useState } from "react";
+
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Icon from "@/components/ui/AppIcon";
 import Image from "@/components/ui/AppImage";
-import { useRouter } from "next/navigation";
-import { VendorData } from "@/types/vendor/storefront";
-import MyListings from "./components/Listing";
 import { useLocationDetection } from "@/hooks/useLocationDetection";
-import { userService } from "@/services/userService";
+import { vendorService } from "@/services/vendorService";
+import { VendorData, UserProfileData } from "@/types/vendor/settings";
 
-const VendorProfile: React.FC = () => {
+// Sub-components
+import MyListings from "../user-profile/components/MyListings";
+import PurchaseHistory from "../user-profile/components/PurchaseHistory";
+import SavedItems from "../user-profile/components/SavedItems";
+import Settings from "../user-profile/components/Settings";
+
+// --- Types ---
+interface Tab {
+  id: string;
+  label: string;
+  icon: string;
+  count?: number;
+}
+
+interface QuickAction {
+  id: string;
+  label: string;
+  icon: string;
+  color: string;
+  badge?: number;
+  action: () => void;
+}
+
+const VendorProfile = () => {
+  // --- State ---
+  const [activeTab, setActiveTab] = useState<string>("listings");
   const [vendorData, setVendorData] = useState<VendorData | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [uploading, setUploading] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  
   const router = useRouter();
+  const { location, loading: locationLoading, refresh: getCurrentLocation } = useLocationDetection();
 
-  const {
-    location,
-    loading: locationLoading,
-    refresh: getCurrentLocation,
-  } = useLocationDetection();
-
+  // --- Authentication & Data Fetching ---
   useEffect(() => {
+    const token = sessionStorage.getItem("authToken") || localStorage.getItem("authToken") || sessionStorage.getItem("RSToken");
+
+    if (!token) {
+      console.warn("No token found, redirecting to login...");
+      router.push("/auth/login");
+      return;
+    }
+
     const fetchProfile = async () => {
       try {
-        const data = await userService.getUserProfile();
-        setVendorData(data);
-      } catch (err) {
-        console.error("Error fetching profile:", err);
+        const response = await vendorService.getVendorProfile();
+        const profileData = response.data || response;
+        setVendorData(profileData);
+        setLoading(false);
+      } catch (err: any) {
+        console.error("Error fetching vendor profile:", err);
+        if (err.response && err.status === 401 || err.response?.status === 401) {
+          sessionStorage.clear();
+          router.push("/auth/login");
+        } else {
+          setLoading(false);
+        }
       }
     };
-    fetchProfile();
-  }, []);
 
-  const userProfile = {
-    id: 1,
-    name:
-      vendorData?.business_name ||
-      `${vendorData?.first_name || "Sarah"} ${
-        vendorData?.last_name || "Johnson"
-      }`,
-    email: vendorData?.email || "sarah.johnson@email.com",
-    phone: vendorData?.phone || "+1 (555) 123-4567",
-    avatar:
-      "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face",
-    location: location ? `${location.state}, ${location.country}` : "San Francisco, CA",
-    joinDate: "March 2023",
+    fetchProfile();
+  }, [router]);
+
+  // --- File Upload Handlers ---
+  const handleProfilePictureUpload = async (file: File) => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const response = await vendorService.uploadProfilePicture(file);
+      if (response) {
+        alert("Profile picture updated!");
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      alert("Failed to upload image.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleCoverPhotoUpload = async (file: File) => {
+    if (!file) return;
+    setUploadingCover(true);
+    try {
+      const response = await vendorService.uploadImage(file);
+      if (response) {
+        alert("Cover photo updated!");
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error("Cover upload error:", error);
+      alert("Failed to upload cover.");
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'cover') => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith("image/")) return alert("Please select an image file");
+      const maxSize = type === 'cover' ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+      if (file.size > maxSize) return alert(`File size must be less than ${type === 'cover' ? 10 : 5}MB`);
+      
+      if (type === 'avatar') handleProfilePictureUpload(file);
+      else handleCoverPhotoUpload(file);
+    }
+  };
+
+  // --- View Data Construction ---
+  const defaultAvatar = "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face";
+  const defaultCover = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1600' height='420'%3E%3Crect width='100%25' height='100%25' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial, sans-serif' font-size='28'%3EVendor Cover%3C/text%3E%3C/svg%3E";
+
+  const profileView = vendorData ? {
+    id: (vendorData as any).id || 1,
+    name: vendorData.business_name || `${vendorData.first_name || ""} ${vendorData.last_name || ""}`.trim() || "Vendor",
+    email: vendorData.email || "",
+    phone: vendorData.phone || "No phone provided",
+    avatar: vendorData.profile_pic || defaultAvatar,
+    cover: (vendorData as any).cover_photo || defaultCover,
+    location: location 
+      ? `${location.state}, ${location.country}` 
+      : (vendorData.state && vendorData.country ? `${vendorData.state}, ${vendorData.country}` : "Location not set"),
+    joinDate: vendorData.created_at ? new Date(vendorData.created_at).toLocaleDateString() : "Unknown",
     isVerified: {
-      email: vendorData?.isVerified ?? true,
-      phone: true,
-      identity: false,
+      email: true,
+      phone: !!vendorData.phone,
+      identity: vendorData.kyc_status === "verified" || vendorData.isVerified === true,
     },
     stats: {
-      itemsListed: 24,
-      purchasesMade: 18,
+      itemsListed: 24, // Mock data or add to vendor type
+      purchasesMade: 12,
       sellerRating: 4.8,
       totalReviews: 32,
     },
-    bio: "Passionate about sustainable living and finding great deals on quality items...",
+    bio: vendorData.bio || "Welcome to my seller profile.",
+  } : null;
+
+  // --- Config ---
+  const tabs: Tab[] = [
+    { id: "listings", label: "My Listings", icon: "Package", count: profileView?.stats.itemsListed },
+    { id: "orders", label: "My Purchases", icon: "ShoppingBag" },
+    { id: "saved", label: "Saved Items", icon: "Heart" }, // Added Saved Items
+    { id: "settings", label: "Settings", icon: "Settings" },
+  ];
+
+  const quickActions: QuickAction[] = [
+    {
+      id: "list-item",
+      label: "List New Item",
+      icon: "Plus",
+      color: "bg-primary text-white",
+      action: () => router.push("/vendor/dashboard/products/add"), // Adjust route as needed
+    },
+    {
+      id: "messages",
+      label: "Messages",
+      icon: "MessageCircle",
+      color: "bg-surface border border-border text-text-primary",
+      badge: 3,
+      action: () => router.push("/messages"),
+    },
+    {
+      id: "share",
+      label: "Share Profile",
+      icon: "Share2",
+      color: "bg-surface border border-border text-text-primary",
+      action: () => {
+        if (navigator.share) {
+          navigator.share({
+            title: profileView?.name,
+            text: `Check out ${profileView?.name}'s profile`,
+            url: window.location.href,
+          });
+        } else {
+          navigator.clipboard.writeText(window.location.href);
+          alert("Profile link copied to clipboard!");
+        }
+      },
+    },
+    {
+      id: "settings",
+      label: "Account",
+      icon: "User",
+      color: "bg-surface border border-border text-text-primary",
+      action: () => setActiveTab("settings"),
+    },
+  ];
+
+  const renderTabContent = () => {
+    if (!profileView) return null;
+    switch (activeTab) {
+      case "listings": return <MyListings />;
+      case "orders": return <PurchaseHistory />;
+      case "saved": return <SavedItems />; // Render Saved Items
+      case "settings": return <Settings userProfile={profileView as UserProfileData} />;
+      default: return <MyListings />;
+    }
   };
 
-  const LocationDisplay = ({ className = "" }: { className?: string }) => (
-    <div
-      className={`flex items-center space-x-1 text-text-secondary text-sm ${className}`}
-    >
-      <Icon name="MapPin" size={14} />
-      <span>
-        {locationLoading
-          ? "Getting location..."
-          : userProfile.location}
-      </span>
-      {!locationLoading && (
-        <button
-          onClick={getCurrentLocation}
-          className="ml-1 text-xs text-primary hover:underline"
-          title="Update location"
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-4">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-text-secondary animate-pulse">Loading Seller Details...</p>
+      </div>
+    );
+  }
+
+  if (!profileView) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background">
+        <p className="text-error mb-4">Failed to load profile data.</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90"
         >
-          📍
+          Retry
         </button>
-      )}
-    </div>
-  );
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="md:hidden">
-        <div className="px-4 py-6 border-b bg-surface border-border">
-          <div className="flex items-center mb-4 space-x-4">
-            <div className="relative w-16 h-16">
-              <Image
-                src={userProfile.avatar}
-                alt={userProfile.name}
-                fill
-                className="object-cover rounded-full"
-                sizes="64px"
-              />
-              {userProfile.isVerified.email && (
-                <div className="absolute flex items-center justify-center w-6 h-6 rounded-full -bottom-1 -right-1 bg-primary">
-                  <Icon name="Check" size={12} className="text-white" />
+    <div className="min-h-screen bg-background pb-12">
+      {/* --- Cover & Header --- */}
+      <div className="relative">
+        <div
+          className="h-40 md:h-64 w-full bg-center bg-cover relative group"
+          style={{ backgroundImage: `url(${profileView.cover})` }}
+        >
+          <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-all" />
+
+          {/* Change Cover Button */}
+          <div className="absolute right-3 top-3">
+            <label className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-white/90 rounded-md shadow-sm cursor-pointer hover:bg-white transition-colors">
+              <Icon name="Camera" size={14} />
+              <span className="hidden md:inline">{uploadingCover ? "Uploading..." : "Edit Cover"}</span>
+              <input type="file" accept="image/*" onChange={(e) => handleFileSelect(e, 'cover')} className="hidden" />
+            </label>
+          </div>
+
+          {/* Avatar (Overlapping) */}
+          <div className="absolute left-1/2 transform -translate-x-1/2 -bottom-10 md:-bottom-14 flex items-end">
+            <div className="relative group/avatar">
+              <div className="w-24 h-24 md:w-36 md:h-36 rounded-full overflow-hidden border-4 border-surface bg-surface-secondary shadow-lg">
+                <Image src={profileView.avatar} alt={profileView.name} fill className="object-cover" />
+              </div>
+              <label 
+                className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover/avatar:opacity-100 cursor-pointer transition-opacity"
+                title="Change Logo"
+              >
+                {uploading ? <Icon name="Loader2" size={24} className="animate-spin" /> : <Icon name="Camera" size={24} />}
+                <input type="file" accept="image/*" onChange={(e) => handleFileSelect(e, 'avatar')} className="hidden" />
+              </label>
+              
+              {profileView.isVerified.identity && (
+                <div className="absolute bottom-1 right-1 bg-primary text-white p-1 rounded-full border-2 border-surface" title="Identity Verified">
+                  <Icon name="Check" size={14} />
                 </div>
               )}
             </div>
-
-            <div className="flex-1">
-              <h1 className="text-xl font-semibold font-heading text-text-primary">
-                {userProfile.name}
-              </h1>
-              <LocationDisplay />
-              <p className="mt-1 text-xs text-text-tertiary">
-                Member since {userProfile.joinDate}
-              </p>
-            </div>
           </div>
-        </div>
-
-        <div className="px-4 py-4 border-b bg-surface border-border">
-          <h2 className="text-lg font-semibold font-heading text-text-primary">
-            Products
-          </h2>
-        </div>
-
-        <div className="p-4">
-          <MyListings />
         </div>
       </div>
 
-      <div className="hidden px-6 py-8 mx-auto md:block max-w-7xl">
-        <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-4">
-            <div className="p-6 mb-6 border rounded-lg bg-surface border-border">
-              <div className="mb-6 text-center">
-                <div className="relative w-24 h-24 mx-auto overflow-hidden rounded-full">
-                  <Image
-                    fill
-                    src={userProfile.avatar}
-                    alt={userProfile.name}
-                    className="object-cover"
-                    sizes="96px"
-                  />
-                  {userProfile.isVerified.email && (
-                    <div className="absolute flex items-center justify-center w-6 h-6 rounded-full -bottom-1 -right-1 bg-primary">
-                      <Icon name="Check" size={12} className="text-white" />
-                    </div>
-                  )}
-                </div>
-                <h1 className="mt-4 text-2xl font-semibold font-heading text-text-primary">
-                  {userProfile.name}
-                </h1>
-                <LocationDisplay className="justify-center mt-2" />
-                <p className="mt-1 text-sm text-text-tertiary">
-                  Member since {userProfile.joinDate}
-                </p>
-              </div>
+      {/* --- Main Content --- */}
+      <div className="max-w-7xl mx-auto px-4 md:px-6">
+        <div className="h-12 md:h-16" /> {/* Spacer */}
 
-              <div className="mb-6 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Icon
-                      name="Mail"
-                      size={16}
-                      className="text-text-secondary"
-                    />
-                    <span className="text-sm text-text-secondary">Email</span>
-                  </div>
-                  {userProfile.isVerified.email ? (
-                    <div className="flex items-center space-x-1 text-success">
-                      <Icon name="Check" size={14} />
-                      <span className="text-xs">Verified</span>
-                    </div>
-                  ) : (
-                    <span className="text-xs text-text-tertiary">
-                      Not verified
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Icon
-                      name="Phone"
-                      size={16}
-                      className="text-text-secondary"
-                    />
-                    <span className="text-sm text-text-secondary">Phone</span>
-                  </div>
-                  {userProfile.isVerified.phone ? (
-                    <div className="flex items-center space-x-1 text-success">
-                      <Icon name="Check" size={14} />
-                      <span className="text-xs">Verified</span>
-                    </div>
-                  ) : (
-                    <span className="text-xs text-text-tertiary">
-                      Not verified
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Icon
-                      name="Shield"
-                      size={16}
-                      className="text-text-secondary"
-                    />
-                    <span className="text-sm text-text-secondary">
-                      Identity
-                    </span>
-                  </div>
-                  {userProfile.isVerified.identity ? (
-                    <div className="flex items-center space-x-1 text-success">
-                      <Icon name="Check" size={14} />
-                      <span className="text-xs">Verified</span>
-                    </div>
-                  ) : (
-                    <span className="text-xs text-text-tertiary">
-                      Not verified
-                    </span>
-                  )}
-                </div>
-              </div>
+        {/* Name & Location */}
+        <div className="text-center mb-4">
+          <h1 className="text-xl md:text-3xl font-heading font-bold text-text-primary flex items-center justify-center gap-2">
+            {profileView.name}
+            {profileView.isVerified.identity && <Icon name="Shield" size={20} className="text-primary" />}
+          </h1>
+          
+          <div className="mt-2 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4 text-sm text-text-secondary">
+            <div className="flex items-center gap-1">
+              <Icon name="MapPin" size={14} />
+              <span>{locationLoading ? "Locating..." : profileView.location}</span>
+              <button onClick={getCurrentLocation} className="text-primary hover:text-primary-700 p-1" title="Refresh Location">
+                <Icon name="RefreshCw" size={12} />
+              </button>
+            </div>
+            <span className="hidden md:inline text-border">•</span>
+            <span>Joined {profileView.joinDate}</span>
+          </div>
+        </div>
 
-              <div className="mb-6">
-                <h3 className="mb-2 text-sm font-medium text-text-primary">
-                  About
-                </h3>
-                <p className="text-sm leading-relaxed text-text-secondary">
-                  {userProfile.bio}
-                </p>
+        {/* Mobile Quick Actions (Scrollable) */}
+        <div className="md:hidden mb-6">
+          <div className="flex justify-between gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            {quickActions.map((a) => (
+              <button
+                key={a.id}
+                onClick={a.action}
+                className={`flex flex-col p-3 items-center justify-center min-w-[4.5rem] rounded-xl ${a.id === 'list-item' ? 'bg-primary text-white' : 'bg-surface border border-border text-text-secondary'} shadow-sm`}
+              >
+                <div className="mb-1 relative">
+                  <Icon name={a.icon as any} size={20} />
+                  {a.badge && (
+                    <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-error text-[8px] text-white">
+                      {a.badge}
+                    </span>
+                  )}
+                </div>
+                <div className="text-[10px] whitespace-nowrap">{a.label}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+          
+          {/* Sidebar */}
+          <aside className="md:col-span-4 space-y-6 order-2 md:order-1">
+            <div className="p-5 border rounded-xl bg-surface border-border shadow-sm">
+              <h3 className="text-sm font-semibold text-text-primary mb-3 uppercase tracking-wider">About</h3>
+              <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-line">
+                {profileView.bio}
+              </p>
+            </div>
+
+            <div className="p-5 border rounded-xl bg-surface border-border shadow-sm">
+               <h3 className="text-sm font-semibold text-text-primary mb-4 uppercase tracking-wider">Contact Info</h3>
+               <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-surface-secondary rounded-full"><Icon name="Mail" size={16} /></div>
+                    <div className="overflow-hidden">
+                        <p className="text-xs text-text-secondary">Email</p>
+                        <p className="text-sm font-medium truncate" title={profileView.email}>{profileView.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-surface-secondary rounded-full"><Icon name="Phone" size={16} /></div>
+                    <div>
+                        <p className="text-xs text-text-secondary">Phone</p>
+                        <p className="text-sm font-medium">{profileView.phone}</p>
+                    </div>
+                  </div>
+               </div>
+            </div>
+
+            {/* Desktop Quick Actions */}
+            <div className="hidden md:block p-5 border rounded-xl bg-surface border-border shadow-sm">
+              <h3 className="text-sm font-semibold text-text-primary mb-4 uppercase tracking-wider">Quick Actions</h3>
+              <div className="space-y-3">
+                {quickActions.map((action) => (
+                  <button
+                    key={action.id}
+                    onClick={action.action}
+                    className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-all hover:translate-x-1 ${action.color.includes('bg-primary') ? 'hover:bg-primary-700' : 'hover:bg-surface-secondary'} ${action.color}`}
+                  >
+                    <Icon name={action.icon as any} size={18} />
+                    <span className="font-medium text-sm">{action.label}</span>
+                    {action.badge && (
+                      <span className="ml-auto bg-error text-white text-xs px-2 py-0.5 rounded-full">{action.badge}</span>
+                    )}
+                  </button>
+                ))}
               </div>
             </div>
-          </div>
+          </aside>
 
-          <div className="col-span-8">
-            <div className="mb-6 border rounded-lg bg-surface border-border">
-              <div className="px-6 py-4 border-b border-border">
-                <h2 className="text-xl font-semibold font-heading text-text-primary">
-                  Products
-                </h2>
+          {/* Main Tabs Area */}
+          <main className="md:col-span-8 order-1 md:order-2">
+            <div className="border rounded-xl bg-surface border-border shadow-sm min-h-[500px]">
+              {/* Tabs Header */}
+              <div className="flex border-b border-border overflow-x-auto scrollbar-hide">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center space-x-2 px-6 py-4 border-b-2 transition-colors whitespace-nowrap ${
+                      activeTab === tab.id
+                        ? "border-primary text-primary bg-primary-50/30"
+                        : "border-transparent text-text-secondary hover:text-text-primary hover:bg-surface-secondary"
+                    }`}
+                  >
+                    <Icon name={tab.icon as any} size={18} />
+                    <span className="font-medium text-sm">{tab.label}</span>
+                    {tab.count !== undefined && (
+                      <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${activeTab === tab.id ? 'bg-primary text-white' : 'bg-surface-secondary text-text-secondary'}`}>
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                ))}
               </div>
 
-              <div className="p-6">
-                <MyListings />
+              {/* Tab Content */}
+              <div className="p-4 md:p-6">
+                {renderTabContent()}
               </div>
             </div>
-          </div>
+          </main>
         </div>
       </div>
     </div>

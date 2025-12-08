@@ -98,13 +98,13 @@ const ProductOverview: React.FC<ProductOverviewProps> = ({ products }) => {
 			</div>
 
 			{/* Add Product Button */}
-			<div className="mt-6 pt-4 border-t border-border">
+			<div className="mt-6 pt-4 flex items-center justify-center border-t border-border">
 				<Button
 					variant="outline"
 					                    className="w-full"
 					                    onClick={() => router.push('/create-listing')}				>
 					<Icon name="Plus" size={16} className="mr-2" />
-					Add New Product
+				<p>Add New Product</p>	
 				</Button>
 			</div>
 		</div>

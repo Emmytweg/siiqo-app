@@ -104,9 +104,12 @@ export default function ProductFinder() {
               <PopularInArea />
             </section>
 
-            <Footer />
           </div>
+
+
         </div>
+            <Footer />
+
       </div>
     </div>
   );

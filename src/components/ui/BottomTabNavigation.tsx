@@ -29,7 +29,7 @@ const CreateMenu: React.FC<CreateMenuProps> = ({ isOpen, onClose }) => {
       description: "Set up your business presence",
       icon: "Store" as LucideIconName,
       color: "bg-blue-100 text-blue-600",
-      link: "/vendor/dashboard",
+      // link: "/vendor/dashboard",
     },
     {
       label: "List Product",
@@ -178,8 +178,12 @@ const BottomTabNavigation: React.FC = () => {
   return (
     <>
       {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-100 bg-white border-t border-border md:hidden">
-        <div className="flex items-center justify-around px-4 py-2 safe-area-inset-bottom">
+      <nav
+        role="navigation"
+        className="fixed bottom-6 inset-x-3 md:hidden z-30 max-w-lg mx-auto px-3 py-3 backdrop-blur-md bg-white/60 dark:bg-gray-900/40 border border-white/20 dark:border-gray-800/30 shadow-lg rounded-2xl overflow-visible"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        <div className="flex items-center justify-between gap-2 safe-area-inset-bottom">
           {navigationItems.map((item) => {
             const isActive = isActiveTab(item.path);
             const isCreateButton = item.isSpecial;
@@ -188,18 +192,20 @@ const BottomTabNavigation: React.FC = () => {
               <button
                 key={item.path}
                 onClick={() => handleTabPress(item.path, item.label)}
-                className={`flex flex-col items-center justify-center min-h-[48px] px-3 py-2 rounded-lg transition-all duration-200 ${
-                  isCreateButton
-                    ? "transform hover:scale-105"
-                    : isActive
-                    ? "text-primary bg-primary-50"
-                    : "text-text-secondary hover:text-text-primary hover:bg-surface-secondary"
-                }`}
                 aria-label={item.tooltip}
                 title={item.tooltip}
+                aria-current={isActive ? "page" : undefined}
+                // allow buttons to shrink and share available space on small screens
+                className={`flex-1 min-w-0 flex flex-col items-center justify-center min-h-[48px] px-3 py-3 rounded-full transition-all duration-200 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-white/10 active:scale-95 ${
+                  isCreateButton
+                    ? "relative -mt-2 z-10 transform hover:scale-105"
+                    : isActive
+                    ? "text-primary bg-[#E0921C] shadow-sm"
+                    : "text-text-secondary hover:text-text-primary hover:bg-surface-secondary/40"
+                }`}
               >
                 {isCreateButton ? (
-                  <div className="w-14 h-14 bg-primary rounded-full flex items-center justify-center shadow-lg">
+                  <div className="w-14 h-14 bg-primary rounded-full flex items-center justify-center shadow-xl transform transition-transform duration-150 hover:scale-105 active:scale-95">
                     <Icon
                       name={item.icon}
                       size={24}
@@ -214,7 +220,7 @@ const BottomTabNavigation: React.FC = () => {
                       size={20}
                       strokeWidth={isActive ? 2.5 : 2}
                       className={`mb-1 transition-colors duration-200 ${
-                        isActive ? "text-primary" : "text-current"
+                        isActive ? "text-[#fff]" : "text-current"
                       }`}
                     />
                     <span
@@ -233,53 +239,47 @@ const BottomTabNavigation: React.FC = () => {
       </nav>
 
       {/* Desktop Top Navigation */}
-      <nav className="hidden md:block fixed bottom-0 left-0 right-0 z-100 bg-white border-t border-border w-full">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center justify-center space-x-8 py-4">
-            {navigationItems.map((item) => {
-              const isActive = isActiveTab(item.path);
-              const isCreateButton = item.isSpecial;
-              return (
-                <button
-                  key={item.path}
-                  onClick={() => handleTabPress(item.path, item.label)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
-                    isCreateButton
-                      ? "bg-[#001d3b] text-white hover:bg-primary/90 font-medium"
-                      : isActive
-                      ? "text-primary bg-primary-50 font-medium"
-                      : "text-text-secondary hover:text-text-primary hover:bg-surface-secondary"
+      <nav
+        role="navigation"
+        className="hidden md:block fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 bg-white/30 dark:bg-gray-900/30 backdrop-blur-md border border-white/20 dark:border-gray-800/30 shadow-lg rounded-full px-6 py-3"
+      >
+        <div className="flex items-center justify-center gap-2">
+          {navigationItems.map((item) => {
+            const isActive = isActiveTab(item.path);
+            const isCreateButton = item.isSpecial;
+            return (
+              <button
+                key={item.path}
+                onClick={() => handleTabPress(item.path, item.label)}
+                aria-label={item.tooltip}
+                title={item.tooltip}
+                aria-current={isActive ? "page" : undefined}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-white/10 active:scale-95 ${
+                  isCreateButton
+                    ? "bg-[#001d3b] text-white hover:bg-primary/90 font-medium shadow-sm"
+                    : isActive
+                    ? "text-white bg-[#E0921C] font-medium shadow-inner"
+                    : "text-text-secondary hover:text-text-primary hover:bg-surface-secondary"
+                }`}
+              >
+                <Icon
+                  name={isActive ? item.activeIcon : item.icon}
+                  size={18}
+                  strokeWidth={isActive ? 2.5 : 2}
+                  className={`transition-colors duration-200 ${
+                    isCreateButton ? "text-white" : isActive ? "text-primary" : "text-current"
                   }`}
-                  aria-label={item.tooltip}
-                  title={item.tooltip}
+                />
+                <span
+                  className={`text-sm font-caption transition-all duration-200 ${
+                    isCreateButton ? "text-white font-medium" : isActive ? "font-medium text-primary" : "text-current"
+                  }`}
                 >
-                  <Icon
-                    name={isActive ? item.activeIcon : item.icon}
-                    size={18}
-                    strokeWidth={isActive ? 2.5 : 2}
-                    className={`transition-colors duration-200 ${
-                      isCreateButton
-                        ? "text-white"
-                        : isActive
-                        ? "text-primary"
-                        : "text-current"
-                    }`}
-                  />
-                  <span
-                    className={`text-sm font-caption transition-all duration-200 ${
-                      isCreateButton
-                        ? "text-white font-medium"
-                        : isActive
-                        ? "font-medium text-primary"
-                        : "text-current"
-                    }`}
-                  >
-                    {item.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </nav>
 

@@ -1,3 +1,5 @@
+// types/storefront.ts
+
 export interface ApiStorefrontResponse {
   storefront: { 
     business_name: string;

@@ -12,6 +12,7 @@ export interface UserProfileData {
   referral_code?: string;
   referred_by?: string | null;
   role?: string;
+  profile_pic_url?: string; //just added
 }
 
 export interface Tab {

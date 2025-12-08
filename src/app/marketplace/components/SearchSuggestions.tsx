@@ -1,4 +1,4 @@
-// src/app/search-results/components/SearchSuggestions.tsx
+// src/app/marketplace/components/SearchSuggestions.tsx
 "use client";
 
 import Icon from '@/components/ui/AppIcon';

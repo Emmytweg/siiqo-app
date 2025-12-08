@@ -1,135 +1,104 @@
+// app/search-results/components/ProductCard.tsx
 "use client";
 
 import React from 'react';
 import Icon from '@/components/ui/AppIcon';
 import Image from '@/components/ui/AppImage';
 
-interface Product {
-    id: number;
-    name: string;
-    price: number;
-    originalPrice?: number;
-    image: string;
-    seller: string;
-    rating: number;
-    reviewCount: number;
-    distance: number;
-    condition: string;
-    category: string;
-    isVerified: boolean;
-    availability: string;
-    location: string;
-    postedDate: string;
-}
-
 interface ProductCardProps {
-    product: Product;
+    product: any;
     onClick: () => void;
 }
 
-const ProductCard = ({ product, onClick }: ProductCardProps) => {
-    const discountPercentage = product.originalPrice
-        ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
-        : 0;
+const ProductCard: React.FC<ProductCardProps> = ({ product, onClick }) => {
+    // Determine if it is a product or storefront based on the flag
+    const isStorefront = product.isProduct === false;
 
     return (
         <div
             onClick={onClick}
-            className="bg-surface rounded-lg border border-border hover:shadow-elevation-2 transition-all duration-200 cursor-pointer group"
+            className="group relative flex items-center p-3 mb-3 bg-white/40 backdrop-blur-md border border-white/50 rounded-2xl shadow-sm hover:shadow-xl hover:bg-white/60 transition-all duration-300 cursor-pointer overflow-hidden"
         >
-            {/* Product Image */}
-            {/* This div is already 'relative' and has dimensions, perfect! */}
-            <div className="relative overflow-hidden rounded-t-lg aspect-square">
-                <Image
+            {/* Image Section */}
+            <div className="relative w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden shadow-inner bg-slate-100">
+                 <Image
                     src={product.image}
                     alt={product.name}
-                    fill // Add the fill prop
-                    // Keep object-cover and transformation classes, remove w-full h-full
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    // Add sizes prop. This will depend on your card's layout (e.g., in a grid).
-                    // Example for a common responsive card layout:
-                    sizes="(max-width: 600px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    fill
+                    className="object-cover group-hover:scale-110 transition-transform duration-500"
+                    sizes="96px"
                 />
-
-
-                {/* Discount Badge */}
-                {discountPercentage > 0 && (
-                    <div className="absolute top-2 left-2 bg-black text-white px-2 py-1 rounded-full text-xs font-medium">
-                        -{discountPercentage}%
-                    </div>
-                )}
-
-                {/* Availability Status */}
-                <div className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium ${product.availability === 'In Stock'
-                    ? 'bg-gray-100 text-success border border-success-100'
-                    : product.availability === 'Limited Stock'
-                        ? 'bg-gray-100 text-warning border border-warning-100'
-                        : 'bg-error-50 text-error border border-error-100'
-                    }`}>
-                    {product.availability}
-                </div>
-
-                {/* Verified Badge */}
                 {product.isVerified && (
-                    <div className="absolute bottom-2 left-2 bg-primary text-white p-1 rounded-full">
-                        <Icon name="CheckCircle" size={12} />
+                    <div className="absolute bottom-1 left-1 bg-[#1B3F61]/90 backdrop-blur text-white p-0.5 rounded-full z-10">
+                        <Icon name="CheckCircle" size={10} />
                     </div>
                 )}
             </div>
 
-            {/* Product Info */}
-            <div className="p-3">
-                {/* Product Name */}
-                <h3 className="font-medium text-text-primary text-sm mb-1 line-clamp-2 group-hover:text-primary transition-colors duration-200">
-                    {product.name}
-                </h3>
-
-                {/* Price */}
-                <div className="flex items-center space-x-2 mb-2">
-                    <span className="text-lg font-semibold text-text-primary">
-                        ${product.price}
-                    </span>
-                    {product.originalPrice && (
-                        <span className="text-sm text-text-secondary line-through">
-                            ${product.originalPrice}
-                        </span>
+            {/* Content Section */}
+            <div className="flex-1 ml-4 min-w-0">
+                <div className="flex justify-between items-start">
+                    <h3 className="font-semibold text-slate-800 text-sm truncate pr-2">
+                        {product.name}
+                    </h3>
+                    
+                    {/* Only show Price for Products */}
+                    {!isStorefront && product.price !== undefined && (
+                        <div className="flex flex-col items-end">
+                            <span className="font-bold text-slate-900 text-sm">
+                                ${product.price?.toLocaleString()}
+                            </span>
+                            {product.originalPrice > product.price && (
+                                <span className="text-[10px] text-slate-500 line-through">
+                                    ${product.originalPrice?.toLocaleString()}
+                                </span>
+                            )}
+                        </div>
+                    )}
+                    
+                    {/* Show 'Visit' for Storefront */}
+                    {isStorefront && (
+                        <div className="flex items-center text-[#1B3F61] bg-[#1B3F61]/10 px-2 py-0.5 rounded-full border border-[#1B3F61]/20">
+                             <span className="text-[10px] font-semibold">Visit</span>
+                             <Icon name="ChevronRight" size={10} className="ml-0.5" />
+                        </div>
                     )}
                 </div>
 
-                {/* Seller and Rating */}
-                <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-1">
-                        <Icon name="Star" size={12} className="text-warning fill-current" />
-                        <span className="text-xs text-text-secondary">
-                            {product.rating} ({product.reviewCount})
+                <div className="mt-1 flex items-center space-x-2">
+                    <div className="flex items-center bg-yellow-100/50 px-1.5 py-0.5 rounded-md border border-yellow-100/50">
+                        <Icon name="Star" size={10} className="text-[#DE941D] fill-current" />
+                        <span className="text-[10px] font-bold text-slate-700 ml-1">
+                            {product.rating}
+                        </span>
+                        <span className="text-[10px] text-slate-400 ml-1">
+                            ({product.reviewCount})
                         </span>
                     </div>
-                    <span className="text-xs text-text-secondary">
-                        {product.condition}
+                    <span className="text-[10px] text-slate-500 truncate">
+                        • {product.distance} mi • {isStorefront ? product.availability : product.condition}
                     </span>
                 </div>
 
-                {/* Location and Distance */}
-                <div className="flex items-center justify-between text-xs text-text-secondary">
-                    <div className="flex items-center space-x-1">
-                        <Icon name="MapPin" size={12} />
-                        <span className="truncate">{product.location}</span>
-                    </div>
-                    <span className="font-medium">
-                        {product.distance} mi
-                    </span>
-                </div>
-
-                {/* Seller */}
-                <div className="mt-2 pt-2 border-t border-border">
-                    <div className="flex items-center space-x-1">
-                        <Icon name="Store" size={12} className="text-text-secondary" />
-                        <span className="text-xs text-text-secondary truncate">
-                            {product.seller}
+                <div className="mt-2 flex items-center justify-between">
+                     <div className="flex items-center text-slate-500">
+                        <Icon name={isStorefront ? "MapPin" : "Store"} size={12} className="mr-1 opacity-70" />
+                        <span className="text-[10px] truncate max-w-[120px]">
+                            {/* Use location if available (Storefront usually), or seller (Product usually), but fallback to either */}
+                            {product.location || product.seller}
                         </span>
+                    </div>
+                    
+                    {/* Decorative Map Link Indicator */}
+                    <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                         <div className="h-0.5 w-4 bg-gradient-to-r from-transparent to-[#1B3F61] rounded-full" />
+                         <Icon name="MapPin" size={10} className="text-[#1B3F61]" />
                     </div>
                 </div>
             </div>
+            
+             {/* Decorative shine effect */}
+             <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-white/0 via-white/30 to-white/0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-500" />
         </div>
     );
 };

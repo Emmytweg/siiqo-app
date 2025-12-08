@@ -1,3 +1,4 @@
+// src/app/marketplace/components/FilterChips.tsx
 import React from 'react';
 import Icon from '@/components/AppIcon';
 

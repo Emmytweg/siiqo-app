@@ -6,11 +6,12 @@ import Head from "next/head";
 import StorefrontCustomization from "./components/StorefrontCustomization";
 import Button from "@/components/ui/alt/ButtonAlt";
 import Icon from "@/components/AppIcon";
-import BusinessStorefrontView from "./business-view";
+import BusinessStorefrontView from "./business-view/components/BusinessStorefrontView";
 import { ApiStorefrontResponse, StorefrontContact, StorefrontData, VendorData } from "@/types/vendor/storefront";
 import { toast } from "@/hooks/use-toast";
 import { storefrontService } from "@/services/storefrontService";
 import { vendorService } from "@/services/vendorService";
+import BusinessStorefrontPreview from "./business-view/components/BusinessStorefrontPreview";
 
 type TabId = "public" | "preview" | "customize";
 
@@ -211,9 +212,9 @@ const handlePublishStorefront = async () => {
       </Head>
 
       <div className="min-h-screen bg-background">
-        <main className="max-w-[85vw] mx-auto px-0 md:px-4 py-6">
+        <main className="max-w-[85vw] mt-16 md:mt-0 mx-auto px-0 md:px-4 py-6">
           {/* Page Header */}
-          <div className="flex flex-col mb-8 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col mb-8   lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h1 className="mb-2 text-2xl font-bold font-heading text-text-primary">
                 Storefront Manager
@@ -334,7 +335,7 @@ const handlePublishStorefront = async () => {
             )}
 
             {activeTab === "preview" && (
-              <BusinessStorefrontView storefrontData={storefrontData} products={storefrontData?.products || []} />
+              <BusinessStorefrontPreview storefrontData={storefrontData} products={storefrontData?.products || []} />
             )}
 
             {activeTab === "customize" && (

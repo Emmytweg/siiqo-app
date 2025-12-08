@@ -4,7 +4,7 @@ import Icon, { type LucideIconName } from '@/components/AppIcon';
 // --- START OF TYPESCRIPT CONVERSION ---
 
 // Define the allowed IDs for tabs
-type TabId = 'products' | 'about' | 'reviews' | 'contact' | string;
+type TabId = 'products' | 'about' | 'reviews' | '' | string;
 
 interface Tab {
     id: TabId;
@@ -26,7 +26,7 @@ const TabNavigation: React.FC<TabNavigationProps> = ({ activeTab, onTabChange, t
         products: 'Package',
         about: 'Info',
         reviews: 'Star',
-        contact: 'MessageCircle'
+        // contact: 'MessageCircle'
     };
 
     return (

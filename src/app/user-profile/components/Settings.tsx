@@ -1,3 +1,4 @@
+// src/app/user-profile/components/Settings.tsx
 "use client";
 
 import React, { useState } from "react";
@@ -188,7 +189,7 @@ const Settings = ({ userProfile, onUpdateProfile }: SettingsProps) => {
         <label className="block text-sm font-medium text-text-primary mb-2">
           Home Address
         </label>
-        <div className="flex space-x-2">
+        <div className="flex flex-col md:flex-row md:space-x-2">
           <input
             type="text"
             value={settings.location.homeAddress}
@@ -200,7 +201,7 @@ const Settings = ({ userProfile, onUpdateProfile }: SettingsProps) => {
           <button
             onClick={handleUpdateAddress}
             disabled={updateLoading.address}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mt-2 md:mt-0 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {updateLoading.address ? "Updating..." : "Update"}
           </button>
@@ -252,15 +253,15 @@ const Settings = ({ userProfile, onUpdateProfile }: SettingsProps) => {
                 !settings.location.autoLocation
               )
             }
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${
-              settings.location.autoLocation ? "bg-primary" : "bg-border-dark"
+            className={`relative inline-flex h-6 w-14 md:w-11 items-center rounded-full transition-colors duration-200 ${
+              settings.location.autoLocation ? "bg-primary" : " border border-border-dark"
             }`}
           >
             <span
               className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
                 settings.location.autoLocation
-                  ? "translate-x-6"
-                  : "translate-x-1"
+                  ? "translate-x-6  "
+                  : "translate-x-1 bg-[#264F78]"
               }`}
             />
           </button>

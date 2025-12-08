@@ -1,3 +1,4 @@
+// src/app/marketplace/components/QuickViewModal.tsx
 import React, { useState, useEffect, JSX } from 'react';
 import Image from '@/components/ui/alt/AppImageAlt';
 import Icon from '@/components/AppIcon';

@@ -1,3 +1,5 @@
+// types/vendor/products.ts
+
 export type ProductStatus = "active" | "draft" | "inactive" | "out-of-stock";
 export type ViewMode = "table" | "grid";
 export type BulkAction = "activate" | "deactivate" | "duplicate" | "delete" | "export";

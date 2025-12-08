@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Icon from "@/components/AppIcon";
-import { LucidePanelLeftClose, LucidePanelRightClose } from "lucide-react";
+import { LucidePanelLeftClose, LucidePanelRightClose, Menu, X } from "lucide-react";
 import { vendorService } from "@/services/vendorService";
 
 interface VendorData {
@@ -36,6 +36,7 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
   const pathname = usePathname();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // New state for mobile menu
   const [vendorData, setVendorData] = useState<VendorData | null>(
     propVendorData || null
   );
@@ -56,7 +57,7 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
     ];
 
     return authPatterns.some(
-      pattern => pathname.includes(pattern) || pathname.endsWith(pattern)
+      (pattern) => pathname.includes(pattern) || pathname.endsWith(pattern)
     );
   };
 
@@ -64,6 +65,7 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
 
   const handleNavigation = (path: string) => {
     router.push(path);
+    setIsMobileMenuOpen(false); // Close mobile menu on navigate
   };
 
   useEffect(() => {
@@ -80,57 +82,13 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
     }
   }, [propVendorData]);
 
-  return (
-    <aside
-      className={`fixed left-0 top-0 h-screen bg-white border-r border-border flex flex-col z-[5000] transition-all duration-300 ${
-        isCollapsed ? "w-18" : "w-60"
-      }`}
-    >
-      {/* Expand/Collapse Button at the Top */}
-      <div className="absolute top-3 left-5 z-[5100]">
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="flex items-center justify-center w-8 h-8 transition-colors rounded-md hover:bg-surface"
-        >
-          {isCollapsed ? (
-            <LucidePanelRightClose
-              size={20}
-              className="text-text-muted"
-              strokeWidth={1.8}
-            />
-          ) : (
-            <LucidePanelLeftClose
-              size={20}
-              className="text-text-muted"
-              strokeWidth={1.8}
-            />
-          )}
-        </button>
-      </div>
-
-      {/* Logo & Business Name */}
-      <div className="p-4 border-b pt-14 border-border">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center flex-shrink-0 w-10 h-10 rounded-lg bg-primary">
-            <Icon name="Store" size={20} color="white" />
-          </div>
-          {!isCollapsed && (
-            <div className="flex-1 min-w-0">
-              <h1 className="text-lg font-semibold truncate font-heading text-text-primary">
-                {vendorData?.business_name || "My Store"}
-              </h1>
-              <p className="text-sm truncate text-text-muted">
-                Vendor Dashboard
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Navigation */}
+  // --- Shared Navigation Content ---
+  const NavContent = ({ mobile = false }: { mobile?: boolean }) => (
+    <>
+      {/* Navigation Links */}
       <nav className="flex-1 p-4 overflow-y-auto">
         <div className="space-y-1">
-          {navigationItems.map(item => (
+          {navigationItems.map((item) => (
             <button
               key={item.path}
               onClick={() => handleNavigation(item.path)}
@@ -138,11 +96,11 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
                 pathname === item.path
                   ? "bg-gray-500 text-primary-foreground"
                   : "text-text-secondary hover:text-text-primary hover:bg-surface"
-              } ${isCollapsed ? "justify-center" : "space-x-3"}`}
-              title={isCollapsed ? item.label : ""}
+              } ${isCollapsed && !mobile ? "justify-center" : "space-x-3"}`}
+              title={isCollapsed && !mobile ? item.label : ""}
             >
-              <Icon name={item.icon as any} size={isCollapsed ? 28 : 20} />
-              {!isCollapsed && <span>{item.label}</span>}
+              <Icon name={item.icon as any} size={isCollapsed && !mobile ? 28 : 20} />
+              {(!isCollapsed || mobile) && <span>{item.label}</span>}
             </button>
           ))}
         </div>
@@ -161,7 +119,7 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
             className={`flex items-center w-full p-2 transition-colors rounded-lg hover:bg-surface ${
-              isCollapsed ? "justify-center" : "space-x-3"
+              isCollapsed && !mobile ? "justify-center" : "space-x-3"
             }`}
           >
             <div className="flex items-center justify-center flex-shrink-0 w-10 h-10 rounded-full bg-primary">
@@ -170,7 +128,7 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
               </span>
             </div>
 
-            {!isCollapsed && (
+            {(!isCollapsed || mobile) && (
               <>
                 <div className="flex-1 min-w-0 text-left">
                   <p className="text-sm font-medium truncate text-text-primary">
@@ -180,7 +138,6 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
                     {vendorData?.email}
                   </p>
                 </div>
-                {/* Restored Dropdown Icon */}
                 <Icon
                   name="ChevronDown"
                   size={16}
@@ -195,9 +152,10 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
           {showUserMenu && (
             <div
               className={`absolute bottom-full mb-2 border rounded-lg bg-card border-border shadow-elevated z-[5002] ${
-                isCollapsed ? "left-full ml-2 w-56" : "left-0 right-0"
+                isCollapsed && !mobile ? "left-full ml-2 w-56" : "left-0 right-0"
               }`}
             >
+              {/* Dropdown Content */}
               <div className="p-4 border-b border-border">
                 <p className="font-medium text-text-primary">
                   {vendorData?.first_name} {vendorData?.last_name}
@@ -212,9 +170,7 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
                     }`}
                   ></div>
                   <span className="text-xs text-text-muted">
-                    {vendorData?.isVerified
-                      ? "Verified"
-                      : "Pending Verification"}
+                    {vendorData?.isVerified ? "Verified" : "Pending Verification"}
                   </span>
                 </div>
               </div>
@@ -230,7 +186,6 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
                   <Icon name="User" size={16} className="text-text-muted" />
                   <span className="text-sm text-text-secondary">Profile</span>
                 </button>
-
                 <button
                   onClick={() => {
                     handleNavigation("/vendor/settings");
@@ -241,7 +196,6 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
                   <Icon name="Settings" size={16} className="text-text-muted" />
                   <span className="text-sm text-text-secondary">Settings</span>
                 </button>
-
                 <button
                   onClick={() => {
                     router.push("/");
@@ -249,18 +203,10 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
                   }}
                   className="flex items-center w-full px-3 py-2 space-x-3 text-left transition-colors rounded-lg hover:bg-surface"
                 >
-                  <Icon
-                    name="ExternalLink"
-                    size={16}
-                    className="text-text-muted"
-                  />
-                  <span className="text-sm text-text-secondary">
-                    View Customer App
-                  </span>
+                  <Icon name="ExternalLink" size={16} className="text-text-muted" />
+                  <span className="text-sm text-text-secondary">View Customer App</span>
                 </button>
-
                 <hr className="my-2 border-border" />
-
                 <button
                   onClick={() => {
                     onLogout();
@@ -276,7 +222,114 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
           )}
         </div>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* ================= MOBILE HEADER (Hamburger) ================= */}
+      <div className="lg:hidden  fixed top-0 left-0 right-0 h-16 bg-white border-b border-border z-[4999] flex items-center justify-between px-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="p-2 -ml-2 rounded-md hover:bg-surface text-text-primary"
+          >
+            <Menu size={24} />
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary">
+              <Icon name="Store" size={16} color="white" />
+            </div>
+            <h1 className="text-base font-semibold truncate font-heading text-text-primary max-w-[150px]">
+              {vendorData?.business_name || "My Store"}
+            </h1>
+          </div>
+        </div>
+      </div>
+
+      {/* ================= MOBILE SLIDE-OVER MENU ================= */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-[6000] lg:hidden">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          
+          {/* Drawer */}
+          <aside className="absolute top-0 left-0 bottom-0 w-64 bg-white border-r border-border flex flex-col shadow-2xl animate-in slide-in-from-left duration-300">
+             <div className="p-4 border-b border-border flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                   <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                      <Icon name="Store" size={16} color="white" />
+                   </div>
+                   <span className="font-bold text-lg">Menu</span>
+                </div>
+                <button 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-1 rounded-md hover:bg-surface"
+                >
+                   <X size={20} />
+                </button>
+             </div>
+             
+             {/* Reuse Navigation Logic */}
+             <NavContent mobile={true} />
+          </aside>
+        </div>
+      )}
+
+      {/* ================= DESKTOP SIDEBAR (Existing) ================= */}
+      <aside
+        className={`hidden lg:flex fixed left-0 top-0 h-screen bg-white border-r border-border flex-col z-[5000] transition-all duration-300 ${
+          isCollapsed ? "w-18" : "w-60"
+        }`}
+      >
+        {/* Collapse Button */}
+        <div className="absolute top-3 left-5 z-[5100]">
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="flex items-center justify-center w-8 h-8 transition-colors rounded-md hover:bg-surface"
+          >
+            {isCollapsed ? (
+              <LucidePanelRightClose
+                size={20}
+                className="text-text-muted"
+                strokeWidth={1.8}
+              />
+            ) : (
+              <LucidePanelLeftClose
+                size={20}
+                className="text-text-muted"
+                strokeWidth={1.8}
+              />
+            )}
+          </button>
+        </div>
+
+        {/* Desktop Header Logo */}
+        <div className="p-4 border-b pt-14 border-border">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center flex-shrink-0 w-10 h-10 rounded-lg bg-primary">
+              <Icon name="Store" size={20} color="white" />
+            </div>
+            {!isCollapsed && (
+              <div className="flex-1 min-w-0">
+                <h1 className="text-lg font-semibold truncate font-heading text-text-primary">
+                  {vendorData?.business_name || "My Store"}
+                </h1>
+                <p className="text-sm truncate text-text-muted">
+                  Vendor Dashboard
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Reuse Navigation Logic */}
+        <NavContent />
+      </aside>
+    </>
   );
 };
 
