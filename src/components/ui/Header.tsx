@@ -484,7 +484,6 @@
 // };
 
 // export default Header;
-
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
@@ -540,16 +539,22 @@ const Header: React.FC = () => {
   // --- TEST MODE: Sync with LocalStorage ---
   useEffect(() => {
     const checkAuth = () => {
+      // Updated keys to match our signup/profile logic
       const loggedIn = localStorage.getItem("isLoggedIn") === "true";
-      const userData = localStorage.getItem("user");
+      const userData = localStorage.getItem("pendingUserData"); // Check pendingUserData first
+      const fallbackData = localStorage.getItem("user"); // Fallback to 'user'
       
       setMockIsLoggedIn(loggedIn);
-      if (userData) setMockUser(JSON.parse(userData));
+      if (userData) {
+        setMockUser(JSON.parse(userData));
+      } else if (fallbackData) {
+        setMockUser(JSON.parse(fallbackData));
+      }
+
       setMockLoading(false);
     };
 
     checkAuth();
-    // Listen for storage changes (in case of login in another tab)
     window.addEventListener("storage", checkAuth);
     return () => window.removeEventListener("storage", checkAuth);
   }, []);
@@ -606,7 +611,6 @@ const Header: React.FC = () => {
     },
   ];
 
-  // --- helper functions ---
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => {
     setIsModalOpen(false);
@@ -622,6 +626,8 @@ const Header: React.FC = () => {
     
     // --- MOCK LOGOUT ---
     localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("pendingUserData"); // Clear our test data
+    localStorage.removeItem("userVerified");
     localStorage.removeItem("user");
     localStorage.removeItem("isAdminLoggedIn");
     sessionStorage.removeItem("RSToken");
@@ -753,15 +759,9 @@ const Header: React.FC = () => {
                     <Button type="button" onClick={() => router.push(user?.role === 'vendor' ? "/vendor/dashboard" : "/user-profile")} className="w-full text-left p-3 hover:bg-surface-secondary flex items-center gap-2 text-sm font-medium">
                         <Icon name="User" size={16} /> My Profile
                     </Button>
-                    
-                    <Button type="button" onClick={handleLogout} className="w-full text-left p-3 text-white bg-red-600 hover:bg-red-700 flex items-center gap-2 text-sm font-medium">
-                      <Icon name="LogOut" size={16} /> Logout
-                    </Button>
-                    <div
-                    onClick={(e) => e.stopPropagation()}
-                    className=" gap-3  overflow-hidden bg-white border rounded-lg shadow-xl w-full "
-                  >
-                    {user?.role !== "vendor" && user?.role !== "both" ? (
+
+                    {/* VENDOR/SHOPPER LOGIC */}
+                    {user?.role === "shopper" ? (
                       <Button
                         type="button"
                         onClick={() => router.push("/auth/vendor-onboarding")}
@@ -779,7 +779,9 @@ const Header: React.FC = () => {
                       </Button>
                     )}
                     
-                   </div>
+                    <Button type="button" onClick={handleLogout} className="w-full text-left p-3 text-white bg-red-600 hover:bg-red-700 flex items-center gap-2 text-sm font-medium">
+                      <Icon name="LogOut" size={16} /> Logout
+                    </Button>
                   </div>
                 )}
               </div>
@@ -798,6 +800,26 @@ const Header: React.FC = () => {
                    <div className="absolute right-0 z-10 flex flex-col gap-2 p-4 mt-2 bg-white border rounded-lg shadow-xl w-60 border-surface-border">
                      <span className="pb-2 text-sm font-bold border-b">Hi, {getFirstName()}</span>
                      <button onClick={handleCartOpen} className="flex items-center px-4 py-2 text-sm font-medium bg-gray-100 rounded-lg"><ShoppingCart size={16} className="mr-2" /> Cart</button>
+                     
+                    {/* MOBILE VENDOR LOGIC */}
+                    {user?.role === "shopper" ? (
+                      <Button
+                        type="button"
+                        onClick={() => router.push("/auth/vendor-onboarding")}
+                        className="flex items-center w-full gap-2 p-3 text-sm font-medium text-left hover:bg-surface-secondary"
+                      >
+                        <Store size={16} /> Become a Vendor
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        onClick={() => router.push("/vendor/dashboard")}
+                        className="flex items-center w-full gap-2 p-3 text-sm font-medium text-left hover:bg-surface-secondary"
+                      >
+                        <Store size={16} /> Vendor Dashboard
+                      </Button>
+                    )}
+
                      <Button type="button" onClick={handleLogout} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg">Logout</Button>
                    </div>
                  )}

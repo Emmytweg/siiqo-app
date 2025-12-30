@@ -101,7 +101,7 @@
 //     setIsResending(true);
 //     try {
 //       const response = await axios.post(
-//         "https://server.bizengo.com/api/auth/resend-otp",
+//         "https://server.siiqo.com/api/auth/resend-otp",
 //         { email: email },
 //         {
 //           headers: {
@@ -174,7 +174,7 @@
 //       try {
 //         // Try HTTPS first
 //         response = await axios.post(
-//           "https://server.bizengo.com/api/auth/verify-email",
+//           "https://server.siiqo.com/api/auth/verify-email",
 //           requestBody,
 //           {
 //             headers: {
@@ -189,7 +189,7 @@
 //         );
 //         // Fallback to HTTP for development
 //         response = await axios.post(
-//           "http://server.bizengo.com/api/auth/verify-email",
+//           "http://server.siiqo.com/api/auth/verify-email",
 //           requestBody,
 //           {
 //             headers: {
@@ -407,7 +407,7 @@
 
 "use client";
 import { useState, useEffect, Suspense } from "react";
-import { ArrowLeft, Sparkles, Clock } from "lucide-react";
+import { ArrowLeft, Sparkles, Clock, UserCheck } from "lucide-react";
 import Link from "next/link";
 import {
   Card,
@@ -429,6 +429,7 @@ import { Button } from "@/components/ui/button";
 
 const VerifyOtpPage = () => {
   const [email, setEmail] = useState<string | null>(null);
+  const [userData, setUserData] = useState<any>(null);
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -441,23 +442,24 @@ const VerifyOtpPage = () => {
   useEffect(() => {
     const urlEmail = searchParams.get("email");
     const sessionEmail = sessionStorage.getItem("RSEmail");
+    
+    // RETRIEVE FROM LOCAL STORAGE
+    const savedPendingData = localStorage.getItem("pendingUserData");
+    const isPending = localStorage.getItem("isRegistrationPending");
 
-    let foundEmail = null;
-    if (urlEmail) {
-      foundEmail = urlEmail;
-    } else if (sessionEmail) {
-      foundEmail = sessionEmail;
-    }
-
-    if (foundEmail) {
-      setEmail(foundEmail);
+    if (savedPendingData) {
+      const parsedData = JSON.parse(savedPendingData);
+      setUserData(parsedData);
+      setEmail(parsedData.email);
+    } else if (urlEmail || sessionEmail) {
+      setEmail(urlEmail || sessionEmail);
     } else {
-      // FOR TESTING: If no email is found, don't kick user out immediately
+      // FALLBACK FOR TESTING
       setEmail("test@example.com");
       /* --- LIVE CODE ---
       toast({
-        title: "Error",
-        description: "Email not found. Please signup or login.",
+        title: "Session Expired",
+        description: "Please signup again.",
         variant: "destructive",
       });
       router.push("/auth/signup");
@@ -507,15 +509,14 @@ const VerifyOtpPage = () => {
     try {
       /* --- LIVE CODE (COMMENTED OUT) ---
       const response = await axios.post(
-        "https://server.bizengo.com/api/auth/resend-otp",
+        "https://server.siiqo.com/api/auth/resend-otp",
         { email: email },
         { headers: { "Content-Type": "application/json" } }
       );
-      if (response.data.status === "success") { ... }
       */
 
       // --- TEMPORARY TESTING CODE (MOCK) ---
-      await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate delay
+      await new Promise((resolve) => setTimeout(resolve, 1500)); 
       
       toast({
         title: "OTP Sent (MOCK)",
@@ -554,18 +555,25 @@ const VerifyOtpPage = () => {
     try {
       /* --- LIVE CODE (COMMENTED OUT) ---
       const requestBody = { email, otp };
-      const response = await axios.post("https://server.bizengo.com/api/auth/verify-email", requestBody);
-      ... 
+      const response = await axios.post("https://server.siiqo.com/api/auth/verify-email", requestBody);
+      if (response.data.status === "success") {
+         localStorage.setItem("isRegistrationPending", "false");
+         localStorage.setItem("userVerified", "true");
+         // ... rest of success logic
+      }
       */
 
       // --- TEMPORARY TESTING CODE (MOCK) ---
-      await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate delay
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      // Accept any OTP for testing, or specifically "123456"
       if (otp === "123456" || otp === "000000") {
+        // UPDATE LOCAL STORAGE STATE
+        localStorage.setItem("isRegistrationPending", "false"); // No longer pending
+        localStorage.setItem("userVerified", "true"); 
+        
         toast({
-          title: "Success (MOCK)",
-          description: "OTP verified successfully! Redirecting to login...",
+          title: "Account Verified!",
+          description: `Welcome ${userData?.name || 'User'}! Redirecting to login...`,
         });
 
         sessionStorage.removeItem("RSEmail");
@@ -574,7 +582,6 @@ const VerifyOtpPage = () => {
           router.push("/auth/login");
         }, 1500);
       } else {
-        // Allow anything for testing but maybe show an error for other numbers to test UI
         toast({
           title: "Invalid OTP",
           description: "For testing, please use 123456.",
@@ -608,24 +615,28 @@ const VerifyOtpPage = () => {
 
         <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
           <CardHeader className="text-center pb-2">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <Sparkles className="h-6 w-6 text-white" />
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-200">
+              <UserCheck className="h-6 w-6 text-white" />
             </div>
-            <CardTitle className="text-2xl font-bold">Verify OTP</CardTitle>
+            <CardTitle className="text-2xl font-bold">Verify Your Email</CardTitle>
             <CardDescription>
-              Enter the 6-digit OTP sent to your email
+              We've saved your details. Just one more step!
             </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-4">
             {email && (
-              <div className="text-center">
-                An OTP has been sent to <b>{email}</b>.
-                <p className="text-xs text-blue-500 mt-1">(Test Mode: Use 123456)</p>
+              <div className="text-center p-4 bg-blue-50/50 rounded-xl border border-blue-100">
+                <p className="text-sm text-gray-600">Verification code sent to:</p>
+                <p className="font-semibold text-gray-900">{email}</p>
+                {userData?.name && (
+                  <p className="text-xs text-gray-500 mt-1">Account for: {userData.name}</p>
+                )}
+                <p className="text-[10px] font-bold text-blue-600 mt-2 uppercase tracking-wider">Test Mode: Use 123456</p>
               </div>
             )}
 
-            <div className="flex items-center justify-center gap-2 p-3 bg-gray-50 rounded-lg border">
+            <div className="flex items-center justify-center gap-2 p-3 bg-white rounded-lg border shadow-sm">
               <Clock
                 className={`h-4 w-4 ${
                   isOtpExpired ? "text-red-500" : otpTimer <= 120 ? "text-orange-500" : "text-blue-500"
@@ -641,22 +652,22 @@ const VerifyOtpPage = () => {
 
             {isOtpExpired && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-center">
-                <p className="text-red-600 text-sm font-medium">Your OTP has expired. Please request a new one.</p>
+                <p className="text-red-600 text-sm font-medium">Your OTP has expired.</p>
               </div>
             )}
 
-            <div className="flex justify-center">
-              <InputOTP maxLength={6} value={otp} onChange={handleOtpChange} disabled={isOtpExpired}>
+            <div className="flex justify-center py-2">
+              <InputOTP maxLength={6} value={otp} onChange={handleOtpChange} disabled={isOtpExpired || isLoading}>
                 <InputOTPGroup>
-                  <InputOTPSlot index={0} />
-                  <InputOTPSlot index={1} />
-                  <InputOTPSlot index={2} />
+                  <InputOTPSlot index={0} className="h-12 w-10 md:w-12" />
+                  <InputOTPSlot index={1} className="h-12 w-10 md:w-12" />
+                  <InputOTPSlot index={2} className="h-12 w-10 md:w-12" />
                 </InputOTPGroup>
                 <InputOTPSeparator />
                 <InputOTPGroup>
-                  <InputOTPSlot index={3} />
-                  <InputOTPSlot index={4} />
-                  <InputOTPSlot index={5} />
+                  <InputOTPSlot index={3} className="h-12 w-10 md:w-12" />
+                  <InputOTPSlot index={4} className="h-12 w-10 md:w-12" />
+                  <InputOTPSlot index={5} className="h-12 w-10 md:w-12" />
                 </InputOTPGroup>
               </InputOTP>
             </div>
@@ -664,30 +675,31 @@ const VerifyOtpPage = () => {
             <Button
               onClick={handleVerifyOtp}
               disabled={isLoading || !email || otp.length !== 6 || isOtpExpired}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50"
+              className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all shadow-md"
             >
-              {isLoading ? "Verifying..." : "Verify OTP"}
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 animate-spin" /> Verifying...
+                </span>
+              ) : "Complete Registration"}
             </Button>
 
-            <div className="text-center text-sm text-gray-600">
+            <div className="text-center text-sm text-gray-600 pt-2">
               {isOtpExpired ? (
-                <div className="space-y-2">
-                  <p>Your OTP has expired.</p>
-                  <button
-                    onClick={handleResendOtp}
-                    disabled={isResending || countdown > 0}
-                    className="text-blue-600 hover:text-blue-700 font-medium bg-blue-50 px-4 py-2 rounded-lg border border-blue-200"
-                  >
-                    {isResending ? "Sending New OTP..." : countdown > 0 ? `Wait ${countdown}s` : "Send New OTP"}
-                  </button>
-                </div>
+                <button
+                  onClick={handleResendOtp}
+                  disabled={isResending || countdown > 0}
+                  className="text-blue-600 hover:underline font-medium"
+                >
+                  {isResending ? "Sending New OTP..." : countdown > 0 ? `Wait ${countdown}s` : "Request New Code"}
+                </button>
               ) : (
                 <div>
                   Didn't receive the code?{" "}
                   <button
                     onClick={handleResendOtp}
                     disabled={isResending || countdown > 0}
-                    className="text-blue-600 hover:text-blue-700 font-medium"
+                    className="text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
                   >
                     {isResending ? "Sending..." : countdown > 0 ? `Resend in ${countdown}s` : "Resend OTP"}
                   </button>

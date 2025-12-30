@@ -12,7 +12,7 @@ import PerformanceChart from "./components/PerformanceChart";
 import NotificationPanel from "./components/NotificationPanel";
 import RecentOrders from "./components/RecentOrders";
 import ProductOverview from "./components/ProductOverview";
-
+import RoleProtectedRoute from "@/components/auth/RoleProtectedRoute";
 const VendorDashboard: React.FC = () => {
   const { user, isLoading: isAuthLoading } = useAuth();
   const { dashboardData, isLoading: isDashboardLoading } = useVendorDashboard();
@@ -43,6 +43,7 @@ const VendorDashboard: React.FC = () => {
   }
 
   return (
+    <RoleProtectedRoute allowedRoles={["vendor"]}>
     <div className="min-h-screen bg-background mt-14 md:mt-0 pb-10">
       {/* 
         Responsive Container:
@@ -111,6 +112,7 @@ const VendorDashboard: React.FC = () => {
         </div>
       </main>
     </div>
+    </RoleProtectedRoute>
   );
 };
 

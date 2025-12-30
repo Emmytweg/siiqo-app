@@ -1,4 +1,5 @@
 // types/vendor/settings
+import { Store } from 'lucide-react';
 
 export interface UserProfileData {
   id: number;
@@ -23,6 +24,7 @@ export interface UserProfileData {
 }
 export interface VendorData {
   business_name?: string;
+  store_name?: string;
   first_name?: string;
   last_name?: string;
   email?: string;

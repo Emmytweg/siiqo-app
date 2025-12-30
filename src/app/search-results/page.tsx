@@ -26,7 +26,7 @@ const MOCK_PRODUCTS = [
   {
     id: 1,
     name: "Mini Q12",
-    image: "https://api.bizengo.com/images/products/17_a7388584e71843ceac2bab17294dd407.jpeg",
+    image: "https://api.siiqo.com/images/products/17_a7388584e71843ceac2bab17294dd407.jpeg",
     price: 10500,
     originalPrice: 12600,
     seller: "The best",

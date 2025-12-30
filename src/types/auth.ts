@@ -51,7 +51,7 @@ export const MOCK_USER: UserData = {
   id: "999",
   account_id: "ACC-TEST-001",
   name: "Test User",
-  email: "test@bizengo.com",
+  email: "test@siiqo.com",
   role: "shopper",
   phone: "08012345678",
   country: "Nigeria",

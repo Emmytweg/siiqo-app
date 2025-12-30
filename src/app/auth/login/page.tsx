@@ -20,6 +20,7 @@ import {
   XCircle,
   X,
   LockKeyhole,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { jwtDecode } from "jwt-decode";
@@ -159,44 +160,59 @@ const handleLogin = async (e: React.FormEvent) => {
   }
 
   setIsLoading(true);
-  showNotification("info", "Signing You In", "TEST MODE: Verifying credentials locally...");
+  showNotification("info", "Signing You In", "Verifying credentials...");
 
   try {
-    // --- LIVE CODE (COMMENTED OUT) ---
-    /* 
-    await login(email, password);
-    const token = sessionStorage.getItem("RSToken");
-    if (token) {
-      const decodedToken = jwtDecode<DecodedToken>(token);
-      const userRole = decodedToken.role ? decodedToken.role.toLowerCase() : "";
-    */
-
     // --- TEMPORARY TESTING CODE (LOCALSTORAGE/MOCK) ---
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+// 1. Call the actual Context Login
+    // Note: This will call your authService.login which needs to be mocked (see step 2)
+    await login(email, password);
+// 2. CHECK REGISTRATION STATUS
+    const savedData = localStorage.getItem("pendingUserData");
+    const isPending = localStorage.getItem("isRegistrationPending");
+    const parsedData = savedData ? JSON.parse(savedData) : null;
 
-    // 1. Create a dummy token and store it
-    const dummyToken = "dummy_json_web_token_for_testing";
-    sessionStorage.setItem("RSToken", dummyToken);
-    localStorage.setItem("isLoggedIn", "true");
-
-    // 2. Define Mock Roles based on email for testing
-    let userRole = "customer"; // Default
+    if (parsedData && parsedData.email === email && isPending === "true") {
+      closeNotification();
+      showNotification("error", "Verification Required", "Redirecting to OTP...");
+      setTimeout(() => router.push(`/auth/verify-otp?email=${encodeURIComponent(email)}`), 2000);
+      return;
+    }
+    // 2. Handle Mock/Testing Logic for Redirection
+    // 3. Determine Role for Redirection
+    let userRole = "customer"; 
     if (email.toLowerCase().includes("admin")) userRole = "admin";
     else if (email.toLowerCase().includes("vendor")) userRole = "vendor";
     else if (email.toLowerCase().includes("shopping")) userRole = "shopping";
 
-    // 3. Mock logic for Admin
-    if (userRole === "admin") {
-      // FIX: Changed 'token' to 'dummyToken' because 'token' is commented out above
-      localStorage.setItem("adminToken", dummyToken);
-      localStorage.setItem("isAdminLoggedIn", "true");
-    }
-    // --- END TESTING CODE ---
+    // MOCK: Ensure the role is in storage for the ProtectedRoute to see
+    sessionStorage.setItem("RSUserRole", userRole);
+    localStorage.setItem("isLoggedIn", "true");
 
     closeNotification();
 
-    // 1. Priority: Redirect URL (Checking params first)
+    // 2. MOCK LOGIN VERIFICATION (Allow if verified or if just testing general login)
+    const dummyToken = "dummy_json_web_token_for_testing";
+    sessionStorage.setItem("RSToken", dummyToken);
+    localStorage.setItem("isLoggedIn", "true");
+
+    if (email.toLowerCase().includes("admin")) userRole = "admin";
+    else if (email.toLowerCase().includes("vendor")) userRole = "vendor";
+    else if (email.toLowerCase().includes("shopping")) userRole = "shopping";
+
+    if (userRole === "admin") {
+      localStorage.setItem("adminToken", dummyToken);
+      localStorage.setItem("isAdminLoggedIn", "true");
+    }
+
+    // --- LIVE CODE (COMMENTED OUT) ---
+    /* await login(email, password);
+    const token = sessionStorage.getItem("RSToken");
+    ... 
+    */
+
+    closeNotification();
+
     const paramRedirect = searchParams.get("redirect") || searchParams.get("callbackUrl");
     const storageRedirect = sessionStorage.getItem("redirectUrl");
     const intendedDestination = paramRedirect || storageRedirect;
@@ -210,7 +226,6 @@ const handleLogin = async (e: React.FormEvent) => {
       return;
     }
 
-    // 2. Role Based Routing
     if (userRole === "admin") {
       showNotification("success", "Admin Access Granted!", "Redirecting to admin panel...");
       setTimeout(() => router.push("/Administration"), 1500);
@@ -221,19 +236,13 @@ const handleLogin = async (e: React.FormEvent) => {
     } 
     else if (["shopping", "shopper", "customer"].includes(userRole)) {
       showNotification("success", "Login Successful!", "Redirecting to your dashboard...");
-      // setTimeout(() => router.push("/shopping/dashboard"), 1500);
-      setTimeout(()=> router.push("/seller-details"), 1500)
+      setTimeout(()=> router.push("/user-profile"), 1500)
     } 
     else {
       showNotification("success", "Welcome Back!", "Redirecting to marketplace...");
       setTimeout(() => router.push("/marketplace"), 1500);
     }
 
-    /* 
-    } else {
-      throw new Error("No access token received");
-    } 
-    */
   } catch (error: any) {
     closeNotification();
     showNotification("error", "Login Failed", error.message || "Invalid credentials. Please try again.");
@@ -253,8 +262,6 @@ const handleLogin = async (e: React.FormEvent) => {
       />
 
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#F3F4F6] p-4 lg:p-8">
-        
-        {/* Background Pattern */}
         <div className="fixed inset-0 z-0 opacity-40 pointer-events-none">
             <div className="absolute top-[-10%] left-[-10%] h-[500px] w-[500px] rounded-full bg-purple-200/50 blur-[100px]" />
             <div className="absolute bottom-[-10%] right-[-10%] h-[500px] w-[500px] rounded-full bg-blue-200/50 blur-[100px]" />

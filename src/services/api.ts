@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = "https://server.bizengo.com/api";
+const API_BASE_URL = "https://server.siiqo.com/api";
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,

@@ -165,7 +165,7 @@ const AdminDashboard: React.FC = () => {
                   Admin Dashboard
                 </h1>
                 <p className="text-xs text-gray-500 hidden md:block">
-                  Bizengo Management Portal
+                  siiqo Management Portal
                 </p>
               </div>
               <h1 className="text-lg font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent sm:hidden">

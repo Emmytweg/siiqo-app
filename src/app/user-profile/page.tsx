@@ -490,7 +490,6 @@
 
 // export default UserProfile;
 
-
 "use client";
 import React, { useState, useEffect } from "react";
 import Icon from "@/components/ui/AppIcon";
@@ -502,7 +501,7 @@ import Settings from "./components/Settings";
 import { useRouter } from "next/navigation";
 import { QuickAction, Tab, UserProfileData } from "@/types/userProfile";
 import { userService } from "@/services/userService";
-
+import RoleProtectedRoute from "@/components/auth/RoleProtectedRoute";
 // --- DUMMY FALLBACK DATA ---
 const DUMMY_USER_FALLBACK: Partial<UserProfileData> = {
   id: 999,
@@ -516,7 +515,7 @@ const DUMMY_USER_FALLBACK: Partial<UserProfileData> = {
 };
 
 const UserProfile = () => {
-  const [activeTab, setActiveTab] = useState<string>("history"); // Defaulted to history since listings is commented out
+  const [activeTab, setActiveTab] = useState<string>("history");
   const [user, setUser] = useState<UserProfileData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const router = useRouter();
@@ -525,11 +524,11 @@ const UserProfile = () => {
 
   // Persistence Helper for testing locally
   const updateLocalStorageUser = (key: string, value: string) => {
-    const savedUserJson = localStorage.getItem("user");
+    const savedUserJson = localStorage.getItem("pendingUserData"); // Updated key to match signup flow
     if (savedUserJson) {
       const userObj = JSON.parse(savedUserJson);
       userObj[key] = value;
-      localStorage.setItem("user", JSON.stringify(userObj));
+      localStorage.setItem("pendingUserData", JSON.stringify(userObj));
     }
   };
 
@@ -537,23 +536,13 @@ const UserProfile = () => {
     if (!file) return;
     setUploading(true);
     try {
-      // --- MOCK LOGIC ---
       const localUrl = URL.createObjectURL(file);
-      await new Promise(r => setTimeout(r, 1000)); // Simulate delay
+      await new Promise(r => setTimeout(r, 1000)); 
       
       setUser(prev => prev ? { ...prev, profile_pic_url: localUrl } : null);
       updateLocalStorageUser("profile_pic_url", localUrl);
       
       alert("Test Mode: Profile picture updated locally!");
-
-      /* --- LIVE CODE (COMMENTED OUT) ---
-      const formData = new FormData();
-      formData.append("profile_pic", file);
-      const response = await userService.uploadProfilePicture(formData);
-      if (response.data?.profile_pic_url || response.profile_pic_url) {
-        window.location.reload();
-      }
-      */
     } catch (error) {
       console.error("Upload error:", error);
     } finally {
@@ -565,21 +554,13 @@ const UserProfile = () => {
     if (!file) return;
     setUploadingCover(true);
     try {
-      // --- MOCK LOGIC ---
       const localUrl = URL.createObjectURL(file);
-      await new Promise(r => setTimeout(r, 1000)); // Simulate delay
+      await new Promise(r => setTimeout(r, 1000)); 
 
       setUser(prev => prev ? { ...prev, cover_photo_url: localUrl } as any : null);
       updateLocalStorageUser("cover_photo_url", localUrl);
 
       alert("Test Mode: Cover photo updated locally!");
-
-      /* --- LIVE CODE (COMMENTED OUT) ---
-      const formData = new FormData();
-      formData.append("cover_photo", file);
-      let response = await userService.uploadProfilePicture(formData);
-      window.location.reload();
-      */
     } catch (error) {
       console.error("Cover upload error:", error);
     } finally {
@@ -607,27 +588,29 @@ const UserProfile = () => {
     const loadProfile = async () => {
       setLoading(true);
       
-      // Simulate network delay
       await new Promise(r => setTimeout(r, 800));
 
-      // Check LocalStorage first (data from our dummy login/signup)
-      const savedUserJson = localStorage.getItem("user");
+      // 1. EXTRACT DATA FROM LOCAL STORAGE (SYNC WITH SIGNUP/LOGIN)
+      const pendingUserData = localStorage.getItem("pendingUserData");
+      const userVerified = localStorage.getItem("userVerified") === "true";
       const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
 
-      if (savedUserJson) {
+      if (pendingUserData) {
         try {
-          const parsed = JSON.parse(savedUserJson);
+          const parsed = JSON.parse(pendingUserData);
           setUser({
             ...DUMMY_USER_FALLBACK,
             ...parsed,
-            // Ensure image fields match component expectations
-            profile_pic_url: parsed.profile_pic_url || parsed.profile_pic || DUMMY_USER_FALLBACK.profile_pic_url,
+            // Ensure we use the verified data if available
+            name: parsed.name || DUMMY_USER_FALLBACK.name,
+            email: parsed.email || DUMMY_USER_FALLBACK.email,
+            phone: parsed.phone || DUMMY_USER_FALLBACK.phone,
+            profile_pic_url: parsed.profile_pic_url || DUMMY_USER_FALLBACK.profile_pic_url,
           } as UserProfileData);
         } catch (e) {
           setUser(DUMMY_USER_FALLBACK as UserProfileData);
         }
       } else {
-        // If nothing in storage, use fallback for testing
         setUser(DUMMY_USER_FALLBACK as UserProfileData);
       }
 
@@ -651,7 +634,7 @@ const UserProfile = () => {
   const userProfile = user
     ? {
         id: user.id,
-        name: user.name || user.business_name || "Test User",
+        name: user.name || (user as any).business_name || "Test User",
         email: user.email,
         phone: user.phone || "Not provided",
         avatar: user.profile_pic_url || defaultAvatar,
@@ -727,16 +710,14 @@ const UserProfile = () => {
   if (!userProfile) return null;
 
   return (
+    <RoleProtectedRoute allowedRoles={["shopper", "customer", "shopping"]}>
     <div className="min-h-screen h-full bg-background pb-10">
-      {/* Cover Section */}
       <div className="relative">
         <div
           className="h-40 md:h-64 w-full bg-center bg-cover relative group"
           style={{ backgroundImage: `url(${userProfile.cover})` }}
         >
           <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-all" />
-
-          {/* Change Cover */}
           <div className="absolute right-3 top-3">
             <label className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-bold bg-white/90 backdrop-blur-sm rounded-full shadow-sm cursor-pointer hover:bg-white transition-all">
               {uploadingCover ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Camera" size={14} />}
@@ -745,13 +726,11 @@ const UserProfile = () => {
             </label>
           </div>
 
-          {/* Avatar Section */}
           <div className="absolute left-1/2 transform -translate-x-1/2 -bottom-10 md:-bottom-14 flex items-end">
             <div className="relative group/avatar">
               <div className="w-24 h-24 md:w-36 md:h-36 rounded-full overflow-hidden border-[6px] border-white bg-gray-100 shadow-xl">
                 <Image src={userProfile.avatar} alt={userProfile.name} fill className="object-cover" sizes="150px" />
               </div>
-
               <div
                 className="absolute right-1 bottom-1 bg-white rounded-full p-2 shadow-lg border border-gray-100 cursor-pointer hover:scale-110 transition-transform"
                 onClick={() => document.getElementById("profile-pic-input")?.click()}
@@ -765,7 +744,6 @@ const UserProfile = () => {
 
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="h-14 md:h-20" />
-
         <div className="text-center mb-6">
           <h1 className="text-2xl md:text-3xl font-heading font-extrabold text-text-primary">
             {userProfile.name}
@@ -779,15 +757,10 @@ const UserProfile = () => {
             <div>Joined {userProfile.joinDate}</div>
           </div>
 
-          {/* Mobile Actions */}
           <div className="mt-6 md:hidden">
             <div className="flex justify-center gap-4">
               {quickActions.map((a) => (
-                <button
-                  key={a.id}
-                  onClick={a.action}
-                  className="flex flex-col items-center gap-1"
-                >
+                <button key={a.id} onClick={a.action} className="flex flex-col items-center gap-1">
                   <div className={`p-4 rounded-2xl ${a.color} shadow-sm border border-gray-100 relative`}>
                     <Icon name={a.icon} size={20} />
                     {a.badge && (
@@ -804,7 +777,6 @@ const UserProfile = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-          {/* Main Area */}
           <main className="md:col-span-8 order-1 md:order-2">
             <div className="mb-6 border rounded-2xl bg-surface border-border shadow-sm overflow-hidden min-h-[500px]">
               <div className="flex border-b border-border bg-gray-50/50 overflow-x-auto scrollbar-hide">
@@ -831,17 +803,14 @@ const UserProfile = () => {
                   </button>
                 ))}
               </div>
-
               <div className="p-6">{renderTabContent()}</div>
             </div>
           </main>
 
-          {/* Sidebar */}
           <aside className="md:col-span-4 space-y-6 order-2 md:order-1">
             <div className="p-6 border rounded-2xl bg-surface border-border shadow-sm">
               <h3 className="text-xs font-black text-text-primary uppercase tracking-[0.2em] mb-4">About Me</h3>
               <p className="text-sm text-text-secondary leading-relaxed font-medium">{userProfile.bio}</p>
-
               <div className="mt-6 grid grid-cols-3 gap-2 border-t border-gray-50 pt-4">
                 <div className="text-center">
                   <div className="text-lg font-black text-text-primary">{userProfile.stats.itemsListed}</div>
@@ -880,9 +849,9 @@ const UserProfile = () => {
           </aside>
         </div>
       </div>
-
       <input id="profile-pic-input" type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
     </div>
+    </RoleProtectedRoute>
   );
 };
 

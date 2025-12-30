@@ -55,7 +55,7 @@ export default function ForgotPasswordPage() {
   const onSubmit = async (data: FormData) => {
     try {
       const response = await axios.post(
-        "https://server.bizengo.com/api/auth/request-password-reset",
+        "https://server.siiqo.com/api/auth/request-password-reset",
         { email: data.email }
       );
 

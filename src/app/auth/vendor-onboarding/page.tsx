@@ -57,16 +57,7 @@ const countries = [
 
 const statesByCountry: Record<string, string[]> = {
   Nigeria: [
-    "Lagos",
-    "Abuja",
-    "Kano",
-    "Rivers",
-    "Oyo",
-    "Delta",
-    "Kaduna",
-    "Edo",
-    "Plateau",
-    "Kwara",
+    "Lagos", "Abuja", "Kano", "Rivers", "Oyo", "Delta", "Kaduna", "Edo", "Plateau", "Kwara",
   ],
   Ghana: ["Greater Accra", "Ashanti", "Northern", "Western"],
   Kenya: ["Nairobi", "Mombasa", "Kisumu", "Nakuru"],
@@ -90,11 +81,10 @@ const SuccessScreen = () => (
       Registration Successful
     </h2>
     <p className="mt-2 text-sm text-gray-600">
-      Your vendor profile has been submitted and is pending admin approval. Once
-      approved, you&apos;ll receive a confirmation email.
+      Your vendor profile has been submitted and is pending admin approval.
     </p>
-    <p className="mt-4 text-sm text-gray-500">
-      Redirecting you to the vendor login page in 10 seconds...
+    <p className="mt-4 text-sm text-gray-500 font-medium">
+      Redirecting you to login as a Vendor in 5 seconds...
     </p>
   </motion.div>
 );
@@ -104,7 +94,6 @@ const VendorOnboarding = () => {
   const [isCompleted, setIsCompleted] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
-
 
   const {
     register,
@@ -122,8 +111,8 @@ const VendorOnboarding = () => {
       business_type: "",
       country: "",
       state: "",
-      logo_url: undefined, // Changed from "" to undefined
-      banner_url: undefined, // Changed from "" to undefined
+      logo_url: undefined,
+      banner_url: undefined,
       cac_registration_number: "",
       business_id: "",
       website: "",
@@ -134,7 +123,7 @@ const VendorOnboarding = () => {
     if (isCompleted) {
       const timer = setTimeout(() => {
         router.push("/auth/login");
-      }, 10000);
+      }, 5000);
       return () => clearTimeout(timer);
     }
   }, [isCompleted, router]);
@@ -160,75 +149,103 @@ const VendorOnboarding = () => {
     }
   }, [locationDetected, location, setValue]);
 
-  // Handle direct file changes
-  // Note: We don't necessarily need to upload immediately here if the backend expects multipart/form-data
-  // But if your backend requires a URL string, you'd enable the upload logic.
-  // Assuming the `vendorOnboarding` endpoint handles multipart files directly:
-  
+  /* --- LIVE API SUBMISSION (COMMENTED OUT) ---
   const onSubmit = async (data: VendorOnboardingData) => {
     const formData = new FormData();
-    
-    // Iterate and append only valid values
     Object.keys(data).forEach((key) => {
       const value = (data as any)[key];
-      // Skip logo/banner URL strings as we send files, and skip empty optional strings
-      if (key !== "logo_url" && key !== "banner_url" && value !== undefined && value !== null && value !== "") {
+      if (key !== "logo_url" && key !== "banner_url" && value !== "") {
         formData.append(key, value);
       }
     });
-
-    // Append Files manually if they exist
-    if (logoFile) {
-      formData.append("logo_url", logoFile); // Ensure key matches backend expectation (e.g., 'logo' or 'logo_url')
-    }
-    if (bannerFile) {
-      formData.append("banner_url", bannerFile); // Ensure key matches backend expectation
-    }
-
+    if (logoFile) formData.append("logo_url", logoFile);
+    if (bannerFile) formData.append("banner_url", bannerFile);
     try {
       await vendorOnboarding(formData);
-
-      toast({
-        title: "Vendor Onboarding Successful",
-        description:
-          "Your store profile has been successfully created! Redirecting...",
-      });
-
-      // Clear session only if successful
-      sessionStorage.removeItem("RSEmail");
-      sessionStorage.removeItem("RSToken");
-      sessionStorage.removeItem("RSUser");
-      sessionStorage.removeItem("RSUserRole");
-      sessionStorage.removeItem("signupRole");
-      localStorage.removeItem("authToken");
-      sessionStorage.removeItem("user");
-
       setIsCompleted(true);
     } catch (error: any) {
-      console.error("Onboarding error:", error);
-
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Something went wrong. Try again.";
-
-      if (errorMessage.toLowerCase().includes("already a seller")) {
-        toast({
-          variant: "default",
-          title: "Onboarding Already Completed",
-          description: "This account is already a vendor. Redirecting to login...",
-        });
-        router.push("/auth/login");
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Onboarding Failed",
-          description: errorMessage,
-        });
-      }
+      console.error(error);
     }
   };
+  */
 
+  useEffect(() => {
+    const savedData = localStorage.getItem("vendorOnboardingData");
+    if (savedData) {
+      const parsed = JSON.parse(savedData);
+      Object.keys(parsed).forEach((key) => {
+        if (key !== "logo_url" && key !== "banner_url") {
+          setValue(key as keyof VendorOnboardingData, parsed[key]);
+        }
+      });
+    }
+  }, [setValue]);
+
+ // --- MOCK SUBMISSION TO LOCAL STORAGE ---
+const onSubmit = async (data: VendorOnboardingData) => {
+  try {
+    // Helper to convert File to Base64 for LocalStorage persistence
+    const fileToBase64 = (file: File): Promise<string> => 
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = error => reject(error);
+      });
+
+    const logoBase64 = logoFile ? await fileToBase64(logoFile) : null;
+    const bannerBase64 = bannerFile ? await fileToBase64(bannerFile) : null;
+
+    // 1. Prepare Vendor Store Details
+    const vendorStoreData = {
+      ...data,
+      logo_url: logoBase64,
+      banner_url: bannerBase64,
+      status: "approved",
+      onboardedAt: new Date().toISOString(),
+    };
+    
+    // Save these specific store details for the dashboard to read
+    localStorage.setItem("vendorStoreDetails", JSON.stringify(vendorStoreData));
+
+    // 2. UPDATE PENDING USER DATA (The specific fix you requested)
+    const pendingDataStr = localStorage.getItem("pendingUserData");
+    if (pendingDataStr) {
+      const pendingData = JSON.parse(pendingDataStr);
+      const updatedPendingData = {
+        ...pendingData,
+        role: "vendor", // Change role here
+        onboardingComplete: true
+      };
+      localStorage.setItem("pendingUserData", JSON.stringify(updatedPendingData));
+    }
+
+    // 3. UPDATE ACTIVE SESSION USER
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      const userData = JSON.parse(userStr);
+      const updatedUser = { 
+        ...userData, 
+        role: "vendor", 
+        storeName: data.store_name 
+      };
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      
+      // Also update session storage for the AuthContext/Guard to see immediately
+      sessionStorage.setItem("RSUserRole", "vendor");
+    }
+
+    toast({
+      title: "Onboarding Complete",
+      description: "Your account is now a Vendor account!",
+    });
+
+    setIsCompleted(true);
+  } catch (error) {
+    console.error("Onboarding Error:", error);
+    toast({ variant: "destructive", title: "Error", description: "Save failed." });
+  }
+};
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-6 lg:p-20 bg-gradient-to-br from-blue-50 via-white to-green-50">
@@ -290,7 +307,6 @@ const VendorOnboarding = () => {
             {/* Location Information */}
             <div className="space-y-4">
               <h4 className="font-semibold text-gray-700">Location</h4>
-
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium">Country *</label>
                 <div className="flex items-center gap-2">
@@ -305,13 +321,8 @@ const VendorOnboarding = () => {
                     onClick={handleLocationRefresh}
                     disabled={locationDetecting}
                     className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-50"
-                    title="Detect location"
                   >
-                    <RefreshCw
-                      className={`h-3 w-3 ${
-                        locationDetecting ? "animate-spin" : ""
-                      }`}
-                    />
+                    <RefreshCw className={`h-3 w-3 ${locationDetecting ? "animate-spin" : ""}`} />
                   </button>
                 </div>
               </div>
@@ -322,17 +333,13 @@ const VendorOnboarding = () => {
                 onSelect={handleCountryChange}
                 error={errors.country?.message}
               />
-
               <Dropdown
                 label="State/Region*"
-                options={
-                  selectedCountry ? statesByCountry[selectedCountry] || [] : []
-                }
+                options={selectedCountry ? statesByCountry[selectedCountry] || [] : []}
                 selected={watch("state")}
                 onSelect={(value) => setValue("state", value)}
                 error={errors.state?.message}
               />
-
               <InputField
                 label="Business Address*"
                 placeholder="e.g. 123 Main Street"
@@ -341,24 +348,15 @@ const VendorOnboarding = () => {
               />
             </div>
 
-            {/* Business Documents */}
+            {/* Business Details */}
             <div className="space-y-4">
               <h4 className="font-semibold text-gray-700">Business Details</h4>
-
               <InputField
                 label="CAC Registration Number (Optional)"
                 placeholder="e.g. RC1234567"
                 {...register("cac_registration_number")}
                 error={errors.cac_registration_number?.message}
               />
-
-              <InputField
-                label="Business ID (Optional)"
-                placeholder="e.g. BIZ-0021"
-                {...register("business_id")}
-                error={errors.business_id?.message}
-              />
-
               <InputField
                 label="Website (Optional)"
                 placeholder="https://example.com"
@@ -370,20 +368,14 @@ const VendorOnboarding = () => {
             {/* Branding */}
             <div className="space-y-4">
               <h4 className="font-semibold text-gray-700">Branding</h4>
-
               <ImageUpload
                 label="Logo"
                 onFileChange={(file) => {
                   setLogoFile(file);
-                  // Manually clear error if user selects file
                   if(file) setValue("logo_url", "file_selected", { shouldValidate: true }); 
                 }}
               />
-              {errors.logo_url && errors.logo_url.message && (
-                <p className="text-sm text-red-500">
-                  {errors.logo_url.message.toString()}
-                </p>
-              )}
+              {errors.logo_url && <p className="text-sm text-red-500">{errors.logo_url.message?.toString()}</p>}
 
               <ImageUpload
                 label="Banner"
@@ -392,17 +384,12 @@ const VendorOnboarding = () => {
                   if(file) setValue("banner_url", "file_selected", { shouldValidate: true });
                 }}
               />
-              {errors.banner_url && errors.banner_url.message && (
-                <p className="text-sm text-red-500">
-                  {errors.banner_url.message.toString()}
-                </p>
-              )}
+              {errors.banner_url && <p className="text-sm text-red-500">{errors.banner_url.message?.toString()}</p>}
             </div>
 
-            {/* Submit Button */}
             <Button
               type="submit"
-              className="w-full text-white transition bg-green-600 hover:bg-green-700"
+              className="w-full text-white bg-green-600 hover:bg-green-700"
               disabled={isSubmitting}
             >
               {isSubmitting ? (

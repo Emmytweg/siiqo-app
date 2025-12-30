@@ -86,21 +86,39 @@ const OtpActions: React.FC<Props> = ({ otp }) => {
           try {
             const loginResponse = await authService.login(email, password);
 
-            const { access_token, message, user } = loginResponse;
+            // const { access_token, message, user } = loginResponse;
 
-            if (access_token && message?.toLowerCase().includes("success")) {
-              sessionStorage.setItem("authToken", access_token);
-              sessionStorage.setItem("user", JSON.stringify(user));
+            // if (access_token && message?.toLowerCase().includes("success")) {
+            //   sessionStorage.setItem("authToken", access_token);
+            //   sessionStorage.setItem("user", JSON.stringify(user));
 
-              sessionStorage.removeItem("signupEmail");
-              sessionStorage.removeItem("RSPassword");
+            //   sessionStorage.removeItem("signupEmail");
+            //   sessionStorage.removeItem("RSPassword");
 
-              router.replace("/auth/vendor-onboarding");
-              return;
-            } else {
-              console.error("Unexpected login response:", loginResponse);
-              throw new Error("Auto-login failed — token missing.");
-            }
+            //   router.replace("/auth/vendor-onboarding");
+            //   return;
+            // } else {
+            //   console.error("Unexpected login response:", loginResponse);
+            //   throw new Error("Auto-login failed — token missing.");
+            // }
+            // 1. Remove 'message' from destructuring
+const { access_token, user } = loginResponse;
+
+// 2. Check for the access_token directly
+if (access_token) {
+  sessionStorage.setItem("authToken", access_token);
+  sessionStorage.setItem("user", JSON.stringify(user));
+
+  sessionStorage.removeItem("signupEmail");
+  sessionStorage.removeItem("RSPassword");
+
+  router.replace("/auth/vendor-onboarding");
+  return;
+} else {
+  // This part handles cases where the API might return a 200 OK but no token
+  console.error("Unexpected login response: Token missing");
+  throw new Error("Auto-login failed — token missing.");
+}
           } catch (loginError: any) {
             console.error("Auto-login error:", loginError);
             toast({

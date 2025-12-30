@@ -18,8 +18,8 @@ import Footer from "./home/Footer";
 // }
 
 // export const metadata = {
-// 	title: "Bizengo",
-// 	description: "Welcome to Bizengo.",
+// 	title: "siiqo",
+// 	description: "Welcome to siiqo.",
 // 	icons: {
 // 		icon: "/images/logo.png",
 // 	},

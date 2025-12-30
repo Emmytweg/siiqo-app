@@ -4,8 +4,16 @@ import { VendorInfo } from "@/types/seller-profile";
 import { VendorData as VendorSettingsData } from "@/types/vendor/settings";
 
 export const userService = {
-  getUserProfile: (): Promise<User> => {
+  getUserProfile: async (): Promise<any> => {
+    // --- MOCK FOR LOCAL TESTING ---
+    const saved = localStorage.getItem("pendingUserData");
+    if (saved) return JSON.parse(saved);
+    
+    return { id: 999, name: "John Doe", role: "shopper", email: "test@test.com" };
+
+    /* --- LIVE CODE ---
     return api.get("/user/profile");
+    */
   },
   getVendorByEmail: (email: string): Promise<VendorInfo> => {
     return api.get(`/user/${email}`);

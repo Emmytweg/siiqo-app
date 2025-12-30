@@ -226,21 +226,24 @@ const Settings = () => {
               Always update my location automatically
             </p>
           </div>
-          <button
-            onClick={handleAutoLocationToggle}
-            disabled={isAutoLocationLoading}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-              settings.location.autoLocation ? "bg-blue-600" : "bg-gray-200"
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                settings.location.autoLocation
-                  ? "translate-x-6"
-                  : "translate-x-1"
-              }`}
-            />
-          </button>
+       <button
+  onClick={handleAutoLocationToggle}
+  disabled={isAutoLocationLoading}
+  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+    settings.location.autoLocation ? "bg-blue-600" : "bg-slate-200"
+  } ${isAutoLocationLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+>
+  <span
+    className={`pointer-events-none flex h-4 w-4 transform items-center justify-center rounded-full bg-white shadow-lg ring-0 transition duration-300 ease-in-out ${
+      settings.location.autoLocation ? "translate-x-6" : "translate-x-1"
+    }`}
+  >
+    {/* Subtle loader inside the toggle dot if loading */}
+    {isAutoLocationLoading && (
+      <div className="h-2 w-2 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+    )}
+  </span>
+</button>
         </div>
 
         <div className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors -mx-3">
@@ -252,28 +255,27 @@ const Settings = () => {
               Allow other users to see your exact coordinates
             </p>
           </div>
-          <button
-            onClick={() =>
-              handleSettingChange(
-                "location",
-                "showExactLocation",
-                !settings.location.showExactLocation
-              )
-            }
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-              settings.location.showExactLocation
-                ? "bg-blue-600"
-                : "bg-gray-200"
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                settings.location.showExactLocation
-                  ? "translate-x-6"
-                  : "translate-x-1"
-              }`}
-            />
-          </button>
+         <button
+  onClick={() =>
+    handleSettingChange(
+      "location",
+      "showExactLocation",
+      !settings.location.showExactLocation
+    )
+  }
+  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+    settings.location.showExactLocation ? "bg-blue-600" : "bg-slate-200"
+  }`}
+>
+  <span
+    aria-hidden="true"
+    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-300 ease-in-out ${
+      settings.location.showExactLocation 
+        ? "translate-x-6" 
+        : "translate-x-1"
+    }`}
+  />
+</button>
         </div>
       </div>
     </div>
@@ -512,7 +514,7 @@ const Settings = () => {
   // --- Main Render ---
 
   return (
-    <div className="w-full max-w-5xl mx-auto md:p-6 p-4">
+    <div className="w-full max-w-5xl mx-auto md:p-6 p-24">
       <div className="flex flex-col md:flex-row gap-6 md:gap-8 min-h-[600px]">
         
         {/* Sidebar Navigation */}

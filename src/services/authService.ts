@@ -3,14 +3,32 @@ import api from "@/lib/api_client";
 import { LoginResponse } from "@/types/auth";
 
 export const authService = {
-  login: async (email: string, password: string): Promise<LoginResponse> => {
-    const response = await api.post("/auth/login", {
-      email,
-      password,
-    });
-    return response.data;
+  // login: async (email: string, password: string): Promise<LoginResponse> => {
+  //   const response = await api.post("/auth/login", {
+  //     email,
+  //     password,
+  //   });
+  //   return response.data;
+  // },
+login: async (email: string, password: string) => {
+    // --- MOCK FOR LOCAL TESTING ---
+    console.log("Mock Login Triggered");
+    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate delay
+    
+    return {
+      access_token: "mock_token_123",
+      user: {
+        id: 1,
+        email: email,
+        name: "Test User",
+        role: email.includes("admin") ? "admin" : "shopper"
+      }
+    };
+    
+    /* --- LIVE CODE (Commented) ---
+    return api.post("/auth/login", { email, password });
+    */
   },
-
   signup: async (userData: any) => {
     const response = await api.post("/auth/signup", userData);
     return response.data;

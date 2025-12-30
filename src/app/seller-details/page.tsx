@@ -125,7 +125,7 @@
 
 //   const profileView = vendorData ? {
 //     id: (vendorData as any).id || 1,
-//     name: vendorData.business_name || `${vendorData.first_name || ""} ${vendorData.last_name || ""}`.trim() || "Vendor",
+//     name: vendorData.store_name || `${vendorData.first_name || ""} ${vendorData.last_name || ""}`.trim() || "Vendor",
 //     email: vendorData.email || "",
 //     phone: vendorData.phone || "No phone provided",
 //     avatar: vendorData.profile_pic || defaultAvatar,
@@ -415,8 +415,6 @@
 
 // export default VendorProfile;
 
-
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -441,238 +439,97 @@ interface Tab {
   count?: number;
 }
 
-interface QuickAction {
-  id: string;
-  label: string;
-  icon: string;
-  color: string;
-  badge?: number;
-  action: () => void;
-}
-
-// --- Dummy Data Constants ---
-const DUMMY_VENDOR_PROFILE: VendorData = {
-  business_name: "Bizengo Tech Hub",
-  first_name: "Test",
-  last_name: "Vendor",
-  email: "vendor@bizengo.com",
-  phone: "+234 812 345 6789",
-  isVerified: true,
-  created_at: "2023-11-15T10:00:00Z",
-  address: "123 Innovation Drive, Victoria Island",
-  bio: "Leading supplier of premium gadgets and tech accessories in Lagos. We ensure all our products are verified and come with a standard warranty.\n\nCustomer satisfaction is our priority!",
-  profile_pic: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop",
-  kyc_status: "verified",
-  state: "Lagos",
-  country: "Nigeria",
-};
-
 const VendorProfile = () => {
   // --- State ---
   const [activeTab, setActiveTab] = useState<string>("listings");
   const [vendorData, setVendorData] = useState<VendorData | null>(null);
+  const [storefrontDetails, setStorefrontDetails] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [uploading, setUploading] = useState(false);
-  const [uploadingCover, setUploadingCover] = useState(false);
   
   const router = useRouter();
   const { location, loading: locationLoading, refresh: getCurrentLocation } = useLocationDetection();
 
-  // --- Authentication & Data Fetching ---
+  // --- Data Fetching & Sync ---
   useEffect(() => {
-    const fetchProfile = async () => {
+    const loadAllData = async () => {
       try {
         setLoading(true);
-        
-        /* --- LIVE API CALL (COMMENTED OUT) ---
-        const response = await vendorService.getVendorProfile();
-        const profileData = response.data || response;
-        setVendorData(profileData);
-        */
 
-        // --- DUMMY LOGIC: Simulate Network Delay ---
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        // 1. Fetch Store Details
+        const savedStoreDetails = localStorage.getItem("vendorStoreDetails");
+        const storeData = savedStoreDetails ? JSON.parse(savedStoreDetails) : null;
+        setStorefrontDetails(storeData);
 
-        // 1. Fetch from LocalStorage if user previously "signed up" or "updated"
-        const savedUserJson = localStorage.getItem("user"); 
-        const savedUser = savedUserJson ? JSON.parse(savedUserJson) : null;
+        // 2. Fetch Pending User Data
+        const savedPendingUser = localStorage.getItem("pendingUserData"); 
+        const pendingUser = savedPendingUser ? JSON.parse(savedPendingUser) : null;
 
-        const combinedData: VendorData = {
-          ...DUMMY_VENDOR_PROFILE,
-          business_name: savedUser?.business_name || savedUser?.name || DUMMY_VENDOR_PROFILE.business_name,
-          email: savedUser?.email || DUMMY_VENDOR_PROFILE.email,
-          profile_pic: savedUser?.profile_pic || DUMMY_VENDOR_PROFILE.profile_pic,
-          // Handle cover photo if stored in user object
-          ...(savedUser?.cover_photo && { cover_photo: savedUser.cover_photo })
+        // 3. Merge Logic
+        // Priority: Store Details (Brand info) > Pending User (Personal info)
+        const merged: VendorData = {
+          store_name: storeData?.store_name || pendingUser?.name || "New Store",
+          first_name: pendingUser?.name?.split(' ')[0] || "",
+          last_name: pendingUser?.name?.split(' ')[1] || "",
+          email: pendingUser?.email || "",
+          phone: pendingUser?.phone || "",
+          isVerified: storeData?.status === "approved",
+          created_at: storeData?.onboardedAt || pendingUser?.timestamp || new Date().toISOString(),
+          address: storeData?.address || "",
+          bio: storeData?.store_description || "No description provided.",
+          profile_pic: storeData?.logo_url || "", // Pulls logo if available
+          kyc_status: storeData?.status === "approved" ? "verified" : "pending",
+          state: storeData?.state || pendingUser?.state || "Lagos",
+          country: storeData?.country || pendingUser?.country || "Nigeria",
         };
 
-        setVendorData(combinedData);
+        setVendorData(merged);
         setLoading(false);
-      } catch (err: any) {
-        console.error("Error fetching vendor profile:", err);
+      } catch (err) {
+        console.error("Error loading vendor data:", err);
         setLoading(false);
       }
     };
 
-    fetchProfile();
-  }, [router]);
+    loadAllData();
 
-  // --- Persistence Helper for Testing ---
-  const updateLocalUserStorage = (key: string, value: string) => {
-    const savedUserJson = localStorage.getItem("user");
-    if (savedUserJson) {
-      const user = JSON.parse(savedUserJson);
-      user[key] = value;
-      localStorage.setItem("user", JSON.stringify(user));
-    }
-  };
-
-  // --- File Upload Handlers (Modified for Testing) ---
-  const handleProfilePictureUpload = async (file: File) => {
-    if (!file) return;
-    setUploading(true);
-    
-    try {
-      // 1. Create a local preview URL
-      const localUrl = URL.createObjectURL(file);
-
-      /* --- LIVE UPLOAD (COMMENTED OUT) ---
-      const response = await vendorService.uploadProfilePicture(file);
-      const finalUrl = response.url; // assuming API returns the new URL
-      */
-
-      // --- MOCK LOGIC ---
-      await new Promise(r => setTimeout(r, 1200)); // Simulate upload time
-      
-      // 2. Update local state immediately
-      setVendorData(prev => prev ? { ...prev, profile_pic: localUrl } : null);
-      
-      // 3. Persist to localStorage for testing
-      updateLocalUserStorage("profile_pic", localUrl);
-
-      alert("Profile picture updated (Local Preview Mode)!");
-    } catch (error) {
-      console.error("Upload error:", error);
-      alert("Failed to upload image.");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleCoverPhotoUpload = async (file: File) => {
-    if (!file) return;
-    setUploadingCover(true);
-    
-    try {
-      // 1. Create a local preview URL
-      const localUrl = URL.createObjectURL(file);
-
-      /* --- LIVE UPLOAD (COMMENTED OUT) ---
-      const response = await vendorService.uploadImage(file);
-      const finalUrl = response.urls[0];
-      */
-
-      // --- MOCK LOGIC ---
-      await new Promise(r => setTimeout(r, 1500));
-      
-      // 2. Update local state immediately
-      setVendorData(prev => prev ? { ...prev, cover_photo: localUrl } as any : null);
-      
-      // 3. Persist to localStorage for testing
-      updateLocalUserStorage("cover_photo", localUrl);
-
-      alert("Cover photo updated (Local Preview Mode)!");
-    } catch (error) {
-      console.error("Cover upload error:", error);
-      alert("Failed to upload cover.");
-    } finally {
-      setUploadingCover(false);
-    }
-  };
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'cover') => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith("image/")) return alert("Please select an image file");
-      const maxSize = type === 'cover' ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
-      if (file.size > maxSize) return alert(`File size must be less than ${type === 'cover' ? 10 : 5}MB`);
-      
-      if (type === 'avatar') handleProfilePictureUpload(file);
-      else handleCoverPhotoUpload(file);
-    }
-  };
+    // Listen for storage changes to keep UI in sync
+    const handleStorageChange = () => loadAllData();
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
 
   // --- View Data Construction ---
-  const defaultAvatar = "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face";
-  const defaultCover = "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1600&q=80";
-
   const profileView = vendorData ? {
-    id: (vendorData as any).id || 999,
-    name: vendorData.business_name || "Premium Vendor",
-    email: vendorData.email || "info@store.com",
-    phone: vendorData.phone || "+234 000 000 0000",
-    avatar: vendorData.profile_pic || defaultAvatar,
-    cover: (vendorData as any).cover_photo || defaultCover,
-    location: location 
-      ? `${location.state}, ${location.country}` 
-      : (vendorData.state && vendorData.country ? `${vendorData.state}, ${vendorData.country}` : "Lagos, Nigeria"),
-    joinDate: vendorData.created_at ? new Date(vendorData.created_at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : "January 2024",
+    id: 999,
+    name: vendorData.store_name,
+    ownerName: `${vendorData.first_name} ${vendorData.last_name}`,
+    email: vendorData.email,
+    phone: vendorData.phone,
+    avatar: vendorData.profile_pic || "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop",
+    cover: storefrontDetails?.banner_url || "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1600&q=80",
+    themeColor: storefrontDetails?.themeColor || "#1E293B", // Defaulting to a slate blue if not in JSON
+    fontFamily: storefrontDetails?.fontFamily || "Inter",
+    location: `${vendorData.state}, ${vendorData.country}`,
+    joinDate: new Date(vendorData.created_at || "").toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }),
     isVerified: {
       email: true,
       phone: true,
       identity: vendorData.kyc_status === "verified",
     },
     stats: {
-      itemsListed: 48,
-      purchasesMade: 15,
-      sellerRating: 4.9,
-      totalReviews: 124,
+      itemsListed: 0, // Set this dynamically if you have product lists
+      purchasesMade: 0,
+      sellerRating: 5.0,
+      totalReviews: 0,
     },
-    bio: vendorData.bio || "Quality products at the best prices.",
+    bio: vendorData.bio,
   } : null;
 
-  // --- Config ---
   const tabs: Tab[] = [
     { id: "listings", label: "My Listings", icon: "Package", count: profileView?.stats.itemsListed },
     { id: "orders", label: "My Purchases", icon: "ShoppingBag" },
     { id: "saved", label: "Saved Items", icon: "Heart" },
     { id: "settings", label: "Settings", icon: "Settings" },
-  ];
-
-  const quickActions: QuickAction[] = [
-    {
-      id: "list-item",
-      label: "List New Item",
-      icon: "Plus",
-      color: "bg-primary text-white",
-      action: () => router.push("/vendor/dashboard/products/add"),
-    },
-    {
-      id: "messages",
-      label: "Messages",
-      icon: "MessageCircle",
-      color: "bg-surface border border-border text-text-primary",
-      badge: 5,
-      action: () => router.push("/messages"),
-    },
-    {
-      id: "share",
-      label: "Share Profile",
-      icon: "Share2",
-      color: "bg-surface border border-border text-text-primary",
-      action: () => {
-        const url = window.location.href;
-        navigator.clipboard.writeText(url);
-        alert("Profile link copied!");
-      },
-    },
-    {
-      id: "settings",
-      label: "Account",
-      icon: "User",
-      color: "bg-surface border border-border text-text-primary",
-      action: () => setActiveTab("settings"),
-    },
   ];
 
   const renderTabContent = () => {
@@ -681,193 +538,97 @@ const VendorProfile = () => {
       case "listings": return <MyListings />;
       case "orders": return <PurchaseHistory />;
       case "saved": return <SavedItems />;
-      case "settings": return <Settings userProfile={profileView as UserProfileData} />;
+      case "settings": return <Settings userProfile={profileView as any} />;
       default: return <MyListings />;
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-4">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-text-secondary animate-pulse font-medium">Loading Seller Details...</p>
-      </div>
-    );
-  }
-
-  if (!profileView) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-background">
-        <p className="text-error mb-4">Failed to load profile data.</p>
-        <button onClick={() => window.location.reload()} className="px-4 py-2 bg-primary text-white rounded-lg">
-          Retry
-        </button>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-background pb-12">
+    <div className="min-h-screen bg-background pb-12" style={{ fontFamily: profileView?.fontFamily }}>
       {/* --- Cover & Header --- */}
       <div className="relative">
         <div
-          className="h-44 md:h-72 w-full bg-center bg-cover relative group overflow"
-          style={{ backgroundImage: `url(${profileView.cover})` }}
+          className="h-44 md:h-64 w-full bg-center bg-cover relative"
+          style={{ backgroundImage: `url(${profileView?.cover})`, backgroundColor: profileView?.themeColor }}
         >
-          <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-all" />
-
-          {/* Change Cover Button */}
-          <div className="absolute right-4 top-4 z-10">
-            <label className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold bg-white/90 backdrop-blur-sm rounded-full shadow-lg cursor-pointer hover:bg-white transition-all transform hover:scale-105">
-              {uploadingCover ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Camera" size={14} />}
-              <span>{uploadingCover ? "UPLOADING..." : "EDIT COVER"}</span>
-              <input type="file" accept="image/*" onChange={(e) => handleFileSelect(e, 'cover')} className="hidden" />
-            </label>
-          </div>
-
-          {/* Avatar (Centered on mobile, left-aligned layout on desktop) */}
-          <div className="absolute left-1/2 md:left-12 transform -translate-x-1/2 md:translate-x-0 -bottom-12 md:-bottom-16 z-40 rounded-[100%] mt-20">
-            <div className="relative z-40 rounded-full group/avatar">
-              <div className="w-28 h-28 md:w-44 md:h-44 rounded-full overflow-hidden border-[6px] border-surface bg-surface-secondary  shadow-2xl z-40 ">
-                <Image src={profileView.avatar} alt={profileView.name} fill className="object-cover rounded-full" />
-              </div>
-              <label 
-                className="absolute inset-0 flex items-center justify-center bg-black/50 text-white rounded-full opacity-0 group-hover/avatar:opacity-100 cursor-pointer transition-all backdrop-blur-[2px]"
-                title="Change Logo"
-              >
-                {uploading ? <Icon name="Loader2" size={32} className="animate-spin" /> : <Icon name="Camera" size={32} />}
-                <input type="file" accept="image/*" onChange={(e) => handleFileSelect(e, 'avatar')} className="hidden" />
-              </label>
-              
-              {profileView.isVerified.identity && (
-                <div className="absolute bottom-2 right-2 bg-primary text-white p-1.5 rounded-full border-4 border-surface shadow-lg" title="Identity Verified">
-                  <Icon name="Check" size={16} />
-                </div>
-              )}
+          <div className="absolute inset-0 bg-black/20" />
+          
+          {/* Avatar / Logo */}
+          <div className="absolute -bottom-12 left-6 md:left-12">
+            <div 
+              className="w-24 h-24 md:w-36 md:h-36 rounded-2xl overflow-hidden border-4 border-white bg-white shadow-xl"
+            >
+              <Image src={profileView?.avatar || ''} alt="Store Logo" fill className="object-cover" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* --- Main Content --- */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8">
-        <div className="h-16 md:h-20" /> 
-
-        {/* Profile Info Summary */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
-          <div className="text-center md:text-left">
-            <h1 className="text-2xl md:text-4xl font-heading font-extrabold text-text-primary flex items-center justify-center md:justify-start gap-3">
-              {profileView.name}
-              {profileView.isVerified.identity && <Icon name="ShieldCheck" size={28} className="text-primary" />}
+      <div className="max-w-7xl mx-auto px-4 md:px-8 mt-16">
+        <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+          <div className="space-y-1">
+            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+              {profileView?.name}
+              {profileView?.isVerified.identity && <Icon name="ShieldCheck" size={24} className="text-blue-500" />}
             </h1>
-            
-            <div className="mt-3 flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm font-medium text-text-secondary">
-              <div className="flex items-center gap-1.5 bg-surface-secondary px-3 py-1 rounded-full border border-border">
-                <Icon name="MapPin" size={14} className="text-primary" />
-                <span>{locationLoading ? "Locating..." : profileView.location}</span>
-                <button onClick={getCurrentLocation} className="hover:rotate-180 transition-transform duration-500 ml-1">
-                  <Icon name="RefreshCw" size={12} />
-                </button>
-              </div>
-              <div className="flex items-center gap-1.5 bg-surface-secondary px-3 py-1 rounded-full border border-border">
-                <Icon name="Calendar" size={14} />
-                <span>Joined {profileView.joinDate}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-warning">
-                <Icon name="Star" size={14} className="fill-current" />
-                <span>{profileView.stats.sellerRating} ({profileView.stats.totalReviews} reviews)</span>
-              </div>
+            <p className="text-text-secondary text-sm font-medium">Owned by {profileView?.ownerName}</p>
+            <div className="flex items-center gap-4 text-xs text-text-secondary mt-2">
+              <span className="flex items-center gap-1"><Icon name="MapPin" size={14} /> {profileView?.location}</span>
+              <span className="flex items-center gap-1"><Icon name="Calendar" size={14} /> Joined {profileView?.joinDate}</span>
             </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-3">
-            {quickActions.slice(0, 3).map((a) => (
-              <button
-                key={a.id}
-                onClick={a.action}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm active:scale-95 ${a.color}`}
-              >
-                <Icon name={a.icon as any} size={18} />
-                <span>{a.label}</span>
-                {a.badge && (
-                  <span className="bg-error text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full">
-                    {a.badge}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+          <button 
+            onClick={() => router.push("/vendor/dashboard/products/add")}
+            className="px-6 py-2.5 rounded-xl font-bold text-white shadow-lg transition-transform active:scale-95"
+            style={{ backgroundColor: profileView?.themeColor }}
+          >
+            + Add Product
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Sidebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-10">
           <aside className="lg:col-span-4 space-y-6">
-            <div className="p-6 border rounded-2xl bg-surface border-border shadow-sm">
-              <h3 className="text-xs font-black text-text-primary uppercase tracking-[0.2em] mb-4">About Vendor</h3>
-              <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-line font-medium">
-                {profileView.bio}
-              </p>
+            <div className="p-6 border rounded-2xl bg-surface shadow-sm">
+              <h3 className="text-xs font-bold uppercase tracking-widest mb-3 opacity-50">About Store</h3>
+              <p className="text-sm leading-relaxed">{profileView?.bio}</p>
             </div>
-
-            <div className="p-6 border rounded-2xl bg-surface border-border shadow-sm">
-               <h3 className="text-xs font-black text-text-primary mb-5 uppercase tracking-[0.2em]">Store Contacts</h3>
-               <div className="space-y-5">
-                  <div className="flex items-center gap-4 group">
-                    <div className="p-3 bg-primary/10 text-primary rounded-xl group-hover:bg-primary group-hover:text-white transition-colors">
-                      <Icon name="Mail" size={20} />
-                    </div>
-                    <div className="overflow-hidden">
-                        <p className="text-[10px] text-text-secondary font-bold uppercase">Official Email</p>
-                        <p className="text-sm font-bold truncate">{profileView.email}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 group">
-                    <div className="p-3 bg-success/10 text-success rounded-xl group-hover:bg-success group-hover:text-white transition-colors">
-                      <Icon name="Phone" size={20} />
-                    </div>
-                    <div>
-                        <p className="text-[10px] text-text-secondary font-bold uppercase">Phone Support</p>
-                        <p className="text-sm font-bold">{profileView.phone}</p>
-                    </div>
-                  </div>
-               </div>
-            </div>
-
-            <div className="p-6 border rounded-2xl bg-surface border-border shadow-sm">
-               <h3 className="text-xs font-black text-text-primary mb-5 uppercase tracking-[0.2em]">Trust Check</h3>
-               <div className="grid grid-cols-3 gap-4">
-                  <TrustItem icon="CheckCircle" label="Email" active={profileView.isVerified.email} />
-                  <TrustItem icon="Smartphone" label="Phone" active={profileView.isVerified.phone} />
-                  <TrustItem icon="Shield" label="KYC" active={profileView.isVerified.identity} />
-               </div>
+            
+            <div className="p-6 border rounded-2xl bg-surface shadow-sm">
+              <h3 className="text-xs font-bold uppercase tracking-widest mb-4 opacity-50">Contact Info</h3>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 text-sm">
+                  <Icon name="Mail" size={16} /> {profileView?.email}
+                </div>
+                <div className="flex items-center gap-3 text-sm">
+                  <Icon name="Phone" size={16} /> {profileView?.phone}
+                </div>
+              </div>
             </div>
           </aside>
 
-          {/* Tabs Content */}
           <main className="lg:col-span-8">
-            <div className="border rounded-2xl bg-surface border-border shadow-md overflow-hidden min-h-[600px]">
-              <div className="flex border-b border-border bg-surface-secondary/50 backdrop-blur-sm sticky top-0 z-10">
+            <div className="border rounded-2xl bg-surface shadow-sm overflow-hidden">
+              <div className="flex border-b bg-gray-50/50">
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex-1 flex items-center justify-center space-x-2 py-5 border-b-2 transition-all relative ${
-                      activeTab === tab.id
-                        ? "border-primary text-primary font-bold"
-                        : "border-transparent text-text-secondary hover:text-text-primary font-semibold"
+                    className={`flex-1 py-4 text-sm font-bold transition-all border-b-2 ${
+                      activeTab === tab.id ? "border-black text-black" : "border-transparent text-text-secondary"
                     }`}
+                    style={{ borderBottomColor: activeTab === tab.id ? profileView?.themeColor : 'transparent' }}
                   >
-                    <Icon name={tab.icon as any} size={18} />
-                    <span className="text-sm">{tab.label}</span>
-                    {tab.count !== undefined && (
-                      <span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full ${activeTab === tab.id ? 'bg-primary text-white' : 'bg-border text-text-secondary'}`}>
-                        {tab.count}
-                      </span>
-                    )}
+                    {tab.label}
                   </button>
                 ))}
               </div>
-
               <div className="p-6">
                 {renderTabContent()}
               </div>
@@ -878,14 +639,5 @@ const VendorProfile = () => {
     </div>
   );
 };
-
-const TrustItem = ({ icon, label, active }: { icon: string, label: string, active: boolean }) => (
-  <div className="flex flex-col items-center gap-2">
-    <div className={`p-3 rounded-full border-2 ${active ? 'bg-success/10 border-success text-success' : 'bg-gray-100 border-gray-200 text-gray-400'}`}>
-      <Icon name={icon as any} size={20} />
-    </div>
-    <span className={`text-[10px] font-black uppercase ${active ? 'text-success' : 'text-gray-400'}`}>{label}</span>
-  </div>
-);
 
 export default VendorProfile;
