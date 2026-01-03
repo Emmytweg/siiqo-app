@@ -19,7 +19,7 @@ export const useLogin = () => {
         setIsLoading(true);
 
         try {
-            const data = await authService.login(values.email, values.password);
+            const data = await authService.login({email: values.email, password: values.password});
             
             storeAuthData(data, values.rememberMe ?? false, values.email);
 

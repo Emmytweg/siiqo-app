@@ -31,6 +31,9 @@ apiClient.interceptors.request.use(
 /**
  * USER & PROFILE ENDPOINTS
  */
+export const switchMode = (mode: "vendor" | "shopper") => {
+  return apiClient.post("/auth/switch-mode", { mode });
+}
 export const getUserProfile = () => {
   return apiClient.get("/user/profile");
 };
@@ -205,8 +208,8 @@ export const fetchFavoriteItems = () => {
 /**
  * AUTHENTICATION ENDPOINTS
  */
-export const login = (credentials: any) => {
-  return apiClient.post("/auth/login", credentials);
+export const login = (data: any) => {
+  return apiClient.post("/auth/login", data);
 };
 
 export const signup = (data: any) => {
@@ -229,7 +232,7 @@ export const resetPassword = (data: any) => {
   return apiClient.post("/auth/reset-password", data);
 };
 
-export const resendVerification = (email: string) => {
+export const resendVerificationOtp = (email: string) => {
   return apiClient.post("/auth/resend-verification", { email });
 };
 

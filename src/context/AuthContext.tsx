@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setError(null);
 
       try {
-        const data = await authService.login(email, password);
+        const data = await authService.login({ email, password });
 
         if (data.access_token) {
           if (typeof window !== "undefined") {

@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 
 export const useLocationDetection = () => {
-    const [location, setLocation] = useState({ country: "", state: "" });
+    const [location, setLocation] = useState({ country: "", state: "", latitude: null, longitude: null });
     const [loading, setLoading] = useState(false);
     const [detected, setDetected] = useState(false);
 
@@ -12,7 +12,7 @@ export const useLocationDetection = () => {
             const data = await response.json();
 
             if (data.country_name && data.region) {
-                const newLocation = { country: data.country_name, state: data.region };
+                const newLocation = { country: data.country_name, state: data.region, latitude: data.latitude, longitude: data.longitude };
                 setLocation(newLocation);
                 setDetected(true);
                 return `${newLocation.state}, ${newLocation.country}`;

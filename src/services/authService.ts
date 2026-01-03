@@ -3,8 +3,8 @@ import { LoginResponse } from "@/types/auth";
 
 export const authService = {
   // Login remains the same structure
-  login: async (credentials: { email: string; password: string }): Promise<LoginResponse> => {
-    const response = await api.post("/auth/login", credentials);
+  login: async (data: { email: string; password: string }): Promise<LoginResponse> => {
+    const response = await api.post("/auth/login", data);
     return response.data;
   },
 
@@ -39,7 +39,7 @@ export const authService = {
   },
 
   // Added a specific method for resending email verification
-  resendVerification: async (email: string) => {
+  resendVerificationOtp: async (email: string) => {
     const response = await api.post("/auth/resend-verification", { email });
     return response.data;
   },

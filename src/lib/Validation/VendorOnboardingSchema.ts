@@ -2,23 +2,23 @@ import { z } from "zod";
 
 export const vendorOnboardingSchema = z.object({
     // Store Information
-    store_name: z
+    business_name: z
         .string()
         .min(3, "Store name must be at least 3 characters long")
         .max(100, "Store name is too long"),
 
-    store_description: z
+    description: z
         .string()
         .min(10, "Please describe your store in at least 10 characters")
         .max(500, "Description too long"),
 
-    business_category: z
-        .string()
-        .min(1, "Please select your business category"),
+    // business_category: z
+    //     .string()
+    //     .min(1, "Please select your business category"),
 
-    business_type: z
-        .string()
-        .min(1, "Please select your business type"),
+    // business_type: z
+    //     .string()
+    //     .min(1, "Please select your business type"),
 
     // Location
     address: z

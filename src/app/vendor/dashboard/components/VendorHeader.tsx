@@ -84,10 +84,10 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
               first_name: userData.firstName || userData.first_name || "Vendor",
               last_name: userData.lastName || userData.last_name || "",
               email: userData.email || "",
-              business_name: storeData.store_name || "My Store",
+              business_name: storeData.business_name || "My Store",
               isVerified: storeData.status === "approved" || false,
             });
-                                  console.log(storeData.store_name)
+                                  console.log(storeData.business_name)
 
           }
 

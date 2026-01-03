@@ -6,6 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import Button from "@/components/Button";
+import { string } from "zod";
 
 interface Props {
   otp: string;
@@ -84,7 +85,7 @@ const OtpActions: React.FC<Props> = ({ otp }) => {
 
         if (target_view === "vendor" && password) {
           try {
-            const loginResponse = await authService.login(email, password);
+            const loginResponse = await authService.login({email, password});
 
             // const { access_token, message, user } = loginResponse;
 

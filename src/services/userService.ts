@@ -9,7 +9,7 @@ export const userService = {
    * Replaces mock data with a direct call to the live endpoint
    */
   getUserProfile: async (): Promise<any> => {
-    const response = await api.get("/user/profile");
+    const response = await api.get("/vendor/settings");
     return response.data;
   },
 

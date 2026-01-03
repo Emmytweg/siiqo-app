@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import Skeleton from "@/components/skeleton";
 import { Storefront } from "@/types/storeFront";
-
+import { storefrontService } from "@/services/storefrontService";
 // --- Dummy Data Store ---
 export const DUMMY_STOREFRONTS: Storefront[] = [
   {
@@ -79,19 +79,37 @@ export const DUMMY_STOREFRONTS: Storefront[] = [
  * STOREFRONT LIST COMPONENT
  * Handles the Refresh and View All UI
  */
+/**
+ * STOREFRONT LIST COMPONENT
+ * Handles the Live API Fetching
+ */
 export const StorefrontList = ({ onRefresh }: { onRefresh?: () => Promise<void> }) => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [stores, setStores] = useState<Storefront[]>([]);
+  const [error, setError] = useState(false);
 
   const fetchStores = async () => {
     setIsLoading(true);
+    setError(false);
     try {
-      // Simulating API call
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      setStores(DUMMY_STOREFRONTS);
+      // Calling your actual service
+      const response = await storefrontService.getStorefronts();
+      
+      // Ensure we are setting an array (adjust based on your API response structure)
+      // Usually, APIs return { data: [...] } or just [...]
+      const data = Array.isArray(response) ? response : response.data || [];
+      
+      setStores(data);
+
+      // If the API call succeeded but returned zero stores, 
+      // you might want to trigger the error state if you expect data
+      if (data.length === 0) {
+        // setError(true); // Optional: uncomment if zero stores is considered an "error"
+      }
     } catch (err) {
-      console.error("Failed to fetch storefronts", err);
+      console.error("Failed to fetch live storefronts", err);
+      setError(true);
     } finally {
       setIsLoading(false);
     }
@@ -102,24 +120,38 @@ export const StorefrontList = ({ onRefresh }: { onRefresh?: () => Promise<void> 
   }, []);
 
   const handleRefresh = async () => {
-    setIsLoading(true);
     await fetchStores();
     if (onRefresh) await onRefresh();
-    setIsLoading(false);
   };
 
-  const handleViewAll = () => {
-    router.push("/storefronts");
-  };
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center bg-white rounded-2xl border border-dashed border-gray-300">
+        <div className="bg-red-50 p-3 rounded-full mb-4">
+          <RefreshCw className="w-8 h-8 text-red-500" />
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900">There's an issue from our end</h3>
+        <p className="text-gray-500 mb-6 max-w-xs">We couldn't load the storefronts right now. Please try again.</p>
+        <button 
+          onClick={handleRefresh}
+          className="flex items-center gap-2 px-6 py-2.5 bg-[#0E2848] text-white rounded-full hover:bg-opacity-90 transition-all font-medium"
+        >
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          Try Again
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">
-      
-
-      {/* Grid of Storefront Cards */}
-      <div className="grid bg-black grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {isLoading ? (
           <StorefrontSkeleton count={3} />
+        ) : stores.length === 0 ? (
+          <div className="col-span-full py-20 text-center text-gray-400">
+            No storefronts available at the moment.
+          </div>
         ) : (
           stores.map((store) => (
             <StorefrontCard key={store.id} storefront={store} />

@@ -17,7 +17,8 @@ const SearchSuggestions = ({
     recentSearches,
     popularSearches,
     onSelectSuggestion,
-    onClose
+    onClose, 
+    
 }: SearchSuggestionsProps) => {
     const filteredSuggestions = [
         ...recentSearches.filter(search =>

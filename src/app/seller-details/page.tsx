@@ -125,7 +125,7 @@
 
 //   const profileView = vendorData ? {
 //     id: (vendorData as any).id || 1,
-//     name: vendorData.store_name || `${vendorData.first_name || ""} ${vendorData.last_name || ""}`.trim() || "Vendor",
+//     name: vendorData.business_name || `${vendorData.first_name || ""} ${vendorData.last_name || ""}`.trim() || "Vendor",
 //     email: vendorData.email || "",
 //     phone: vendorData.phone || "No phone provided",
 //     avatar: vendorData.profile_pic || defaultAvatar,
@@ -467,7 +467,7 @@ const VendorProfile = () => {
         // 3. Merge Logic
         // Priority: Store Details (Brand info) > Pending User (Personal info)
         const merged: VendorData = {
-          store_name: storeData?.store_name || pendingUser?.name || "New Store",
+          business_name: storeData?.business_name || pendingUser?.name || "New Store",
           first_name: pendingUser?.name?.split(' ')[0] || "",
           last_name: pendingUser?.name?.split(' ')[1] || "",
           email: pendingUser?.email || "",
@@ -475,7 +475,7 @@ const VendorProfile = () => {
           isVerified: storeData?.status === "approved",
           created_at: storeData?.onboardedAt || pendingUser?.timestamp || new Date().toISOString(),
           address: storeData?.address || "",
-          bio: storeData?.store_description || "No description provided.",
+          bio: storeData?.description || "No description provided.",
           profile_pic: storeData?.logo_url || "", // Pulls logo if available
           kyc_status: storeData?.status === "approved" ? "verified" : "pending",
           state: storeData?.state || pendingUser?.state || "Lagos",
@@ -501,7 +501,7 @@ const VendorProfile = () => {
   // --- View Data Construction ---
   const profileView = vendorData ? {
     id: 999,
-    name: vendorData.store_name,
+    name: vendorData.business_name,
     ownerName: `${vendorData.first_name} ${vendorData.last_name}`,
     email: vendorData.email,
     phone: vendorData.phone,

@@ -41,13 +41,12 @@ export const vendorService = {
   /**
    * VENDOR ONBOARDING & SETTINGS
    */
-  vendorOnboarding: async (formData: FormData) => {
-    // Matches your api.ts: /vendor/onboard
-    const response = await api.post("/vendor/onboard", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    return response.data;
-  },
+  // Inside vendorService object
+vendorOnboarding: async (payload: any) => {
+  // If your Postman body was JSON, don't use FormData here
+  const response = await api.post("/vendor/onboard", payload);
+  return response.data;
+},
 
   updateVendorSettings: async (data: FormData | any) => {
     // Matches your api.ts: /vendor/update-settings

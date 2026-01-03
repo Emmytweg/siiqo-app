@@ -114,7 +114,7 @@ function ResetPasswordContent() {
         "https://server.siiqo.com/api/auth/reset-password",
         {
           email,
-          new_password: newPassword,
+          password: newPassword,
           otp,
         },
         {

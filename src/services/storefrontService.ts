@@ -41,7 +41,7 @@ export const storefrontService = {
    */
   getStorefronts: async (params = {}): Promise<any> => {
     // No more dummy data return. Using the live endpoint from your api.ts
-    const response = await api.get("/marketplace/storefronts", { params });
+    const response = await api.get("/buyers/storefronts", { params });
     return response.data;
   },
 

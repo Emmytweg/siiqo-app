@@ -81,13 +81,13 @@ const VendorDetails = () => {
 
     const fetchVendorData = async () => {
       try {
-        const [vendorRes, productRes] = await Promise.all([
+        const [vendorRes] = await Promise.all([
           userService.getVendorByEmail(email),
-          productService.getProductsByVendorEmail(email),
+          // productService.getProductsByVendorEmail(email),
         ]);
 
         setVendorInformation(vendorRes);
-        setProducts(productRes.products || []);
+        // setProducts(productRes.products || []);
         // Assuming business data can be derived or is part of vendorRes
         // For now, setting a mock or partial Storefront based on available data
         setBusiness({

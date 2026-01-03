@@ -15,14 +15,14 @@ export interface DealData {
 
 export interface NearbyDealCardProps {
   product: {
-    id: number;
+    id: number | string;
     product_name: string;
     product_price: number;
     images: string[];
     vendor?: { business_name?: string } | null;
   };
   dealData: DealData;
-  onClick: (id: number) => void;
+  onClick: (id: any) => void;
   className?: string; // Added to accept external width/styling
 }
 

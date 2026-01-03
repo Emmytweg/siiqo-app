@@ -8,8 +8,10 @@ const nextConfig = {
   async rewrites() {
     return [
       {
+        // When you call "/api/user/profile" in the frontend...
         source: "/api/:path*",
-        destination: `${process.env.NEXT_PUBLIC_API_BASE_URL}/:path*`,
+        // ...Next.js sends it to "https://server.siiqo.com/api/user/profile" from the SERVER side.
+destination: "https://server.siiqo.com/api/:path*",
       },
     ];
   },

@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { resetPassword, resendVerification } from "@/services/api";
+import { resetPassword, resendVerificationOtp } from "@/services/api";
 import {
   Card,
   CardContent,
@@ -102,7 +102,7 @@ export default function ResetPasswordOTPPage() {
     const payload = {
       email,
       otp: data.otp,
-      new_password: data.confirmPassword,
+      password: data.confirmPassword,
     };
 
     try {
@@ -162,7 +162,7 @@ export default function ResetPasswordOTPPage() {
         return;
       }
 
-      const { data } = await resendVerification(storedEmail);
+      const { data } = await resendVerificationOtp(storedEmail);
 
       toast({
         title: "Code resent",

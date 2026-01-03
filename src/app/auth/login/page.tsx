@@ -97,13 +97,21 @@ const LoginForm = () => {
 
   const closeNotification = () => setNotification((prev) => ({ ...prev, show: false }));
 
+  // Helper for "Suspenseful" navigation between auth pages
+  const handleSuspenseNavigation = (path: string, label: string) => {
+    setIsLoading(true);
+    showNotification("info", `Opening ${label}`, "Preparing the page...");
+    setTimeout(() => {
+      router.push(path);
+    }, 800); // Small delay to show the "Suspense" loader
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     showNotification("info", "Signing You In", "Verifying credentials...");
 
     try {
-      // 1. Check if there's an unverified registration for this email locally
       const isPending = localStorage.getItem("isRegistrationPending");
       const pendingData = localStorage.getItem("pendingUserData");
       if (isPending === "true" && pendingData) {
@@ -115,16 +123,11 @@ const LoginForm = () => {
         }
       }
 
-      // 2. Perform Live Login via AuthContext
       await login(email, password);
       
-      // 3. Post-login Redirection Logic
-      // The user object should now be populated by AuthContext/JWT Decode
       const userRole = sessionStorage.getItem("RSUsertarget_view") || "customer";
-
       showNotification("success", "Welcome Back!", "Login successful. Redirecting...");
 
-      // Check for forced redirects (from Protected Routes)
       const callbackUrl = searchParams.get("redirect") || sessionStorage.getItem("redirectUrl");
       
       setTimeout(() => {
@@ -132,7 +135,6 @@ const LoginForm = () => {
           sessionStorage.removeItem("redirectUrl");
           window.location.href = callbackUrl;
         } else {
-          // Role-based routing
           switch (userRole.toLowerCase()) {
             case "admin":
               router.push("/Administration");
@@ -148,7 +150,7 @@ const LoginForm = () => {
       }, 1500);
 
     } catch (error: any) {
-      showNotification("error", "Login Failed", error.message || "Invalid email or password.");
+      showNotification("error", "Login Failed", "Your credentials are invalid or the account does not exist.");
     } finally {
       setIsLoading(false);
     }
@@ -166,9 +168,13 @@ const LoginForm = () => {
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md z-10">
           <div className="mb-8 text-center">
-            <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
+            <button 
+              onClick={() => handleSuspenseNavigation("/", "Marketplace")}
+              className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors disabled:opacity-50"
+              disabled={isLoading}
+            >
               <ArrowLeft className="h-4 w-4" /> Back to Marketplace
-            </Link>
+            </button>
           </div>
 
           <Card className="border-0 shadow-2xl bg-white/80 backdrop-blur-xl ring-1 ring-gray-200/50 rounded-3xl overflow-hidden">
@@ -199,7 +205,14 @@ const LoginForm = () => {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="password">Password</Label>
-                    <Link href="/auth/forgot-password" className="text-xs text-blue-600 hover:underline">Forgot password?</Link>
+                    <button 
+                      type="button"
+                      onClick={() => handleSuspenseNavigation("/auth/forgot-password", "Recovery")}
+                      className="text-xs text-blue-600 hover:underline disabled:opacity-50"
+                      disabled={isLoading}
+                    >
+                      Forgot password?
+                    </button>
                   </div>
                   <div className="relative">
                     <Input
@@ -215,6 +228,7 @@ const LoginForm = () => {
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-3.5 text-gray-400"
+                      disabled={isLoading}
                     >
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
@@ -224,15 +238,25 @@ const LoginForm = () => {
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30"
+                  className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30 rounded-xl"
                 >
-                  {isLoading ? <Loader2 className="animate-spin mr-2" /> : "Sign In"}
+                  {isLoading && notification.type === "info" && notification.title === "Signing You In" ? (
+                    <Loader2 className="animate-spin mr-2" />
+                  ) : (
+                    "Sign In"
+                  )}
                 </Button>
               </form>
 
               <div className="mt-8 text-center text-sm text-gray-500">
                 Don't have an account?{" "}
-                <Link href="/auth/signup" className="font-bold text-blue-600 hover:underline">Create free account</Link>
+                <button 
+                  onClick={() => handleSuspenseNavigation("/auth/signup", "Registration")}
+                  className="font-bold text-blue-600 hover:underline disabled:opacity-50"
+                  disabled={isLoading}
+                >
+                  Create free account
+                </button>
               </div>
             </CardContent>
           </Card>

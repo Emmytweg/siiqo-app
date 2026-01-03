@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Suspense } from "react";
 import {
   Card,
   CardContent,
@@ -11,7 +12,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Sparkles,
   Eye,
   EyeOff,
   ArrowLeft,
@@ -20,14 +20,84 @@ import {
   Loader2,
   X,
   MapPin,
-  RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import { authService } from "@/services/authService";
 import { SignupResponse } from "@/types/auth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 
-// Utility for password strength
+// --- Notification Modal ---
+const NotificationModal = ({
+  type,
+  title,
+  message,
+  show,
+  onClose,
+}: {
+  type: "success" | "error" | "info";
+  title: string;
+  message: string;
+  show: boolean;
+  onClose: () => void;
+}) => {
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            className="relative w-full max-w-sm overflow-hidden bg-white shadow-2xl rounded-2xl"
+          >
+            <div className={`h-2 w-full ${type === "success" ? "bg-green-500" : type === "error" ? "bg-red-500" : "bg-blue-500"}`} />
+            <div className="p-6 text-center">
+              <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${type === "success" ? "bg-green-100 text-green-600" : type === "error" ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600"}`}>
+                {type === "success" && <CheckCircle className="w-8 h-8" />}
+                {type === "error" && <XCircle className="w-8 h-8" />}
+                {type === "info" && <Loader2 className="w-8 h-8 animate-spin" />}
+              </div>
+              <h3 className="mb-2 text-xl font-bold text-gray-900">{title}</h3>
+              <p className="text-gray-500">{message}</p>
+              {type !== "info" && (
+                <Button onClick={onClose} className="mt-6 w-full rounded-xl">Close</Button>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+// --- Password Strength Bar ---
+const PasswordStrengthBar = ({ strength, password }: { strength: number; password: string }) => {
+  if (!password) return null;
+  const colors = ["bg-gray-200", "bg-red-500", "bg-orange-500", "bg-yellow-500", "bg-green-500", "bg-emerald-500"];
+  const labels = ["", "Very Weak", "Weak", "Fair", "Strong", "Excellent"];
+  
+  return (
+    <div className="mt-2">
+      <div className="flex justify-between mb-1">
+        <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400">Security Strength</span>
+        <span className={`text-[10px] font-bold ${strength >= 4 ? 'text-emerald-600' : 'text-gray-500'}`}>{labels[strength]}</span>
+      </div>
+      <div className="flex gap-1 h-1.5 w-full">
+        {[1, 2, 3, 4, 5].map((step) => (
+          <div key={step} className={`h-full flex-1 rounded-full transition-all duration-500 ${strength >= step ? colors[strength] : "bg-gray-100"}`} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const passwordStrength = (password: string): number => {
   let score = 0;
   if (password.length >= 8) score++;
@@ -38,90 +108,11 @@ const passwordStrength = (password: string): number => {
   return score;
 };
 
-// Password Strength Bar Component
-const PasswordStrengthBar = ({ strength, password }: { strength: number; password: string }) => {
-  let color = "red";
-  let strengthText = "Poor";
-  if (strength >= 2) { color = "yellow"; strengthText = "Weak"; }
-  if (strength >= 4) { color = "green"; strengthText = "Strong"; }
-
-  return (
-    <div>
-      {password && (
-        <div className={`text-xs ${strengthText === "Poor" ? "text-red-600" : strengthText === "Weak" ? "text-yellow-500" : "text-green-600"} mb-1`}>
-          {strengthText}
-        </div>
-      )}
-      {password && (
-        <div className="w-full h-1 mt-1 bg-gray-200 rounded-full">
-          <div
-            className={`h-full rounded-full transition-all duration-300`}
-            style={{ width: `${Math.min(strength * 25, 100)}%`, backgroundColor: color }}
-          ></div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Modal Notification Component
-const NotificationModal = ({ type, title, message, show, onClose }: { type: "success" | "error" | "info"; title: string; message: string; show: boolean; onClose: () => void; }) => {
-  if (!show) return null;
-  const getIcon = () => {
-    switch (type) {
-      case "success": return <CheckCircle className="w-12 h-12 text-green-500" />;
-      case "error": return <XCircle className="w-12 h-12 text-red-500" />;
-      case "info": return <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />;
-    }
-  };
-
-  const getColors = () => {
-    switch (type) {
-      case "success": return { bg: "bg-green-50", border: "border-green-200", button: "bg-green-600 hover:bg-green-700" };
-      case "error": return { bg: "bg-red-50", border: "border-red-200", button: "bg-red-600 hover:bg-red-700" };
-      case "info": return { bg: "bg-blue-50", border: "border-blue-200", button: "bg-blue-600 hover:bg-blue-700" };
-    }
-  };
-
-  const colors = getColors();
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={type !== "info" ? onClose : undefined} />
-      <div className={`relative bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 border-2 ${colors.border}`}>
-        {type !== "info" && (
-          <button onClick={onClose} className="absolute text-gray-400 transition-colors top-4 right-4 hover:text-gray-600">
-            <X className="w-5 h-5" />
-          </button>
-        )}
-        <div className={`p-8 rounded-t-xl ${colors.bg}`}>
-          <div className="text-center">
-            <div className="flex justify-center mb-4">{getIcon()}</div>
-            <h3 className="mb-2 text-lg font-semibold text-gray-900">{title}</h3>
-            <p className="leading-relaxed text-gray-700">{message}</p>
-          </div>
-        </div>
-        {type !== "info" && (
-          <div className="p-6 bg-white rounded-b-xl">
-            <Button onClick={onClose} className={`w-full ${colors.button} text-white`}>OK</Button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const Signup = () => {
+const SignupForm = () => {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    phone: "",
-    country: "",
-    state: "",
-    referral_code: "",
+    name: "", email: "", password: "", confirmPassword: "",
+    phone: "", country: "", state: "", referral_code: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -139,8 +130,13 @@ const Signup = () => {
     setPasswordsMatch(formData.confirmPassword ? formData.password === formData.confirmPassword : true);
   }, [formData.password, formData.confirmPassword]);
 
+  const showNotification = (type: "success" | "error" | "info", title: string, message: string) => {
+    setNotification({ type, title, message, show: true });
+  };
+
+  const closeNotification = () => setNotification(prev => ({ ...prev, show: false }));
+
   const detectLocation = async () => {
-    if (formData.country && formData.state && locationDetected) return;
     setLocationDetecting(true);
     try {
       const response = await fetch("https://ipapi.co/json/");
@@ -156,11 +152,12 @@ const Signup = () => {
     }
   };
 
-  const showNotification = (type: "success" | "error" | "info", title: string, message: string) => {
-    setNotification({ type, title, message, show: true });
+  // Suspenseful navigation
+  const handleSuspenseNavigation = (path: string, label: string) => {
+    setIsLoading(true);
+    showNotification("info", `Opening ${label}`, "Preparing the page...");
+    setTimeout(() => { router.push(path); }, 800);
   };
-
-  const closeNotification = () => setNotification(prev => ({ ...prev, show: false }));
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -168,17 +165,15 @@ const Signup = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (formData.password !== formData.confirmPassword) {
       showNotification("error", "Password Mismatch", "Passwords do not match.");
       return;
     }
 
     setIsLoading(true);
-    showNotification("info", "Creating Your Account", "Please wait while we set up your account...");
+    showNotification("info", "Creating Your Account", "Setting up your secure profile...");
 
     try {
-      // --- LIVE API PAYLOAD ---
       const payload = {
         fullname: formData.name,
         email: formData.email,
@@ -191,18 +186,9 @@ const Signup = () => {
 
       const response: SignupResponse = await authService.signup(payload);
 
-      // Check for success from your live API client
       if (response.status === "success" || (response as any).success) {
-        // Persist email for OTP screen
         sessionStorage.setItem("RSEmail", formData.email);
-        
-        showNotification(
-          "success", 
-          "Account Created!", 
-          "Please check your email for the verification code."
-        );
-
-        // Transition to OTP screen
+        showNotification("success", "Registration Successful!", "Redirecting to email verification...");
         setTimeout(() => {
           router.push(`/auth/verify-otp?email=${encodeURIComponent(formData.email)}`);
         }, 2000);
@@ -221,88 +207,142 @@ const Signup = () => {
     <>
       <NotificationModal {...notification} onClose={closeNotification} />
 
-      <div className="flex items-center justify-center min-h-screen p-4 py-10 bg-gradient-to-br from-blue-50 via-white to-green-50">
-        <div className="w-full max-w-2xl">
-          <div className="mb-8">
-            <Link href="/" className="inline-flex items-center gap-2 text-sm text-gray-600 transition-colors hover:text-gray-900">
-              <ArrowLeft className="w-4 h-4" /> Back to Home
-            </Link>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#F3F4F6] p-4 lg:p-8 overflow-x-hidden">
+        {/* Animated Background Blobs */}
+        <div className="fixed inset-0 z-0 opacity-40 pointer-events-none">
+          <div className="absolute top-[-5%] right-[-5%] h-[600px] w-[600px] rounded-full bg-blue-200/50 blur-[120px]" />
+          <div className="absolute bottom-[-5%] left-[-5%] h-[600px] w-[600px] rounded-full bg-purple-200/50 blur-[120px]" />
+        </div>
+
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          className="w-full max-w-2xl z-10 my-10"
+        >
+          <div className="mb-8 text-center">
+            <button 
+              onClick={() => handleSuspenseNavigation("/", "Home")}
+              className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors disabled:opacity-50"
+              disabled={isLoading}
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to Marketplace
+            </button>
           </div>
 
-          <Card className="border border-gray-200 shadow-xl bg-white/80 backdrop-blur-sm">
-            <CardHeader className="pb-2 text-center">
-              <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl">
-                <Sparkles className="w-6 h-6 text-white" />
+          <Card className="border-0 shadow-2xl bg-white/80 backdrop-blur-xl ring-1 ring-gray-200/50 rounded-[2.5rem] overflow-hidden">
+            <CardHeader className="space-y-1 pb-6 pt-10 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30">
+                <Sparkles className="h-8 w-8 text-white" />
               </div>
-              <CardTitle className="text-2xl font-bold">Create Your Account</CardTitle>
-              <CardDescription>Join thousands of Nigerian business owners</CardDescription>
+              <CardTitle className="text-3xl font-bold tracking-tight text-gray-900">Get Started</CardTitle>
+              <CardDescription className="text-base">Join the community of modern Nigerian vendors</CardDescription>
             </CardHeader>
 
-            <CardContent className="space-y-6">
-              <form onSubmit={handleSignup} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name *</Label>
-                  <Input id="name" name="name" placeholder="John Doe" value={formData.name} onChange={handleInputChange} required disabled={isLoading} className="h-11" />
-                </div>
+            <CardContent className="px-8 lg:px-12 pb-12">
+              <form onSubmit={handleSignup} className="space-y-6">
                 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address *</Label>
-                  <Input id="email" name="email" type="email" placeholder="john@example.com" value={formData.email} onChange={handleInputChange} required disabled={isLoading} className="h-11" />
+                {/* Personal Info Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Full Name</Label>
+                    <Input id="name" name="name" placeholder="John Doe" value={formData.name} onChange={handleInputChange} required disabled={isLoading} className="h-12 rounded-xl bg-white/50 border-gray-200 focus:bg-white" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address</Label>
+                    <Input id="email" name="email" type="email" placeholder="john@example.com" value={formData.email} onChange={handleInputChange} required disabled={isLoading} className="h-12 rounded-xl bg-white/50 border-gray-200 focus:bg-white" />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number *</Label>
-                  <Input id="phone" name="phone" type="tel" placeholder="08012345678" value={formData.phone} onChange={handleInputChange} required disabled={isLoading} className="h-11" />
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number</Label>
+                    <Input id="phone" name="phone" type="tel" placeholder="08012345678" value={formData.phone} onChange={handleInputChange} required disabled={isLoading} className="h-12 rounded-xl bg-white/50 border-gray-200 focus:bg-white" />
+                  </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="country">Country *</Label>
-                      {locationDetected && <div className="flex items-center gap-1 text-xs text-green-600"><MapPin className="w-3 h-3" /> Auto-detected</div>}
+                      <Label htmlFor="referral">Referral Code (Optional)</Label>
                     </div>
-                    <Input id="country" name="country" value={formData.country} onChange={handleInputChange} required disabled={isLoading || locationDetecting} className="h-11" />
+                    <Input id="referral" name="referral_code" placeholder="ABC-123" value={formData.referral_code} onChange={handleInputChange} disabled={isLoading} className="h-12 rounded-xl bg-white/50 border-gray-200 focus:bg-white" />
+                  </div>
+                </div>
+
+                {/* Location Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-4 rounded-2xl bg-gray-50/50 border border-gray-100">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5">Country {locationDetected && <CheckCircle className="w-3 h-3 text-emerald-500" />}</Label>
+                    <div className="relative">
+                      <Input id="country" name="country" value={formData.country} onChange={handleInputChange} required disabled={isLoading || locationDetecting} className="h-12 rounded-xl pl-10 bg-white" />
+                      <MapPin className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="state">State *</Label>
-                    <Input id="state" name="state" value={formData.state} onChange={handleInputChange} required disabled={isLoading || locationDetecting} className="h-11" />
+                    <Label>State / Region</Label>
+                    <Input id="state" name="state" value={formData.state} onChange={handleInputChange} required disabled={isLoading || locationDetecting} className="h-12 rounded-xl bg-white" />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password *</Label>
-                  <div className="relative">
-                    <Input id="password" name="password" type={showPassword ? "text" : "password"} value={formData.password} onChange={handleInputChange} required disabled={isLoading} className="pr-10 h-11" />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute text-gray-500 -translate-y-1/2 right-3 top-1/2">
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                {/* Password Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Create Password</Label>
+                    <div className="relative">
+                      <Input id="password" name="password" type={showPassword ? "text" : "password"} value={formData.password} onChange={handleInputChange} required disabled={isLoading} className="h-12 rounded-xl pr-12 bg-white/50" />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-3.5 text-gray-400 hover:text-gray-600 transition-colors">
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                    <PasswordStrengthBar strength={passwordStrengthScore} password={formData.password} />
                   </div>
-                  <PasswordStrengthBar strength={passwordStrengthScore} password={formData.password} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                  <Input id="confirmPassword" name="confirmPassword" type={showPassword ? "text" : "password"} value={formData.confirmPassword} onChange={handleInputChange} required disabled={isLoading} className="h-11" />
-                  {!passwordsMatch && formData.confirmPassword && <p className="text-xs text-red-500">Passwords do not match.</p>}
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirm Password</Label>
+                    <Input id="confirmPassword" name="confirmPassword" type={showPassword ? "text" : "password"} value={formData.confirmPassword} onChange={handleInputChange} required disabled={isLoading} className={`h-12 rounded-xl bg-white/50 ${!passwordsMatch && formData.confirmPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`} />
+                    {!passwordsMatch && formData.confirmPassword && (
+                       <p className="text-[10px] font-bold text-red-500 uppercase tracking-tight flex items-center gap-1">
+                         <XCircle size={12} /> Passwords do not match
+                       </p>
+                    )}
+                  </div>
                 </div>
 
                 <Button 
                   type="submit" 
-                  className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white" 
                   disabled={isLoading || !passwordsMatch || passwordStrengthScore < 3}
+                  className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-xl shadow-blue-500/20 text-white rounded-2xl text-lg font-bold transition-all hover:scale-[1.01] active:scale-[0.98]"
                 >
-                  {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Create Account"}
+                  {isLoading ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span>Verifying Details...</span>
+                    </div>
+                  ) : (
+                    "Create Account"
+                  )}
                 </Button>
               </form>
 
-              <div className="text-sm text-center text-gray-600">
-                Already have an account? <Link href="/auth/login" className="font-medium text-blue-600 hover:text-blue-700">Sign in here</Link>
+              <div className="mt-8 text-center text-sm text-gray-500">
+                Already part of the community?{" "}
+                <button 
+                  onClick={() => handleSuspenseNavigation("/auth/login", "Login")}
+                  className="font-bold text-blue-600 hover:underline disabled:opacity-50"
+                  disabled={isLoading}
+                >
+                  Sign in here
+                </button>
               </div>
             </CardContent>
           </Card>
-        </div>
+        </motion.div>
       </div>
     </>
+  );
+};
+
+const Signup = () => {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-blue-600" /></div>}>
+      <SignupForm />
+    </Suspense>
   );
 };
 

@@ -6,16 +6,16 @@ export const marketplaceService = {
    * Fetch all products for the marketplace main feed
    */
   getProducts: async (params = {}): Promise<APIResponse> => {
-    const response = await api.get("/marketplace/products", { params });
+    const response = await api.get("/products/my-products", { params });
     return response.data;
   },
-
+     
   /**
    * Fetch all storefronts
    * Replaces the dummy data logic now that your live endpoint is ready
    */
   getStorefronts: async (params = {}): Promise<any> => {
-    const response = await api.get("/marketplace/storefronts", { params });
+    const response = await api.get("/buyers/storefronts", { params });
     return response.data;
   },
 
