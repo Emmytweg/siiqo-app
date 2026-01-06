@@ -2,30 +2,32 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { Product } from "@/types/products";
 import Skeleton from "@/components/skeleton";
 import NearbyDealCard, { DealData } from "./ui/NearbyDealsProdCard";
 
-
-
 interface NearbyDealsProps {
   onRefresh: () => Promise<void>;
 }
+
+const ITEMS_PER_PAGE = 4;
 
 const NearbyDeals: React.FC<NearbyDealsProps> = ({ onRefresh }) => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [products, setProducts] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
-   const fetchProducts = async () => {
+  const fetchProducts = async () => {
     setIsLoading(true);
     try {
       setError(null);
       const response = await fetch("https://server.siiqo.com/api/marketplace/search");
       const data = await response.json();
       setProducts(data.data.nearby_products);
+      setCurrentPage(1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch products");
     } finally {
@@ -37,8 +39,6 @@ const NearbyDeals: React.FC<NearbyDealsProps> = ({ onRefresh }) => {
     fetchProducts();
   }, []);
 
- 
-
   const generateDealData = (product: any): DealData => {
     const seed = typeof product.id === 'string' ? parseInt(product.id, 10) || 123 : product.id;
     const random = (min: number, max: number) =>
@@ -49,18 +49,17 @@ const NearbyDeals: React.FC<NearbyDealsProps> = ({ onRefresh }) => {
       : random(10, 35);
 
     return {
-price: product.originalPrice || Math.round(product.price * 1.2),
-  discount: discount,
-  distance_km: null,
-  rating: product.rating || 4.5,
-  condition: product.condition || "New",
-
-  id: 0,
-  image: null,
-  name: null,
-  vendor_name: null,
-  crypto_price: null
-};
+      price: product.originalPrice || Math.round(product.price * 1.2),
+      discount: discount,
+      distance_km: null,
+      rating: product.rating || 4.5,
+      condition: product.condition || "New",
+      id: 0,
+      image: null,
+      name: product.name || "",
+      vendor_name: null,
+      crypto_price: null
+    };
   };
 
   const handleDealClick = (name: string) => {
@@ -78,6 +77,11 @@ price: product.originalPrice || Math.round(product.price * 1.2),
       setIsLoading(false);
     }
   };
+
+  // Pagination logic
+  const totalPages = Math.ceil(products.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedProducts = products.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   if (error) {
     return (
@@ -103,53 +107,70 @@ price: product.originalPrice || Math.round(product.price * 1.2),
         </button>
       </div>
 
-      {/* Container for horizontal scroll */}
-      <div className="overflow-x-auto pb-8 pt-2 -mx-4 px-4 scrollbar-hide">
-        {/* items-stretch ensures all direct children (cards) take the height of the tallest card */}
-        <div className="flex gap-6 w-max items-stretch">
+      {/* Products Grid */}
+      <div className="pb-8 pt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {isLoading ? (
-            Array.from({ length: 4 }).map((_, index) => (
+            Array.from({ length: ITEMS_PER_PAGE }).map((_, index) => (
               <DealCardSkeleton key={index} />
             ))
-          ) : products.length === 0 ? (
-            <div className="w-full flex items-center justify-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200 min-w-[300px]">
+          ) : paginatedProducts.length === 0 ? (
+            <div className="col-span-full w-full flex items-center justify-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
               No deals found in your area.
             </div>
           ) : (
-            products.map((product) => (
-              <div key={product.id} className="flex">
-                 <NearbyDealCard
-                  product={product}
-                  dealData={generateDealData(product)}
-                  onClick={() => handleDealClick(product.product_name)}
-                  // Pass a className if your component supports it to fix width
-                  className="w-72" 
-                />
-              </div>
+            paginatedProducts.map((product) => (
+              <NearbyDealCard
+                key={product.id}
+                product={product}
+                dealData={generateDealData(product)}
+                onClick={() => handleDealClick(product.product_name)}
+              />
             ))
           )}
         </div>
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 mt-8">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            disabled={currentPage === 1 || isLoading}
+            className="p-2 text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors disabled:opacity-50"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          
+          <span className="text-sm font-medium text-gray-600">
+            Page {currentPage} of {totalPages}
+          </span>
+          
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages || isLoading}
+            className="p-2 text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors disabled:opacity-50"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
+      )}
     </div>
   );
 };
 
-// --- Skeleton Component (Perfectly matching the card size) ---
 const DealCardSkeleton = () => (
-  <div className="w-72 flex-shrink-0 flex flex-col bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm h-full">
-    {/* Fixed height image area */}
+  <div className="flex flex-col bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm h-full">
     <div className="h-48 bg-gray-100 relative shrink-0">
       <Skeleton height="100%" />
     </div>
     
-    {/* Content Area - flex-1 ensures it fills available space */}
-    <div className="p-4 flex flex-col ">
+    <div className="p-4 flex flex-col">
       <div className="flex justify-between items-center mb-3 shrink-0">
         <Skeleton width={80} height={12} />
         <Skeleton width={30} height={12} />
       </div>
       
-      {/* Title Area - Fixed height for 2 lines of text */}
       <div className="flex-1 min-h-[40px]">
         <Skeleton width="90%" height={18} className="mb-1" />
         <Skeleton width="60%" height={18} />
@@ -160,11 +181,10 @@ const DealCardSkeleton = () => (
         <Skeleton width={60} height={16} />
       </div>
       
-      {/* Footer Area - Always at the bottom */}
       <div className="flex justify-between items-end border-t border-gray-100 pt-3 mt-auto shrink-0">
         <div>
-           <Skeleton width={40} height={20} className="mb-1" />
-           <Skeleton width={70} height={20} />
+          <Skeleton width={40} height={20} className="mb-1" />
+          <Skeleton width={70} height={20} />
         </div>
         <Skeleton type="circle" width={32} height={32} />
       </div>

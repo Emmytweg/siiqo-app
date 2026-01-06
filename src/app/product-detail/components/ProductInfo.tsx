@@ -58,7 +58,7 @@ const ProductInfo = ({
         const locationTag = `${product.distance}-miles-away`;
         
         // 2. Construct the specific string: name+location
-        const shareUrl = `${formattedName}+${locationTag}`;
+        const shareUrl = `https://${window.location.hostname}/product/${formattedName}/${locationTag}`;
         
         // 3. Copy to clipboard
         try {

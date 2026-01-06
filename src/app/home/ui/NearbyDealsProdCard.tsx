@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Icon from "@/components/ui/AppIcon";
 import Image from "@/components/ui/AppImage";
 import Button from "@/components/Button";
@@ -12,7 +12,7 @@ export interface DealData {
   condition: string;
   id:number;
   image: null | string;
-  name: null | string;
+  name:  string;
   price:  number;
   vendor_name: null | string;
   crypto_price: null | number;
@@ -37,6 +37,9 @@ const NearbyDealCard: React.FC<NearbyDealCardProps> = ({
   onClick,
   className = "",
 }) => {
+  const [showLoadingModal, setShowLoadingModal] = useState(false);
+  const [btnDisabled, setBtnDisabled] = useState(false);
+
   return (
     <div
       onClick={() => onClick(product.id)}
@@ -107,15 +110,33 @@ const NearbyDealCard: React.FC<NearbyDealCardProps> = ({
           <Button
             onClick={(e) => {
               e.stopPropagation();
-              onClick(product.id);
+              setShowLoadingModal(true);
+              setBtnDisabled(true);
+              // small delay to show modal before navigating
+              setTimeout(() => {
+                onClick(product.name);
+              }, 700);
             }}
+            disabled={btnDisabled}
             type="button"
-            className="px-3 py-1.5 text-xs font-medium text-white transition-colors duration-200 rounded-lg bg-primary hover:bg-primary-700 shrink-0"
+            className={`px-3 py-1.5 text-xs font-medium text-white transition-colors duration-200 rounded-lg bg-primary hover:bg-primary-700 shrink-0 ${btnDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
           >
             View Deal
           </Button>
         </div>
       </div>
+
+      {showLoadingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg p-6 flex items-center gap-4">
+            <div className="w-8 h-8 border-4 border-t-transparent border-gray-300 rounded-full animate-spin" />
+            <div>
+              <div className="font-medium">Loading</div>
+              <div className="text-sm text-gray-500">View deal has been clicked...</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

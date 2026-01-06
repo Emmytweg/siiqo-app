@@ -69,7 +69,7 @@ const ActionBar = ({
             </div>
 
             {/* Price Display */}
-            <div className="flex items-center justify-center mt-3 pt-3 border-t border-border-light">
+            {/* <div className="flex items-center justify-center mt-3 pt-3 border-t border-border-light">
                 <div className="text-center">
                     <p className="text-2xl font-bold text-text-primary">${product.price}</p>
                     {product.originalPrice && product.originalPrice > product.price && (
@@ -81,7 +81,7 @@ const ActionBar = ({
                         </p>
                     )}
                 </div>
-            </div>
+            </div> */}
         </div>
     );
 };

@@ -46,6 +46,7 @@ const Header: React.FC = () => {
 
   // --- Derived State (Logic from Code 1) ---
   const userData = (user as any)?.data;
+  const isVendor = 
   const isRegisteredVendor = userData?.store_settings?.initialized === true;
   // --- Configuration ---
   const appPages = [

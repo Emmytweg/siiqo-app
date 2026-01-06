@@ -17,7 +17,7 @@ interface LocationMapProps {
 
 const LocationMap = ({ location, onGetDirections, isMobile = false }: LocationMapProps) => {
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 pb-20">
             <div className="flex items-center justify-between">
                 <h3 className="text-lg font-heading font-semibold text-text-primary">Location</h3>
                 <button
