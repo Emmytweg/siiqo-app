@@ -1,36 +1,26 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { 
-  CheckCircle2, 
-  MessageCircle, 
+  MapPin,
   Clock, 
   Building,
   ChevronLeft,
-  User,
-  Search,
+  Share2,
   Globe,
-  Lock,
-  ArrowRight,
-  ExternalLink,
-  ShieldCheck
+  ShoppingBag,
+  Star,
+  AlertCircle,
 } from "lucide-react";
+import Icon from "@/components/ui/AppIcon";
+import Image from "@/components/ui/AppImage";
 import TabNavigation from "./TabNavigation";
 import ProductGrid from "./ProductGrid";
 import ContactSection from "./ContactSection";
 import { StorefrontData } from "@/types/vendor/storefront";
-
-const DUMMY_PRODUCTS = [
-  {
-    id: 1,
-    name: "iPhone 13 Pro Max - 256GB Gold",
-    product_price: 750000,
-    description: "Smartphones",
-    images: ["https://images.unsplash.com/photo-1632661674596-df8be070a5c5?auto=format&fit=crop&q=80&w=800"],
-    stock: 5,
-    rating: 4.8
-  }
-];
+import { productService } from "@/services/productService";
+import { vendorService } from "@/services/vendorService";
+import { toast } from "@/components/ui/sonner";
 
 interface Props {
   storefrontData: StorefrontData | null;
@@ -43,78 +33,209 @@ const BusinessStorefrontView: React.FC<Props> = ({ storefrontData, products: ini
   const [activeTab, setActiveTab] = useState<TabId>("products");
   const [business, setBusiness] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [availableCatalogs, setAvailableCatalogs] = useState<any[]>([]);
+  const [fetchingCatalogs, setfetchingCatalogs] = useState(true);
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
+
+  const refetchCatalogs = useCallback(() => {
+    setRefetchTrigger(prev => prev + 1);
+  }, []);
 
   useEffect(() => {
-    const syncData = () => {
-      const savedLocal = localStorage.getItem("vendorStorefrontDetails");
-      if (savedLocal) {
-        const parsed = JSON.parse(savedLocal);
-        setBusiness({
-          ...storefrontData,
-          ...parsed,
-          products: parsed.products?.length > 0 ? parsed.products : DUMMY_PRODUCTS,
-          selectedDays: parsed.selectedDays || []
-        });
-      } else {
-        setBusiness({ 
-          ...storefrontData, 
-          products: DUMMY_PRODUCTS,
-          selectedDays: [] 
-        });
+    const fetchCatalogs = async () => {
+      setfetchingCatalogs(true);
+      try {
+        const res = await productService.getCatalogs();
+        
+        if (res.status === "success" && res.catalogs) {
+          const transformedCatalogs = res.catalogs.map((catalog: any) => ({
+            id: catalog.id,
+            name: catalog.name || "Untitled Catalog",
+            image: catalog.image || null,
+            items: (catalog.products || []).map((product: any) => ({
+              id: product.id,
+              name: product.name,
+              product_price: product.price,
+              images: [product.image],
+              description: ""
+            }))
+          }));
+          setAvailableCatalogs(transformedCatalogs);
+        }
+      } catch (error) {
+        console.error("Failed to load catalogs");
+      } finally {
+        setfetchingCatalogs(false);
       }
-      setLoading(false);
+    };
+    
+    fetchCatalogs();
+    
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "catalogsUpdated") {
+        fetchCatalogs();
+      }
+    };
+    
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [refetchTrigger]);
+
+  useEffect(() => {
+    const syncData = async (fetchFreshSettings = false) => {
+      try {
+        let settingsData: any = storefrontData;
+        
+        // Always fetch fresh settings to get latest updates
+        const freshSettings = await vendorService.getVendorProfile();
+        if (freshSettings?.data) {
+          settingsData = freshSettings.data;
+        }
+        
+        const savedLocal = localStorage.getItem("vendorStorefrontDetails");
+        if (savedLocal) {
+          const parsed = JSON.parse(savedLocal);
+          setBusiness({
+            ...settingsData,
+            ...parsed,
+            products: parsed.products?.length > 0 ? parsed.products : availableCatalogs,
+            selectedDays: parsed.selectedDays || [],
+            business_name: settingsData?.store_settings?.business_name || parsed.business_name,
+            profileImage: settingsData?.store_settings?.logo_url || parsed.profileImage,
+            description: settingsData?.store_settings?.description || parsed.description,
+            address: settingsData?.store_settings?.address || parsed.address,
+            template_options: settingsData?.store_settings?.template_options || parsed.template_options,
+            banner_url: settingsData?.store_settings?.banner_url || parsed.banner_url,
+            is_published: settingsData?.store_settings?.is_published || parsed.is_published,
+            working_hours: settingsData?.store_settings?.working_hours || parsed.working_hours,
+            website: settingsData?.store_settings?.website || parsed.website,
+            cac_reg: settingsData?.store_settings?.cac_reg || parsed.cac_reg,
+            storefront_link: settingsData?.store_settings?.storefront_link || parsed.storefront_link,
+            social_links: settingsData?.store_settings?.social_links || parsed.social_links
+          });
+        } else {
+          setBusiness({
+            ...settingsData,
+            products: availableCatalogs,
+            selectedDays: [],
+            business_name: settingsData?.store_settings?.business_name,
+            profileImage: settingsData?.store_settings?.logo_url,
+            description: settingsData?.store_settings?.description,
+            address: settingsData?.store_settings?.address,
+            template_options: settingsData?.store_settings?.template_options,
+            banner_url: settingsData?.store_settings?.banner_url,
+            is_published: settingsData?.store_settings?.is_published,
+            working_hours: settingsData?.store_settings?.working_hours,
+            website: settingsData?.store_settings?.website,
+            cac_reg: settingsData?.store_settings?.cac_reg,
+            storefront_link: settingsData?.store_settings?.storefront_link,
+            social_links: settingsData?.store_settings?.social_links
+          });
+        }
+      } catch (error) {
+        console.error("Error syncing data:", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     syncData();
-    window.addEventListener('storage', syncData);
-    return () => window.removeEventListener('storage', syncData);
-  }, [storefrontData]);
+    
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "storefrontUpdated") {
+        syncData(true);
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [storefrontData, availableCatalogs]);
 
   if (loading || !business) return null;
 
-  const themeColor = business.themeColor || "#1E293B";
-  const fontFamily = business.fontFamily || "Inter";
+  const themeColor = business.template_options?.primary_color || business.themeColor || "#1E293B";
+  const secondaryColor = business.template_options?.secondary_color || "#ffffff";
+  
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const today = days[new Date().getDay()];
+  const todayHours = business.working_hours?.[today];
+  const displayOpenTime = todayHours?.start || business.openTime || "09:00";
+  const displayCloseTime = todayHours?.end || business.closeTime || "21:00";
+
+  const handleShareStore = async () => {
+    try {
+      const url = window.location.href;
+      await navigator.clipboard.writeText(url);
+      toast.success("URL copied to clipboard!");
+    } catch (err) {
+      toast.error("Failed to copy URL");
+    }
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
       case "products":
         return (
           <div className="animate-in fade-in slide-in-from-bottom-6 duration-500">
-            <ProductGrid />
+            <ProductGrid 
+              collections={availableCatalogs}
+              isLoading={fetchingCatalogs}
+            />
           </div>
         );
       case "about":
         return (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-6 duration-500">
-            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 relative overflow-hidden">
-               <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16" />
-               <div className="relative">
-                 <h4 className="text-[11px] font-black text-blue-600 uppercase tracking-[0.2em] mb-4">Our Mission</h4>
-                 <h3 className="text-xl font-black text-slate-900 mb-4">{business.business_name}</h3>
-                 <p className="text-sm text-slate-500 leading-relaxed font-medium">
-                   {business.about || "This business hasn't shared their story yet."}
-                 </p>
-               </div>
+            <div className="p-6 border rounded-2xl bg-white shadow-sm">
+              <h3 className="text-xs font-black uppercase tracking-widest mb-4">
+                About
+              </h3>
+              <p className="text-sm leading-relaxed text-gray-700">
+                {business.description || "This business hasn't shared their story yet."}
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white rounded-3xl p-5 border border-slate-100 flex flex-col gap-3">
-                <div className="w-10 h-10 rounded-2xl shadow-lg" style={{ backgroundColor: themeColor }} />
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">Theme</p>
-                  <p className="text-xs font-black text-slate-800 tracking-tight">{themeColor}</p>
+              <div className="p-6 border rounded-2xl bg-white shadow-sm">
+                <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-2">Theme</p>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded" style={{ backgroundColor: themeColor }} />
+                  <p className="text-xs font-semibold">{themeColor}</p>
                 </div>
               </div>
-              <div className="bg-white rounded-3xl p-5 border border-slate-100 flex flex-col gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-900 border border-slate-100">
-                  <Globe size={18} />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">Typography</p>
-                  <p className="text-xs font-black text-slate-800 tracking-tight">{fontFamily}</p>
-                </div>
+              <div className="p-6 border rounded-2xl bg-white shadow-sm">
+                <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-2">Address</p>
+                <p className="text-xs font-semibold truncate">{business.address || "N/A"}</p>
+              </div>
+              <div className="p-6 border rounded-2xl bg-white shadow-sm">
+                <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-2">Website</p>
+                <a href={business.website} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-blue-600 hover:underline truncate">
+                  {business.website || "N/A"}
+                </a>
+              </div>
+              <div className="p-6 border rounded-2xl bg-white shadow-sm">
+                <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-2">CAC Reg</p>
+                <p className="text-xs font-semibold">{business.cac_reg || "N/A"}</p>
               </div>
             </div>
+
+            {business.social_links && Object.keys(business.social_links).length > 0 && (
+              <div className="p-6 border rounded-2xl bg-white shadow-sm">
+                <h3 className="text-xs font-black uppercase tracking-widest mb-4">
+                  Social Links
+                </h3>
+                <div className="space-y-3">
+                  {Object.entries(business.social_links).map(([platform, url]: [string, any]) => (
+                    <div key={platform} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <span className="text-xs font-semibold text-gray-700 capitalize">{platform}</span>
+                      <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline truncate max-w-xs">
+                        {String(url)}
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         );
       case "contact":
@@ -125,118 +246,229 @@ const BusinessStorefrontView: React.FC<Props> = ({ storefrontData, products: ini
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-44" style={{ fontFamily }}>
-      
-      {/* 1. DRAFT BANNER - Sleeker */}
-      <div className="bg-slate-900 text-white/90 py-3 px-4 flex items-center justify-center gap-3 text-[10px] font-black tracking-[0.15em] sticky top-0 z-[100] backdrop-blur-md">
-        <ShieldCheck size={14} className="text-orange-400" />
-        <span className="uppercase">Merchant Preview Mode</span>
-      </div>
-
-      {/* 2. HERO SECTION - Modern Gradient */}
-      <div className="relative pt-8 pb-24 px-8 text-white overflow-hidden" style={{ backgroundColor: themeColor }}>
-        {/* Abstract Background Shapes */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20" />
-        
-        <div className="flex justify-between items-center relative z-10 mb-10">
-          <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-xl border border-white/10 active:scale-90 transition-transform">
-            <ChevronLeft size={20} />
-          </div>
-          <div className="flex gap-3">
-            <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-xl border border-white/10">
-              <Search size={20} />
-            </div>
-            <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-xl border border-white/10">
-              <User size={20} />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col items-center text-center relative z-10">
-          <div className="relative mb-6">
-            <div className="w-24 h-24 bg-white rounded-[2.5rem] flex items-center justify-center p-1 shadow-2xl rotate-3">
-              <div className="w-full h-full bg-slate-50 rounded-[2.2rem] overflow-hidden">
-                {business.profileImage ? (
-                  <img src={business.profileImage} className="w-full h-full object-cover" alt="Profile" />
-                ) : <Building size={32} className="text-slate-200 mt-6 mx-auto" />}
-              </div>
-            </div>
-            <div className="absolute -bottom-2 -right-2 bg-blue-500 text-white p-2 rounded-2xl border-4 border-white shadow-xl">
-              <CheckCircle2 size={16} fill="currentColor" className="text-white" />
-            </div>
-          </div>
-
-          <h2 className="text-3xl font-black leading-none mb-2 tracking-tighter uppercase">
-            {business.business_name}
-          </h2>
-          <div className="flex items-center gap-2 bg-black/20 px-4 py-1.5 rounded-full backdrop-blur-md border border-white/10">
-            <span className="text-[10px] font-bold tracking-widest text-white/70">siiqo.com/{business.slug}</span>
-            <ExternalLink size={10} className="opacity-50" />
+    <div className="min-h-screen bg-background pb-20">
+      {/* Header with back button */}
+      <div className="sticky top-0 z-40 bg-white border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
+          <button
+            className="flex items-center gap-2 p-2 -ml-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <ChevronLeft size={20} className="text-gray-700" />
+            <span className="text-sm font-semibold text-gray-700 hidden sm:inline">Back</span>
+          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleShareStore}
+              className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+            >
+              <Share2 size={20} />
+            </button>
           </div>
         </div>
       </div>
 
-      {/* 3. FLOATING INFO CARD */}
-      <div className="max-w-xl mx-auto px-6 -mt-12 relative z-50">
-        <div className="bg-white rounded-[2.5rem] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.08)] border border-slate-100 flex items-center justify-between">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-slate-900 font-black text-lg tracking-tight">
-              <Clock size={18} className="text-blue-500" />
-              <span>{business.openTime || "09:00"} — {business.closeTime || "21:00"}</span>
-            </div>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Store Business Hours</p>
-          </div>
+      {/* Banner and Logo Section */}
+      <div className="relative">
+        <div
+          className="h-60 md:h-80 w-full bg-center bg-cover"
+          style={{ 
+            backgroundImage: business.banner_url 
+              ? `url(${business.banner_url})` 
+              : `linear-gradient(135deg, ${themeColor}, ${themeColor}dd)`,
+            backgroundColor: themeColor
+          }}
+        >
+          <div className="absolute inset-0 bg-black/20" />
+        </div>
 
-          <div className="flex -space-x-2">
-            {(business.selectedDays || []).slice(0, 5).map((day: string, index: number) => (
-              <div 
-                key={index} 
-                className="w-9 h-9 rounded-2xl text-white text-[11px] font-black flex items-center justify-center border-4 border-white shadow-sm transition-transform hover:-translate-y-1" 
-                style={{ backgroundColor: themeColor, zIndex: 10 - index }}
-              >
-                {day.charAt(0)}
-              </div>
-            ))}
-            {business.selectedDays?.length > 5 && (
-              <div className="w-9 h-9 rounded-2xl bg-slate-100 text-slate-400 text-[10px] font-bold flex items-center justify-center border-4 border-white">
-                +{business.selectedDays.length - 5}
+        <div className="absolute left-1/2 -translate-x-1/2 -bottom-12">
+          <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-full border-[6px] border-white bg-gray-100 shadow-xl overflow-hidden">
+            {business.profileImage ? (
+              <Image src={business.profileImage} alt={business.business_name} fill className="object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                <Building size={40} className="text-gray-400" />
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* 4. TABS & CONTENT */}
-      <div className="max-w-xl mx-auto px-6 mt-10">
-        <TabNavigation
-          activeTab={activeTab}
-          onTabChange={(id) => setActiveTab(id as TabId)}
-          tabs={[
-            { id: "products", label: "Catalogs", count: business.products?.length || 0 },
-            { id: "about", label: "Info" },
-            { id: "contact", label: "Support" }
-          ]}
-        />
+      <div className="max-w-7xl mx-auto px-4 md:px-6 mt-16 md:mt-20">
+        {/* Store Info */}
+        <div className="text-center mb-12">
+          <h1 className="text-3xl md:text-4xl font-black mb-2 uppercase tracking-tight">
+            {business.business_name}
+          </h1>
+          <p className="text-gray-600 max-w-2xl mx-auto">{business.description}</p>
 
-        <div className="mt-10">
-          {renderTabContent()}
+          <div className="flex flex-wrap items-center justify-center gap-4 mt-6">
+            {business.address && (
+              <div className="flex items-center gap-2 text-gray-600">
+                <MapPin size={18} className="text-primary" />
+                <span className="text-sm font-medium">{business.address}</span>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* 5. BOTTOM CTA - "The App Feel" */}
-      <div className="fixed bottom-0 left-0 right-0 p-6 z-[100]">
-        <div className="max-w-xl mx-auto flex items-center gap-3">
-          <button className="flex-1 bg-slate-900 text-white h-16 rounded-[2rem] text-sm font-black shadow-2xl shadow-slate-400 active:scale-[0.98] transition-all flex items-center justify-center gap-3 group">
-            Publish Live Storefront
-            <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-          </button>
-          
-          <button 
-            className="w-16 h-16 bg-green-500 text-white rounded-[2rem] flex items-center justify-center shadow-xl shadow-green-100 active:scale-90 transition-all"
-            onClick={() => window.open(`https://wa.me/${business.phone}`)}
-          >
-            <MessageCircle size={24} fill="currentColor" />
-          </button>
+        {/* Main Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Left Sidebar */}
+          <aside className="lg:col-span-4 space-y-6">
+            {/* Store Details Card */}
+            <div className="p-6 border rounded-2xl bg-white shadow-sm">
+              <h3 className="text-xs font-black uppercase tracking-widest mb-4">
+                Store Details
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <Globe size={16} className="text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-widest">
+                      Status
+                    </p>
+                    <p className="text-sm font-semibold">{business.is_published ? "Published" : "Draft"}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
+                    <div
+                      className="w-6 h-6 rounded"
+                      style={{ backgroundColor: themeColor }}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-widest">
+                      Brand Color
+                    </p>
+                    <p className="text-sm font-semibold">{themeColor}</p>
+                  </div>
+                </div>
+
+                {business.storefront_link && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
+                      <Icon name="Link" size={16} className="text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-widest">
+                        Storefront Link
+                      </p>
+                      <p className="text-sm font-semibold">siiqo.com/{business.storefront_link}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Business Hours Card */}
+            <div className="p-6 border rounded-2xl bg-white shadow-sm">
+              <h3 className="text-xs font-black uppercase tracking-widest mb-4">
+                Business Hours
+              </h3>
+              <div className="space-y-3">
+                {Object.keys(business.working_hours || {}).length > 0 ? (
+                  <>
+                    <div className="mb-3 pb-3 border-b">
+                      <p className="text-xs font-semibold text-gray-700 mb-1">Today ({today})</p>
+                      <p className="text-sm font-bold text-blue-600">
+                        {displayOpenTime} — {displayCloseTime}
+                      </p>
+                    </div>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {Object.entries(business.working_hours).map(([day, hours]: [string, any]) => (
+                        <div key={day} className="flex justify-between text-xs p-2 bg-gray-50 rounded">
+                          <span className="font-semibold text-gray-700">{day}</span>
+                          <span className="text-gray-600">
+                            {hours.start && hours.end 
+                              ? `${hours.start} - ${hours.end}`
+                              : hours.start
+                                ? `From ${hours.start}`
+                                : 'Closed'
+                            }
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-xs text-gray-400">Hours not set</p>
+                )}
+              </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="p-6 border rounded-2xl bg-white shadow-sm">
+              <h3 className="text-xs font-black uppercase tracking-widest mb-4">
+                Quick Stats
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 flex items-center gap-2">
+                    <ShoppingBag size={16} className="text-primary" />
+                    Catalogs
+                  </span>
+                  <span className="font-bold">{availableCatalogs.length}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 flex items-center gap-2">
+                    <Star size={16} className="text-yellow-500" />
+                    Rating
+                  </span>
+                  <span className="font-bold">N/A</span>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          {/* Main Content */}
+          <main className="lg:col-span-8">
+            {/* Tabs */}
+            <div className="flex gap-2 mb-6 border-b border-gray-200">
+              <button
+                onClick={() => setActiveTab("products")}
+                className={`px-6 py-3 font-semibold text-sm border-b-2 transition-colors ${
+                  activeTab === "products"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                <Icon name="Package" size={16} className="inline mr-2" />
+                Products
+              </button>
+              <button
+                onClick={() => setActiveTab("about")}
+                className={`px-6 py-3 font-semibold text-sm border-b-2 transition-colors ${
+                  activeTab === "about"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                <Icon name="Info" size={16} className="inline mr-2" />
+                About
+              </button>
+              <button
+                onClick={() => setActiveTab("contact")}
+                className={`px-6 py-3 font-semibold text-sm border-b-2 transition-colors ${
+                  activeTab === "contact"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                <Icon name="MessageCircle" size={16} className="inline mr-2" />
+                Contact
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="mt-10">
+              {renderTabContent()}
+            </div>
+          </main>
         </div>
       </div>
     </div>

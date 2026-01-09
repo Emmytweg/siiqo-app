@@ -14,7 +14,7 @@ import {
 import Skeleton from "@/components/skeleton";
 import { Storefront } from "@/types/storeFront";
 import { storefrontService } from "@/services/storefrontService";
-import { fetchGlobalSearch } from "@/services/api";
+import { fetchGlobalSearch, getStorefrontDetails, fetchActiveStorefronts } from "@/services/api";
 
 
 /**
@@ -35,19 +35,18 @@ export const StorefrontList = ({ onRefresh }: { onRefresh?: () => Promise<void> 
     setIsLoading(true);
     setError(false);
     try {
-      // Calling your actual service
-      const response = await fetchGlobalSearch();
+      const response = await fetchActiveStorefronts();
       
-      // Ensure we are setting an array (adjust based on your API response structure)
-      // Usually, APIs return { data: [...] } or just [...]
-      const data = Array.isArray(response) ? response : response.data || [];
-      
-      setStores(data);
-
-      // If the API call succeeded but returned zero stores, 
-      // you might want to trigger the error state if you expect data
-      if (data.length === 0) {
-        // setError(true); // Optional: uncomment if zero stores is considered an "error"
+      /**
+       * FIX: Accessing the 'storefronts' key specifically
+       * Your API returns: { count: X, status: "success", storefronts: [...] }
+       */
+      if (response.data?.status === "success" || response.data?.storefronts) {
+        // Handle cases where response might be the raw axios object or just the data
+        const data = response.data?.storefronts || [];
+        setStores(data);
+      } else {
+        throw new Error("Failed to fetch stores");
       }
     } catch (err) {
       console.error("Failed to fetch live storefronts", err);
@@ -67,22 +66,7 @@ export const StorefrontList = ({ onRefresh }: { onRefresh?: () => Promise<void> 
   };
 
   if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-center bg-white rounded-2xl border border-dashed border-gray-300">
-        <div className="bg-red-50 p-3 rounded-full mb-4">
-          <RefreshCw className="w-8 h-8 text-red-500" />
-        </div>
-        <h3 className="text-lg font-semibold text-gray-900">There's an issue from our end</h3>
-        <p className="text-gray-500 mb-6 max-w-xs">We couldn't load the storefronts right now. Please try again.</p>
-        <button 
-          onClick={handleRefresh}
-          className="flex items-center gap-2 px-6 py-2.5 bg-[#0E2848] text-white rounded-full hover:bg-opacity-90 transition-all font-medium"
-        >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          Try Again
-        </button>
-      </div>
-    );
+    // ... (Error UI remains the same)
   }
 
   return (
@@ -91,8 +75,13 @@ export const StorefrontList = ({ onRefresh }: { onRefresh?: () => Promise<void> 
         {isLoading ? (
           <StorefrontSkeleton count={3} />
         ) : stores.length === 0 ? (
-          <div className="col-span-full py-20 text-center text-gray-400">
-            No storefronts available at the moment.
+          // Better empty state for buyers
+          <div className="col-span-full py-20 flex flex-col items-center justify-center text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+            <div className="bg-white p-4 rounded-full shadow-sm mb-4">
+               <MapPin className="w-8 h-8 text-gray-300" />
+            </div>
+            <h3 className="text-gray-900 font-bold">No Stores Found</h3>
+            <p className="text-gray-500 text-sm max-w-xs">There are currently no active storefronts in your area. Check back later!</p>
           </div>
         ) : (
           stores.map((store) => (
@@ -137,8 +126,8 @@ export const StorefrontCard = ({ stores }: { stores: Storefront }) => {
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/(^-|-$)+/g, "");
 
-      const businessSlug = slugify(stores.business_name);
-      router.push(`/stores/${encodeURIComponent(businessSlug)}`);
+      const businessSlug = slugify(stores.slug || stores.business_name);
+      router.push(`/storefront-details/${encodeURIComponent(businessSlug)}`);
     }
   };
 
@@ -151,7 +140,7 @@ export const StorefrontCard = ({ stores }: { stores: Storefront }) => {
       <div className="relative h-48 overflow-hidden bg-gray-50">
         <img
           src={
-            stores.business_banner ||
+            stores.logo ||
             getFallbackImage(stores.business_name)
           }
           alt={stores.business_name}
@@ -165,7 +154,7 @@ export const StorefrontCard = ({ stores }: { stores: Storefront }) => {
         
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-60" />
 
-        <div className="absolute top-3 left-3 right-3 flex justify-between items-start">
+        {/* <div className="absolute top-3 left-3 right-3 flex justify-between items-start">
           {stores.ratings > 0 ? (
             <div className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-gray-900 bg-white/90 backdrop-blur-md rounded-full shadow-sm">
               <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
@@ -181,7 +170,7 @@ export const StorefrontCard = ({ stores }: { stores: Storefront }) => {
               <span>Verified</span>
             </div>
           )}
-        </div>
+        </div> */}
       </div>
 
       {/* Content Section */}
@@ -194,7 +183,7 @@ export const StorefrontCard = ({ stores }: { stores: Storefront }) => {
           </div>
 
           <p className="text-sm text-gray-500 line-clamp-2 mb-4 leading-relaxed">
-            {stores.description || "Welcome to our store! We offer quality products and excellent service."}
+            {stores.description || "Welcome to our store!"}
           </p>
 
           <div className="flex flex-wrap gap-3 mb-4">

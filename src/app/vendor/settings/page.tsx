@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { toast } from "sonner";
 import {
   MapPin,
   Bell,
@@ -21,6 +22,11 @@ import {
   User,
   ShieldCheck,
   ChevronDown,
+  Link,
+  Edit2,
+  Save,
+  X,
+  Loader2,
 } from "lucide-react";
 import { useLocationDetection } from "@/hooks/useLocationDetection";
 import { userService } from "@/services/userService";
@@ -62,6 +68,16 @@ const Settings = () => {
 
   const [activeSection, setActiveSection] = useState("location");
   const [vendorData, setVendorData] = useState<VendorData | null>(null);
+  const [financialData, setFinancialData] = useState<any>(null);
+  const [accountData, setAccountData] = useState<any>(null);
+  const [loadingFinancials, setLoadingFinancials] = useState(false);
+  const [loadingAccount, setLoadingAccount] = useState(false);
+  
+  // Edit mode states
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedAccountData, setEditedAccountData] = useState<any>(null);
+  const [editedFinancialData, setEditedFinancialData] = useState<any>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const {
     location: autoDetectedLocation,
@@ -82,6 +98,48 @@ const Settings = () => {
     };
 
     fetchProfile();
+  }, []);
+
+  // Fetch financial/payment data
+  useEffect(() => {
+    const fetchFinancialData = async () => {
+      setLoadingFinancials(true);
+      try {
+        const response = await vendorService.getDashboardStats();
+        if (response.data && response.data.financials) {
+          setFinancialData(response.data.financials);
+        }
+      } catch (err) {
+        console.error("Error fetching financial data:", err);
+      } finally {
+        setLoadingFinancials(false);
+      }
+    };
+
+    fetchFinancialData();
+  }, []);
+
+  // Fetch account/personal info data
+  useEffect(() => {
+    const fetchAccountData = async () => {
+      setLoadingAccount(true);
+      try {
+        const response = await vendorService.getDashboardStats();
+        if (response.data) {
+          const data = {
+            personal_info: response.data.personal_info,
+            store_settings: response.data.store_settings,
+          };
+          setAccountData(data);
+        }
+      } catch (err) {
+        console.error("Error fetching account data:", err);
+      } finally {
+        setLoadingAccount(false);
+      }
+    };
+
+    fetchAccountData();
   }, []);
 
   const handleSettingChange = (
@@ -132,6 +190,85 @@ const Settings = () => {
       console.error("Error getting location:", error);
     } finally {
       setManualLocationLoading(false);
+    }
+  };
+
+  // Edit mode handlers
+  const handleEditToggle = () => {
+    if (!isEditMode) {
+      // Enter edit mode - copy current data
+      setEditedAccountData(JSON.parse(JSON.stringify(accountData)));
+      setEditedFinancialData(JSON.parse(JSON.stringify(financialData)));
+    }
+    setIsEditMode(!isEditMode);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    setEditedAccountData(null);
+    setEditedFinancialData(null);
+  };
+
+  const handleEditChange = (section: string, key: string, value: any) => {
+    if (section === "account") {
+      setEditedAccountData((prev: any) => ({
+        ...prev,
+        [key.split(".")[0]]: {
+          ...(prev?.[key.split(".")[0]] || {}),
+          [key.split(".")[1]]: value,
+        },
+      }));
+    } else if (section === "financial") {
+      setEditedFinancialData((prev: any) => ({
+        ...prev,
+        [key]: value,
+      }));
+    }
+  };
+
+  const handleSaveChanges = async () => {
+    if (!editedAccountData || !editedFinancialData) {
+      toast.error("Missing data");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const formData = new FormData();
+
+      // Add financial data
+      if (editedFinancialData.bank_name) formData.append("financials[bank_name]", editedFinancialData.bank_name);
+      if (editedFinancialData.account_number) formData.append("financials[account_number]", editedFinancialData.account_number);
+      if (editedFinancialData.wallet_address) formData.append("financials[wallet_address]", editedFinancialData.wallet_address);
+      if (editedFinancialData.business_address) formData.append("financials[business_address]", editedFinancialData.business_address);
+
+      // Add personal info data
+      if (editedAccountData.personal_info?.fullname) formData.append("personal_info[fullname]", editedAccountData.personal_info.fullname);
+      if (editedAccountData.personal_info?.email) formData.append("personal_info[email]", editedAccountData.personal_info.email);
+      if (editedAccountData.personal_info?.phone) formData.append("personal_info[phone]", editedAccountData.personal_info.phone);
+
+      // Add store settings data
+      if (editedAccountData.store_settings?.business_name) formData.append("store_settings[business_name]", editedAccountData.store_settings.business_name);
+      if (editedAccountData.store_settings?.address) formData.append("store_settings[address]", editedAccountData.store_settings.address);
+      if (editedAccountData.store_settings?.storefront_link) formData.append("store_settings[storefront_link]", editedAccountData.store_settings.storefront_link);
+
+      // Call API
+      const response = await vendorService.updateVendorSettings(formData);
+
+      if (response.status === "success" || response.data) {
+        // Update local state with new data
+        setAccountData(editedAccountData);
+        setFinancialData(editedFinancialData);
+        setIsEditMode(false);
+        toast.success("Settings updated successfully!");
+      } else {
+        toast.error("Failed to update settings");
+      }
+    } catch (error: any) {
+      console.error("Error saving settings:", error);
+      toast.error(error.response?.data?.message || "Error saving settings");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -283,7 +420,12 @@ const Settings = () => {
   );
 
   const renderNotificationSettings = () => (
-    <div className="space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-300">
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div className="px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center gap-3">
+        <span className="px-3 py-1 text-xs font-semibold text-yellow-800 bg-yellow-200 rounded-full">Coming Soon</span>
+        <p className="text-sm text-yellow-700">Notification preferences are being prepared and will be available soon.</p>
+      </div>
+      <div className="space-y-1 opacity-50 pointer-events-none">
       {Object.entries(settings.notifications).map(([key, value], index) => {
         const labels: { [key: string]: { title: string; desc: string } } = {
           newMessages: { title: "New Messages", desc: "Direct messages from buyers/sellers" },
@@ -317,12 +459,17 @@ const Settings = () => {
           </div>
         );
       })}
+      </div>
     </div>
   );
 
   const renderPrivacySettings = () => (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div className="px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center gap-3">
+        <span className="px-3 py-1 text-xs font-semibold text-yellow-800 bg-yellow-200 rounded-full">Coming Soon</span>
+        <p className="text-sm text-yellow-700">Privacy settings are being prepared and will be available soon.</p>
+      </div>
+      <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 opacity-50 pointer-events-none">
         <label className="block text-sm font-semibold text-gray-900 mb-3">
           Profile Visibility
         </label>
@@ -342,7 +489,7 @@ const Settings = () => {
         </p>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-4 opacity-50 pointer-events-none">
         <h3 className="text-sm font-semibold text-gray-900 px-1">Interactions</h3>
         {Object.entries(settings.privacy)
           .filter(([key]) => key !== "profileVisibility")
@@ -381,87 +528,246 @@ const Settings = () => {
   );
 
   const renderAccountSettings = () => (
-    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      {vendorData ? (
-        <div className="grid grid-cols-1 gap-4">
-          {/* Card Component for Info */}
-          {[
-            { label: "Business Name", value: vendorData.business_name, icon: Building2 },
-            { label: "Contact Name", value: `${vendorData.first_name} ${vendorData.last_name}`, icon: User },
-            { label: "Email Address", value: vendorData.email, icon: Mail },
-            { label: "Phone Number", value: vendorData.phone, icon: Phone },
-          ].map((item, idx) => (
-            <div key={idx} className="flex items-start p-4 border border-gray-100 rounded-xl bg-gray-50/50 hover:bg-white hover:shadow-sm hover:border-gray-200 transition-all duration-200">
-              <div className="p-2 bg-white rounded-lg border border-gray-100 mr-4 text-gray-500">
-                <item.icon size={18} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">{item.label}</p>
-                <p className="text-sm font-semibold text-gray-900 truncate">{item.value || "Not Set"}</p>
-              </div>
-            </div>
-          ))}
-
-          {/* Verification Status */}
-          <div className={`flex items-center justify-between p-4 border rounded-xl mt-2 ${vendorData.isVerified ? 'bg-green-50 border-green-100' : 'bg-amber-50 border-amber-100'}`}>
-            <div className="flex items-center space-x-3">
-              <ShieldCheck size={20} className={vendorData.isVerified ? "text-green-600" : "text-amber-600"} />
-              <div>
-                <h4 className={`text-sm font-semibold ${vendorData.isVerified ? "text-green-900" : "text-amber-900"}`}>
-                  Identity Verification
-                </h4>
-                <p className={`text-xs ${vendorData.isVerified ? "text-green-700" : "text-amber-700"}`}>
-                  {vendorData.isVerified ? "Your account is fully verified" : "Action required to verify account"}
-                </p>
-              </div>
-            </div>
-            {vendorData.isVerified ? (
-              <div className="bg-white p-1 rounded-full text-green-600">
-                <Check size={16} />
-              </div>
-            ) : (
-              <button className="text-xs font-semibold bg-white text-amber-700 px-3 py-1.5 rounded-lg shadow-sm hover:bg-amber-50 transition-colors">
-                Verify Now
-              </button>
-            )}
-          </div>
-        </div>
-      ) : (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      {loadingAccount ? (
         <div className="flex items-center justify-center py-12">
-            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      ) : accountData ? (
+        <>
+          {/* Personal Information Section */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2 px-1">
+              <User size={18} className="text-blue-600" />
+              Personal Information
+            </h3>
+            <div className="grid grid-cols-1 gap-4">
+              {/* Full Name */}
+              <div className="flex items-start p-4 border border-gray-100 rounded-xl bg-gray-50/50 hover:bg-white hover:shadow-sm hover:border-gray-200 transition-all duration-200">
+                <div className="p-2 bg-white rounded-lg border border-gray-100 mr-4 text-gray-500">
+                  <User size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">Full Name</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate">{accountData.personal_info?.fullname || "Not Set"}</p>
+                </div>
+              </div>
+
+              {/* Email Address */}
+              <div className="flex items-start p-4 border border-gray-100 rounded-xl bg-gray-50/50 hover:bg-white hover:shadow-sm hover:border-gray-200 transition-all duration-200">
+                <div className="p-2 bg-white rounded-lg border border-gray-100 mr-4 text-gray-500">
+                  <Mail size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">Email Address</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate">{accountData.personal_info?.email || "Not Set"}</p>
+                </div>
+              </div>
+
+              {/* Phone Number */}
+              <div className="flex items-start p-4 border border-gray-100 rounded-xl bg-gray-50/50 hover:bg-white hover:shadow-sm hover:border-gray-200 transition-all duration-200">
+                <div className="p-2 bg-white rounded-lg border border-gray-100 mr-4 text-gray-500">
+                  <Phone size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">Phone Number</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate">{accountData.personal_info?.phone || "Not Set"}</p>
+                </div>
+              </div>
+
+              {/* Referral Code */}
+              <div className="flex items-start p-4 border border-gray-100 rounded-xl bg-gray-50/50 hover:bg-white hover:shadow-sm hover:border-gray-200 transition-all duration-200">
+                <div className="p-2 bg-white rounded-lg border border-gray-100 mr-4 text-gray-500">
+                  <Key size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">Referral Code</p>
+                  <p className="text-sm font-semibold text-gray-900 font-mono">{accountData.personal_info?.referral_code || "Not Set"}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Store Information Section */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2 px-1">
+              <Building2 size={18} className="text-blue-600" />
+              Store Information
+            </h3>
+            <div className="grid grid-cols-1 gap-4">
+              {/* Business Name */}
+              <div className="flex items-start p-4 border border-gray-100 rounded-xl bg-gray-50/50 hover:bg-white hover:shadow-sm hover:border-gray-200 transition-all duration-200">
+                <div className="p-2 bg-white rounded-lg border border-gray-100 mr-4 text-gray-500">
+                  <Building2 size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">Business Name</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate">{accountData.store_settings?.business_name || "Not Set"}</p>
+                </div>
+              </div>
+
+              {/* Address */}
+              <div className="flex items-start p-4 border border-gray-100 rounded-xl bg-gray-50/50 hover:bg-white hover:shadow-sm hover:border-gray-200 transition-all duration-200">
+                <div className="p-2 bg-white rounded-lg border border-gray-100 mr-4 text-gray-500">
+                  <MapPin size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">Business Address</p>
+                  <p className="text-sm font-semibold text-gray-900">{accountData.store_settings?.address || "Not Set"}</p>
+                </div>
+              </div>
+
+              {/* Storefront Link */}
+              <div className="flex items-start p-4 border border-gray-100 rounded-xl bg-gray-50/50 hover:bg-white hover:shadow-sm hover:border-gray-200 transition-all duration-200">
+                <div className="p-2 bg-white rounded-lg border border-gray-100 mr-4 text-gray-500">
+                  <Link size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">Storefront Link</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate">{accountData.store_settings?.storefront_link || "Not Set"}</p>
+                </div>
+              </div>
+
+              {/* Publication Status */}
+              <div className={`flex items-center justify-between p-4 border rounded-xl ${accountData.store_settings?.is_published ? 'bg-green-50 border-green-100' : 'bg-amber-50 border-amber-100'}`}>
+                <div className="flex items-center space-x-3">
+                  <ShieldCheck size={20} className={accountData.store_settings?.is_published ? "text-green-600" : "text-amber-600"} />
+                  <div>
+                    <h4 className={`text-sm font-semibold ${accountData.store_settings?.is_published ? "text-green-900" : "text-amber-900"}`}>
+                      Store Status
+                    </h4>
+                    <p className={`text-xs ${accountData.store_settings?.is_published ? "text-green-700" : "text-amber-700"}`}>
+                      {accountData.store_settings?.is_published ? "Your store is published and visible" : "Your store is not yet published"}
+                    </p>
+                  </div>
+                </div>
+                {accountData.store_settings?.is_published ? (
+                  <div className="bg-white p-1 rounded-full text-green-600">
+                    <Check size={16} />
+                  </div>
+                ) : (
+                  <button className="text-xs font-semibold bg-white text-amber-700 px-3 py-1.5 rounded-lg shadow-sm hover:bg-amber-50 transition-colors">
+                    Publish Now
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Delete Account Section */}
+          <div className="pt-6 mt-6 border-t border-gray-100">
+            <button className="flex items-center text-red-600 text-sm font-medium hover:text-red-700 transition-colors">
+              <Trash2 size={16} className="mr-2" />
+              Delete Account
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="text-center py-12 px-4 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+          <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-gray-100">
+            <User size={28} className="text-gray-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Account Information Unavailable
+          </h3>
+          <p className="text-sm text-gray-500 mb-8 max-w-xs mx-auto">
+            Unable to load account information. Please try again later.
+          </p>
         </div>
       )}
-      
-      <div className="pt-6 mt-6 border-t border-gray-100">
-         <button className="flex items-center text-red-600 text-sm font-medium hover:text-red-700 transition-colors">
-            <Trash2 size={16} className="mr-2" />
-            Delete Account
-         </button>
-      </div>
     </div>
   );
 
   const renderPaymentSettings = () => (
-    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <div className="text-center py-12 px-4 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
-        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-gray-100">
-          <CreditCard size={28} className="text-gray-400" />
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
+      {loadingFinancials ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          No Payment Methods Added
-        </h3>
-        <p className="text-sm text-gray-500 mb-8 max-w-xs mx-auto">
-          Securely save your payment details to checkout faster. We support all major credit cards.
-        </p>
-        <button className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium text-sm hover:bg-blue-700 shadow-sm hover:shadow transition-all duration-200 active:scale-95">
-          Add New Card
-        </button>
-      </div>
+      ) : financialData ? (
+        <div className="space-y-6">
+          {/* Bank Account Information */}
+          <div className="border border-gray-100 rounded-xl bg-gray-50/50 overflow-hidden">
+            <div className="bg-white border-b border-gray-100 px-6 py-4">
+              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                <Building2 size={18} className="text-blue-600" />
+                Bank Account Information
+              </h3>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {/* Bank Name */}
+              <div className="p-6 hover:bg-white transition-colors">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Bank Name</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {financialData.bank_name && financialData.bank_name.trim() !== "" ? financialData.bank_name : "Not Set"}
+                </p>
+              </div>
+
+              {/* Account Number */}
+              <div className="p-6 hover:bg-white transition-colors">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Account Number</p>
+                <p className="text-sm font-semibold text-gray-900 font-mono">
+                  {financialData.account_number && financialData.account_number.trim() !== "" ? financialData.account_number : "Not Set"}
+                </p>
+              </div>
+
+              {/* Wallet Address */}
+              <div className="p-6 hover:bg-white transition-colors">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Wallet Address</p>
+                <p className="text-sm font-semibold text-gray-900 break-all font-mono">
+                  {financialData.wallet_address && financialData.wallet_address.trim() !== "" ? financialData.wallet_address : "Not Set"}
+                </p>
+              </div>
+
+              {/* Business Address */}
+              <div className="p-6 hover:bg-white transition-colors">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Business Address</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {financialData.business_address || "Not Set"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Add Payment Method Card */}
+          <div className="text-center py-12 px-4 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50 hover:bg-gray-100/50 transition-colors">
+            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-gray-200">
+              <CreditCard size={28} className="text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Add New Card
+            </h3>
+            <p className="text-sm text-gray-500 mb-6 max-w-xs mx-auto">
+              Securely save your payment details for faster transactions.
+            </p>
+            <button className="bg-gradient-to-r from-gray-300 to-gray-400 text-gray-600 px-6 py-2.5 rounded-lg font-medium text-sm cursor-not-allowed shadow-sm opacity-75">
+              Coming Soon
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="text-center py-12 px-4 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+          <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-gray-100">
+            <CreditCard size={28} className="text-gray-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Payment Information Unavailable
+          </h3>
+          <p className="text-sm text-gray-500 mb-8 max-w-xs mx-auto">
+            Unable to load payment information. Please try again later.
+          </p>
+        </div>
+      )}
     </div>
   );
 
   const renderHelpSettings = () => (
-    <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div className="px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center gap-3">
+        <span className="px-3 py-1 text-xs font-semibold text-yellow-800 bg-yellow-200 rounded-full">Coming Soon</span>
+        <p className="text-sm text-yellow-700">Help features are being prepared and will be available soon.</p>
+      </div>
+      <div className="space-y-3 opacity-50 pointer-events-none">
       {[
         { icon: MessageCircle, label: "Contact Support", desc: "Get help with your orders" },
         { icon: FileText, label: "Terms of Service", desc: "Read our T&Cs" },
@@ -490,6 +796,7 @@ const Settings = () => {
           </div>
         </button>
       ))}
+      </div>
     </div>
   );
 

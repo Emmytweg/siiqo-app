@@ -13,38 +13,6 @@ import NotificationPanel from "./components/NotificationPanel";
 import RecentOrders from "./components/RecentOrders";
 import ProductOverview from "./components/ProductOverview";
 
-// --- DUMMY DATA FOR LOCAL STORAGE INITIALIZATION ---
-const MOCK_DASHBOARD_DATA = {
-  stats: {
-    totalSales: 1250000,
-    totalOrders: 45,
-    activeProducts: 12,
-    customerRating: 4.8,
-    salesTrend: 12.5,
-  },
-  performanceData: [
-    { name: "Mon", value: 4000 },
-    { name: "Tue", value: 3000 },
-    { name: "Wed", value: 5000 },
-    { name: "Thu", value: 2780 },
-    { name: "Fri", value: 1890 },
-    { name: "Sat", value: 2390 },
-    { name: "Sun", value: 3490 },
-  ],
-  notifications: [
-    { id: "1", title: "New Order", message: "You received a new order for iPhone 15", time: "2 mins ago", type: "order" },
-    { id: "2", title: "Stock Alert", message: "MacBook Pro is running low on stock", time: "1 hour ago", type: "alert" },
-  ],
-  recentOrders: [
-    { id: "ORD-001", customer: "Alice Johnson", product: "iPhone 15", amount: 999, status: "completed", date: "2025-12-30" },
-    { id: "ORD-002", customer: "Bob Smith", product: "AirPods Pro", amount: 249, status: "pending", date: "2025-12-30" },
-  ],
-  topProducts: [
-    { id: "p1", name: "iPhone 15 Pro", sales: 24, revenue: 24000, image: "https://images.unsplash.com/photo-1632661674596-df8be070a5c5?w=100" },
-    { id: "p2", name: "MacBook Air", sales: 12, revenue: 12000, image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=100" },
-  ]
-};
-
 const VendorDashboard: React.FC = () => {
   const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
@@ -65,18 +33,11 @@ const VendorDashboard: React.FC = () => {
       try {
         // Check for existing dashboard data in storage
         const localData = localStorage.getItem("vendorDashboardData");
-        const pendingUser = localStorage.getItem("pendingUserData");
         
         if (localData) {
           setDashboardData(JSON.parse(localData));
         } else {
-          // If no dashboard data exists, initialize with mock data but keep user info synced
-          const initialData = {
-            ...MOCK_DASHBOARD_DATA,
-            vendorName: pendingUser ? JSON.parse(pendingUser).name : "Vendor"
-          };
-          setDashboardData(initialData);
-          localStorage.setItem("vendorDashboardData", JSON.stringify(initialData));
+          setDashboardData(null);
         }
       } catch (error) {
         console.error("Error loading local dashboard data", error);
@@ -128,44 +89,43 @@ const VendorDashboard: React.FC = () => {
           <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-12">
             
             {/* Stats */}
-            {dashboardData?.stats && (
-              <div className="order-1 lg:col-span-8">
-                <DashboardStats stats={dashboardData.stats} />
-              </div>
-            )}
+            <div className="order-1 lg:col-span-8">
+              <DashboardStats />
+            </div>
 
             {/* Quick Actions */}
             <div className="order-2 lg:col-span-4">
               <QuickActions />
             </div>
-
-            {/* Performance Chart */}
-            {dashboardData?.performanceData && (
-              <div className="order-3 lg:col-span-7">
-                <PerformanceChart data={dashboardData.performanceData} />
+ {/* Product Overview */}
+            <div className="order-3 lg:col-span-5">
+              <ProductOverview />
+            </div>
+            {/* Performance Chart - Coming Soon */}
+            <div className="order-4 lg:col-span-7 opacity-40 pointer-events-none relative">
+              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/5 z-10">
+                <span className="text-sm font-medium text-text-muted">Coming Soon</span>
               </div>
-            )}
+              <PerformanceChart data={[]} />
+            </div>
 
-            {/* Notifications */}
-            {dashboardData?.notifications && (
-              <div className="order-4 lg:col-span-5 z-0 lg:z-10">
-                <NotificationPanel notifications={dashboardData.notifications} />
+            {/* Notifications - Coming Soon */}
+            <div className="order-5 lg:col-span-5 z-0 lg:z-10 opacity-40 pointer-events-none relative">
+              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/5 z-10">
+                <span className="text-sm font-medium text-text-muted">Coming Soon</span>
               </div>
-            )}
+              <NotificationPanel notifications={[]} />
+            </div>
 
-            {/* Recent Orders */}
-            {dashboardData?.recentOrders && (
-              <div className="order-5 lg:col-span-7">
-                <RecentOrders orders={dashboardData.recentOrders} />
+            {/* Recent Orders - Coming Soon */}
+            <div className="order-6 lg:col-span-7 opacity-40 pointer-events-none relative">
+              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/5 z-10">
+                <span className="text-sm font-medium text-text-muted">Coming Soon</span>
               </div>
-            )}
+              <RecentOrders orders={[]} />
+            </div>
 
-            {/* Product Overview */}
-            {dashboardData?.topProducts && (
-              <div className="order-6 lg:col-span-5">
-                <ProductOverview products={dashboardData.topProducts} />
-              </div>
-            )}
+           
           </div>
         </main>
       </div>

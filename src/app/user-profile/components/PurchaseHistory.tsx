@@ -1,4 +1,3 @@
-// src/app/user-profile/components/MyListings.tsx
 "use client";
 
 import React, { useState } from 'react';
@@ -35,6 +34,9 @@ const PurchaseHistory = ({ onViewDetails, onWriteReview }: PurchaseHistoryProps)
     const [filter, setFilter] = useState('all');
     const router = useRouter();
 
+    // Toggle this to true once your API is ready
+    const isReady = false;
+
     const purchases: Purchase[] = [
         {
             id: 1,
@@ -65,66 +67,14 @@ const PurchaseHistory = ({ onViewDetails, onWriteReview }: PurchaseHistoryProps)
             canReorder: true,
             canReview: false,
             rating: null
-        },
-        {
-            id: 3,
-            title: "Vintage Band T-Shirt",
-            price: 35,
-            image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&h=300&fit=crop",
-            seller: "RetroThreads",
-            sellerAvatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=50&h=50&fit=crop&crop=face",
-            purchaseDate: "2024-01-18",
-            status: "delivered",
-            deliveryDate: "2024-01-21",
-            trackingNumber: "TRK456789123",
-            canReorder: false,
-            canReview: false,
-            rating: 5
-        },
-        {
-            id: 4,
-            title: "Kitchen Stand Mixer",
-            price: 180,
-            image: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&h=300&fit=crop",
-            seller: "HomeChef Supplies",
-            sellerAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=50&h=50&fit=crop&crop=face",
-            purchaseDate: "2024-01-15",
-            status: "cancelled",
-            cancelDate: "2024-01-16",
-            cancelReason: "Item no longer available",
-            refundAmount: 180,
-            canReorder: true,
-            canReview: false,
-            rating: null
-        },
-        {
-            id: 5,
-            title: "Smartphone Case - Clear",
-            price: 15,
-            image: "https://images.unsplash.com/photo-1601593346740-925612772716?w=300&h=300&fit=crop",
-            seller: "MobileTech",
-            sellerAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=50&h=50&fit=crop&crop=face",
-            purchaseDate: "2024-01-10",
-            status: "delivered",
-            deliveryDate: "2024-01-13",
-            trackingNumber: "TRK789123456",
-            canReorder: true,
-            canReview: false,
-            rating: 4
         }
     ];
 
-    interface FilterOption {
-        value: string;
-        label: string;
-        count: number;
-    }
-
-    const filterOptions: FilterOption[] = [
-        { value: 'all', label: 'All Orders', count: purchases.length },
-        { value: 'delivered', label: 'Delivered', count: purchases.filter(p => p.status === 'delivered').length },
-        { value: 'in_transit', label: 'In Transit', count: purchases.filter(p => p.status === 'in_transit').length },
-        { value: 'cancelled', label: 'Cancelled', count: purchases.filter(p => p.status === 'cancelled').length }
+    const filterOptions = [
+        { value: 'all', label: 'All Orders', count: isReady ? purchases.length : 0 },
+        { value: 'delivered', label: 'Delivered', count: isReady ? purchases.filter(p => p.status === 'delivered').length : 0 },
+        { value: 'in_transit', label: 'In Transit', count: isReady ? purchases.filter(p => p.status === 'in_transit').length : 0 },
+        { value: 'cancelled', label: 'Cancelled', count: isReady ? purchases.filter(p => p.status === 'cancelled').length : 0 }
     ];
 
     const filteredPurchases = filter === 'all'
@@ -133,27 +83,10 @@ const PurchaseHistory = ({ onViewDetails, onWriteReview }: PurchaseHistoryProps)
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'delivered':
-                return 'bg-success-50 text-success border-success-100';
-            case 'in_transit':
-                return 'bg-warning-50 text-warning border-warning-100';
-            case 'cancelled':
-                return 'bg-error-50 text-error border-error-100';
-            default:
-                return 'bg-surface-secondary text-text-secondary border-border';
-        }
-    };
-
-    const getStatusLabel = (status: string) => {
-        switch (status) {
-            case 'delivered':
-                return 'Delivered';
-            case 'in_transit':
-                return 'In Transit';
-            case 'cancelled':
-                return 'Cancelled';
-            default:
-                return status;
+            case 'delivered': return 'bg-success-50 text-success border-success-100';
+            case 'in_transit': return 'bg-warning-50 text-warning border-warning-100';
+            case 'cancelled': return 'bg-error-50 text-error border-error-100';
+            default: return 'bg-surface-secondary text-text-secondary border-border';
         }
     };
 
@@ -165,199 +98,98 @@ const PurchaseHistory = ({ onViewDetails, onWriteReview }: PurchaseHistoryProps)
         });
     };
 
-    const renderStars = (rating: number | null) => {
-        if (!rating) return null; // Ensure rating is not null
-
-        return Array.from({ length: 5 }, (_, index) => (
-            <Icon
-                key={index}
-                name="Star"
-                size={14}
-                className={`${index < rating
-                    ? 'text-warning fill-current' : 'text-border-dark'
-                    }`}
-            />
-        ));
-    };
-
     return (
         <div className="space-y-4">
             {/* Filter Tabs */}
-           <div className="flex justify-between overflow-x-scroll md:px-4 md:overflow-x-hidden space-x-2 bg-transparent">
+            <div className="flex justify-between overflow-x-scroll md:px-4 md:overflow-x-hidden space-x-2 bg-transparent">
                 {filterOptions.map((option) => (
                     <button
                         key={option.value}
                         onClick={() => setFilter(option.value)}
-                        className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 whitespace-nowrap ${filter === option.value
-                            ? 'bg-surface text-text-primary shadow-sm'
-                            : 'bg-surface-secondary text-text-secondary hover:text-text-primary'
-                            }`}
+                        className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 whitespace-nowrap ${
+                            filter === option.value
+                                ? 'bg-surface text-text-primary shadow-sm'
+                                : 'bg-surface-secondary text-text-secondary hover:text-text-primary'
+                        }`}
                     >
                         {option.label}
-                        <span className={`absolute top-1 -right-2 w-4 h-4 rounded-full text-xs font-semibold flex items-center justify-center ${filter === option.value
-                            ? 'bg-[#E0921C] text-white' : 'bg-border text-text-tertiary'
-                            }`}>
+                        <span className={`absolute top-1 -right-2 w-4 h-4 rounded-full text-xs font-semibold flex items-center justify-center ${
+                            filter === option.value ? 'bg-[#E0921C] text-white' : 'bg-border text-text-tertiary'
+                        }`}>
                             {option.count}
                         </span>
                     </button>
                 ))}
             </div>
 
-            {/* Purchase History List */}
-            {filteredPurchases.length > 0 ? (
-                <div className="grid md:grid-cols-2 gap-4 space-y-3 md:space-y-4">
-                    {filteredPurchases.map((purchase) => (
-                        <div
-                            key={purchase.id}
-                            className="bg-surface border border-border rounded-lg p-3 md:p-4 hover:shadow-elevation-1 transition-shadow duration-200"
-                        >
-                            <div className="flex flex-col md:flex-row md:items-start gap-3 md:gap-4">
-                                <div className="relative w-full md:w-20 md:h-20 md:flex-shrink-0 aspect-square md:aspect-auto">
-                                    <Image
-                                        src={purchase.image}
-                                        fill
-                                        alt={purchase.title}
-                                        className="object-cover rounded-lg"
-                                        sizes="(max-width: 768px) 100vw, 80px"
-                                    />
+            {/* Main Content Area */}
+            {!isReady ? (
+                /* Coming Soon State */
+                <div className="relative">
+                    <div className="grid md:grid-cols-2 gap-4 opacity-40 pointer-events-none filter blur-[1px]">
+                        {[1, 2, 3, 4].map((i) => (
+                            <div key={i} className="bg-surface border border-border rounded-lg p-4">
+                                <div className="flex gap-4">
+                                    <div className="w-20 h-20 bg-border/50 rounded-lg animate-pulse" />
+                                    <div className="flex-1 space-y-3">
+                                        <div className="h-4 bg-border/50 rounded w-3/4 animate-pulse" />
+                                        <div className="h-3 bg-border/50 rounded w-1/2 animate-pulse" />
+                                        <div className="h-8 bg-border/50 rounded w-full mt-4 animate-pulse" />
+                                    </div>
                                 </div>
-
+                            </div>
+                        ))}
+                    </div>
+                    
+                    {/* Centered Coming Soon Overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="bg-surface/90 border border-border px-8 py-10 rounded-2xl shadow-xl text-center max-w-sm mx-4 backdrop-blur-sm">
+                            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Icon name="Clock" size={32} className="text-primary" />
+                            </div>
+                            <h3 className="text-xl font-bold text-text-primary mb-2">Coming Soon</h3>
+                            <p className="text-text-secondary text-sm">
+                                We are currently building your purchase history dashboard. You'll be able to track orders and write reviews very soon!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            ) : filteredPurchases.length > 0 ? (
+                /* Real Purchase List (Hidden until isReady is true) */
+                <div className="grid md:grid-cols-2 gap-4">
+                    {filteredPurchases.map((purchase) => (
+                        <div key={purchase.id} className="bg-surface border border-border rounded-lg p-4 hover:shadow-sm transition-shadow">
+                            <div className="flex gap-4">
+                                <div className="relative w-20 h-20 flex-shrink-0">
+                                    <Image src={purchase.image} fill alt={purchase.title} className="object-cover rounded-lg" />
+                                </div>
                                 <div className="flex-1 min-w-0">
-                                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 md:gap-0 mb-2">
-                                        <div className="flex-1">
-                                            <h3 className="font-medium text-text-primary line-clamp-2 mb-1 text-sm md:text-base">
-                                                {purchase.title}
-                                            </h3>
-                                            <div className="flex items-center space-x-2 text-xs md:text-sm text-text-secondary">
-                                                <div className="relative w-4 h-4 flex-shrink-0">
-                                                    <Image
-                                                        src={purchase.sellerAvatar}
-                                                        fill
-                                                        alt={purchase.seller}
-                                                        className="rounded-full object-cover"
-                                                        sizes="16px"
-                                                    />
-                                                </div>
-                                                <span className="line-clamp-1">{purchase.seller}</span>
-                                            </div>
-                                        </div>
-                                        <div className="text-right md:ml-4">
-                                            <div className="text-base md:text-lg font-semibold text-text-primary">
-                                                ${purchase.price}
-                                            </div>
-                                            <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(purchase.status)}`}>
-                                                {getStatusLabel(purchase.status)}
-                                            </span>
-                                        </div>
+                                    <h3 className="font-medium text-text-primary text-sm truncate">{purchase.title}</h3>
+                                    <p className="text-xs text-text-secondary mb-2">Purchased {formatDate(purchase.purchaseDate)}</p>
+                                    <div className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${getStatusColor(purchase.status)}`}>
+                                        {purchase.status.toUpperCase()}
                                     </div>
-
-                                    {/* Purchase Details */}
-                                    <div className="space-y-1 md:space-y-2 text-xs md:text-sm text-text-secondary">
-                                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-1">
-                                            <span>Purchased on {formatDate(purchase.purchaseDate)}</span>
-                                            {purchase.trackingNumber && (
-                                                <span className="font-mono text-xs">#{purchase.trackingNumber}</span>
-                                            )}
-                                        </div>
-
-                                        {purchase.status === 'delivered' && purchase.deliveryDate && (
-                                            <div className="text-success">
-                                                Delivered on {formatDate(purchase.deliveryDate)}
-                                            </div>
-                                        )}
-
-                                        {purchase.status === 'in_transit' && purchase.estimatedDelivery && (
-                                            <div className="text-warning">
-                                                Expected delivery: {formatDate(purchase.estimatedDelivery)}
-                                            </div>
-                                        )}
-
-                                        {purchase.status === 'cancelled' && purchase.cancelDate && (
-                                            <div className="text-error">
-                                                Cancelled on {formatDate(purchase.cancelDate)}
-                                                {purchase.cancelReason && (
-                                                    <div className="mt-1">Reason: {purchase.cancelReason}</div>
-                                                )}
-                                                {purchase.refundAmount && (
-                                                    <div className="mt-1 text-success">
-                                                        Refunded: ${purchase.refundAmount}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        {/* Rating Display */}
-                                        {purchase.rating !== null && (
-                                            <div className="flex items-center space-x-2">
-                                                <span>Your rating:</span>
-                                                <div className="flex items-center space-x-1">
-                                                    {renderStars(purchase.rating)}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Action Buttons */}
-                                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-0 pt-3 md:pt-3 mt-3 border-t border-border">
-                                        <div className="flex flex-wrap gap-2 md:gap-3">
-                                            {purchase.status === 'in_transit' && (
-                                                <button className="text-primary hover:underline text-xs md:text-sm font-medium">
-                                                    Track Package
-                                                </button>
-                                            )}
-
-                                            {purchase.canReorder && (
-                                                <button className="text-primary hover:underline text-xs md:text-sm font-medium">
-                                                    Reorder
-                                                </button>
-                                            )}
-
-                                            {purchase.canReview && (
-                                                <button className="text-primary hover:underline text-xs md:text-sm font-medium">
-                                                    Write Review
-                                                </button>
-                                            )}
-
-                                            <button className="text-text-secondary hover:text-text-primary text-xs md:text-sm font-medium">
-                                                View Details
-                                            </button>
-                                        </div>
-
-                                        <div className="flex space-x-2">
-                                            <button className="p-2 rounded-lg hover:bg-surface-secondary transition-colors duration-200">
-                                                <Icon name="MessageCircle" size={16} className="text-text-secondary" />
-                                            </button>
-                                            <button className="p-2 rounded-lg hover:bg-surface-secondary transition-colors duration-200">
-                                                <Icon name="MoreVertical" size={16} className="text-text-secondary" />
-                                            </button>
-                                        </div>
-                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <span className="font-bold text-text-primary">${purchase.price}</span>
                                 </div>
                             </div>
                         </div>
                     ))}
                 </div>
             ) : (
+                /* Empty State */
                 <div className="text-center py-12">
                     <div className="w-16 h-16 bg-surface-secondary rounded-full flex items-center justify-center mx-auto mb-4">
                         <Icon name="ShoppingBag" size={24} className="text-text-tertiary" />
                     </div>
-                    <h3 className="text-lg font-medium text-text-primary mb-2">
-                        No {filter === 'all' ? '' : filter} orders found
-                    </h3>
-                    <p className="text-text-secondary mb-6">
-                        {filter === 'all' ? "You haven't made any purchases yet. Start exploring products in your area!"
-                            : `You don't have any ${filter} orders at the moment.`
-                        }
-                    </p>
-                    {filter === 'all' && (
-                        <button
-                            onClick={() => router.push('/')}
-                            className="bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary-700 transition-colors duration-200"
-                        >
-                            Start Shopping
-                        </button>
-                    )}
+                    <h3 className="text-lg font-medium text-text-primary mb-2">No orders found</h3>
+                    <button 
+                        onClick={() => router.push('/')}
+                        className="text-primary font-medium hover:underline"
+                    >
+                        Start Shopping
+                    </button>
                 </div>
             )}
         </div>

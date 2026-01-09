@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { Wallet, DollarSign, Loader2, AlertCircle, Store } from "lucide-react";
+import { Wallet, DollarSign, Loader2, AlertCircle, Store, MessageCircle } from "lucide-react";
 import Button from "@/components/Button";
 
 interface PaymentFormProps {
   initialData: PaymentData;
-  onSubmit: (data: PaymentData) => void;
+  onSubmit: (data: PaymentData) => Promise<void>;
   onBack: () => void;
   summary: {
     cartItems: any[];
@@ -17,7 +17,7 @@ interface PaymentFormProps {
 }
 
 export type PaymentData = {
-  paymentMethod: string;
+  paymentMethod: "whatsapp" | "pod";
 };
 
 export default function PaymentForm({
@@ -29,10 +29,12 @@ export default function PaymentForm({
 }: PaymentFormProps) {
   const [formData, setFormData] = useState<PaymentData>(initialData);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
-    setFormData({ paymentMethod: value });
+    setFormData({ paymentMethod: value as "whatsapp" | "pod" });
+    setSubmitError(null);
   };
 
   // Calculate delivery fee based on method
@@ -49,12 +51,15 @@ export default function PaymentForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitError(null);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    onSubmit(formData);
-    setIsSubmitting(false);
+    try {
+      await onSubmit(formData);
+    } catch (error: any) {
+      setSubmitError(error.message || "Payment failed. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -63,6 +68,39 @@ export default function PaymentForm({
 
       {/* Payment Method Selection */}
       <div className="space-y-3">
+        {/* WhatsApp Payment */}
+        <label
+          className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
+            formData.paymentMethod === "whatsapp"
+              ? "border-green-500 bg-green-50"
+              : "border-gray-300 hover:border-green-300"
+          }`}
+        >
+          <input
+            type="radio"
+            name="paymentMethod"
+            value="whatsapp"
+            checked={formData.paymentMethod === "whatsapp"}
+            onChange={handleChange}
+            className="w-4 h-4 text-green-500"
+          />
+          <MessageCircle
+            className={`w-5 h-5 mx-3 ${
+              formData.paymentMethod === "whatsapp"
+                ? "text-green-500"
+                : "text-gray-600"
+            }`}
+          />
+          <div className="flex-1">
+            <span className="font-medium text-gray-900">
+              Pay via WhatsApp
+            </span>
+            <p className="mt-1 text-sm text-gray-500">
+              Contact seller on WhatsApp for payment instructions
+            </p>
+          </div>
+        </label>
+
         {/* Pay on Delivery */}
         <label
           className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
@@ -101,7 +139,6 @@ export default function PaymentForm({
           <input
             type="radio"
             name="paymentMethod"
-            value="wallet"
             disabled
             className="w-4 h-4 text-gray-400"
           />
@@ -119,6 +156,23 @@ export default function PaymentForm({
           </div>
         </label>
       </div>
+
+      {/* WhatsApp Info */}
+      {formData.paymentMethod === "whatsapp" && (
+        <div className="p-4 space-y-3 border border-green-200 rounded-lg bg-green-50">
+          <div className="flex items-start">
+            <MessageCircle className="w-5 h-5 mr-2 text-green-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-green-800">
+                WhatsApp Payment Selected
+              </p>
+              <p className="mt-1 text-sm text-green-700">
+                You'll be connected to the seller via WhatsApp for payment arrangements. Include your Order ID in the conversation.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* POD Info */}
       {formData.paymentMethod === "pod" && (
@@ -182,12 +236,25 @@ export default function PaymentForm({
         </div>
       </div>
 
+      {/* Error Display */}
+      {submitError && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-start">
+            <AlertCircle className="w-5 h-5 mr-2 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-red-800">{submitError}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Navigation Buttons */}
       <div className="flex justify-between gap-3 pt-6">
         <Button
           variant="outline"
           type="button"
           onClick={onBack}
+          disabled={isSubmitting}
           className="w-1/2 py-2 text-sm font-semibold"
         >
           Back

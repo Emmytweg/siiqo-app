@@ -25,15 +25,22 @@ export interface Storefront {
     id: number;
     business_name: string;
     description: string;
+    logo: string | null;
     address: string;
-    established_at: string;
-    business_banner: string | null;
-    ratings: number;
-    vendor: Vendor | null;
+    established_at?: string;
+    banner: string | null;
+    ratings?: number;
+    vendor?: Vendor | null;
     vendor_info?: {
         member_since: string;
     };
-    extended: StorefrontExtension | null;
+    extended?: StorefrontExtension | null;
+    slug?: string;
+    branding?: {
+        layout_style: string;
+        primary_color: string;
+        secondary_color: string;
+    };
 }
 
 export interface APIResponse {

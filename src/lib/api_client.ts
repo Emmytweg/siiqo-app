@@ -7,6 +7,7 @@ const api = axios.create({
     headers: {
         "Content-Type": "application/json",
         accept: "application/json",
+        'User-Agent': 'Mozilla/5.0 (Siiqo App)',
     },
 });
 

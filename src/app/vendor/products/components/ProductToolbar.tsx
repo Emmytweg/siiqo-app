@@ -23,6 +23,12 @@ export interface ProductToolbarProps {
   selectedProducts: number[];
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  sortOption: string;
+  onSortChange: (option: string) => void;
+  showInStockOnly: boolean;
+  onStockFilterChange: (show: boolean) => void;
+  selectedCategory: string | null;
+  onCategoryChange: (category: string | null) => void;
 }
 
 export interface SelectOption<T> {
@@ -37,7 +43,13 @@ const ProductToolbar: React.FC<ProductToolbarProps> = ({
   viewMode,
   selectedProducts,
   searchQuery,
-  onSearchChange
+  onSearchChange,
+  sortOption,
+  onSortChange,
+  showInStockOnly,
+  onStockFilterChange,
+  selectedCategory,
+  onCategoryChange,
 }) => {
   const [showBulkActions, setShowBulkActions] = useState(false);
 
@@ -112,13 +124,13 @@ const ProductToolbar: React.FC<ProductToolbarProps> = ({
             Add New Product
           </Button>
 
-          <Button
+          {/* <Button
             variant="outline"
             iconName="Upload"
             iconPosition="left"
           >
             Bulk Import
-          </Button>
+          </Button> */}
         </div>
 
         {/* RIGHT SECTION */}
@@ -139,8 +151,8 @@ const ProductToolbar: React.FC<ProductToolbarProps> = ({
           <div className="w-full sm:w-48">
             <Select
               options={sortOptions}
-              value="created-desc"
-              onChange={() => {}}
+              value={sortOption}
+              onChange={(value: any) => onSortChange(value)}
               placeholder="Sort by..."
             />
           </div>
@@ -176,23 +188,35 @@ const ProductToolbar: React.FC<ProductToolbarProps> = ({
           Active filters:
         </span>
 
-        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs bg-primary/10 text-primary">
-          Electronics
-          <button className="hover:text-primary/70">
-            <Icon name="X" size={12} />
-          </button>
-        </span>
+        {selectedCategory && (
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs bg-primary/10 text-primary">
+            {selectedCategory}
+            <button className="hover:text-primary/70" onClick={() => onCategoryChange(null)}>
+              <Icon name="X" size={12} />
+            </button>
+          </span>
+        )}
 
-        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs bg-success/10 text-success">
-          In Stock
-          <button className="hover:text-success/70">
-            <Icon name="X" size={12} />
-          </button>
-        </span>
+        {showInStockOnly && (
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs bg-success/10 text-success">
+            In Stock
+            <button className="hover:text-success/70" onClick={() => onStockFilterChange(false)}>
+              <Icon name="X" size={12} />
+            </button>
+          </span>
+        )}
 
-        <button className="text-xs text-primary hover:text-primary/80 transition-all">
-          Clear all filters
-        </button>
+        {(selectedCategory || showInStockOnly) && (
+          <button 
+            className="text-xs text-primary hover:text-primary/80 transition-all"
+            onClick={() => {
+              onStockFilterChange(false);
+              onCategoryChange(null);
+            }}
+          >
+            Clear all filters
+          </button>
+        )}
       </div>
 
     </div>

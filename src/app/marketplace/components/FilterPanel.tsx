@@ -221,7 +221,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isMobile = false, isOpen = fa
       </FilterSection>
       {/* Rating */}
 	<FilterSection title="Customer Rating" sectionKey="rating" expandedSections={expandedSections} toggleSection={toggleSection} isMobile={isMobile}>
-	  <div className={`flex items-center ${isMobile ? 'space-x-1' : 'space-x-2'}`}>
+	  <div className={`flex items-center pb-18 ${isMobile ? 'space-x-1' : 'space-x-2'}`}>
 		{Array.from({ length: 5 }, (_, i) => {
 		const starValue = i + 1;
 		return (

@@ -6,12 +6,13 @@ import Icon from "@/components/AppIcon";
 import Image from "@/components/ui/alt/AppImageAlt";
 import Button from "@/components/ui/new/Button";
 import { Checkbox } from "@/components/ui/new/Checkbox";
+import Pagination from "./Pagination";
 
 export interface Product {
   id: number;
   name: string;
   category: string;
-  price: number;
+  final_price: number;
   images: any; 
   sku?: string;
   stock?: number;
@@ -47,6 +48,13 @@ const ProductTable: React.FC<ProductTableProps> = ({
 }) => {
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const totalPages = Math.ceil(products.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedProducts = products.slice(startIndex, endIndex);
 
   const handleQuickEdit = (productId: number, field: string, value: any) => {
     setEditingCell(`${productId}-${field}`);
@@ -85,7 +93,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
           </thead>
 
           <tbody className="divide-y divide-border">
-            {products.map((product) => (
+            {paginatedProducts.map((product) => (
               <tr key={product.id} className="hover:bg-muted/30 transition">
                 <td className="px-4 py-4">
                   <Checkbox
@@ -133,10 +141,10 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     </div>
                   ) : (
                     <button
-                      onClick={() => handleQuickEdit(product.id, "price", product.price)}
+                      onClick={() => handleQuickEdit(product.id, "price", product.final_price)}
                       className="text-sm font-medium hover:text-primary transition-colors"
                     >
-                      ₦{product.price.toLocaleString()}
+                      ₦{product.final_price}
                     </button>
                   )}
                 </td>
@@ -149,12 +157,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                       onClick={() => onEditProduct(product.id)} 
                       iconName="Edit" 
                     />
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => onDuplicateProduct(product.id)} 
-                      iconName="Copy" 
-                    />
+                   
                     <Button 
                       variant="ghost" 
                       size="sm" 
@@ -175,6 +178,19 @@ const ProductTable: React.FC<ProductTableProps> = ({
           <Icon name="Package" size={48} className="mx-auto mb-4 text-muted-foreground/40" />
           <h3 className="text-lg font-medium">No products found</h3>
           <p className="text-muted-foreground text-sm">Your inventory is currently empty.</p>
+        </div>
+      )}
+
+      {products.length > 0 && (
+        <div className="px-4 sm:px-6">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={products.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
+          />
         </div>
       )}
     </div>

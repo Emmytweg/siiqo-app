@@ -47,6 +47,7 @@ export interface AuthContextType {
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  refreshUserProfile?: () => Promise<void>;
   // Note: You might want to add a register function here too
   register?: (userData: any) => Promise<void>; 
 }

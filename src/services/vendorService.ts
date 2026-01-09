@@ -42,11 +42,9 @@ export const vendorService = {
    * VENDOR ONBOARDING & SETTINGS
    */
   // Inside vendorService object
-vendorOnboarding: async (payload: any) => {
-  // If your Postman body was JSON, don't use FormData here
-  const response = await api.post("/vendor/onboard", payload);
-  return response.data;
-},
+vendorOnboarding: (payload: FormData) => api.post("/vendor/onboard", payload, {
+  headers: { "Content-Type": "multipart/form-data" },
+}),
 
   updateVendorSettings: async (data: FormData | any) => {
     // Matches your api.ts: /vendor/update-settings
@@ -69,14 +67,7 @@ vendorOnboarding: async (payload: any) => {
     return response.data;
   },
 
-  uploadFile: async (file: File): Promise<{ urls: string[] }> => {
-    const formData = new FormData();
-    formData.append("file", file); // Ensure key matches 'uploadFile' in api.ts
-    const response = await api.post("/vendor/upload-file", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    return response.data;
-  }
+  
 };
 
 interface MyProductsResponse {

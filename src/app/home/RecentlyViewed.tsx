@@ -6,6 +6,7 @@ import Icon from "@/components/ui/AppIcon";
 import Image from "@/components/ui/AppImage";
 import Button from "@/components/Button";
 import Skeleton from "@/components/skeleton";
+import api from "@/lib/api_client";
 
 interface RecentItem {
   id: number;
@@ -25,6 +26,27 @@ const RecentlyViewed: React.FC = () => {
   const router = useRouter();
   const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchRecentlyViewed = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await api.get("/buyers/recently-viewed");
+      
+      if (response.data.status === "success") {
+        setRecentItems(response.data.data || []);
+      } else {
+        setError("Failed to load recently viewed items");
+      }
+    } catch (err: any) {
+      console.error("Error fetching recently viewed items:", err);
+      setError(err.response?.data?.message || "Failed to load recently viewed items");
+      setRecentItems([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getRecentlyViewedItems = (): RecentItem[] => {
     try {
@@ -62,12 +84,7 @@ const RecentlyViewed: React.FC = () => {
   };
 
   useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      const items = getRecentlyViewedItems();
-      setRecentItems(items);
-      setLoading(false);
-    }, 600);
+    fetchRecentlyViewed();
   }, []);
 
   const handleItemClick = (item: RecentItem) => {

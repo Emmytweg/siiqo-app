@@ -1,100 +1,113 @@
-import React from "react";
-import { DollarSign, ShoppingCart, Package, Star } from "lucide-react";
-import { DashboardStatsData } from "@/types/dashboard";
+import React, { useEffect, useState } from "react";
+import { DollarSign, Clock3, CalendarRange, BarChart3 } from "lucide-react";
+import { vendorService } from "@/services/vendorService";
 
-interface DashboardStatsProps {
-  stats: DashboardStatsData;
-}
+type RevenueSummary = {
+  last_7_days?: number;
+  last_30_days?: number;
+  last_3_months?: number;
+  last_1_year?: number;
+};
 
 interface StatCard {
   title: string;
   value: string;
-  change: string;
-  changeType: "positive" | "negative" | "warning" | "neutral";
+  subtext: string;
   icon: React.ElementType;
   iconColor: string;
   iconBg: string;
 }
 
-const DashboardStats: React.FC<DashboardStatsProps> = ({ stats }) => {
+const formatCurrency = (value: number, currency: string) => {
+  const amount = Number.isFinite(value) ? value : 0;
+  return `${currency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+const DashboardStats: React.FC = () => {
+  const [summary, setSummary] = useState<RevenueSummary>({});
+  const [currency, setCurrency] = useState<string>("NGN");
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchRevenue = async () => {
+      try {
+        setLoading(true);
+        const res = await vendorService.getRevenueAnalytics();
+        if (res?.status === "success" && res?.data?.revenue_summary) {
+          setSummary(res.data.revenue_summary || {});
+          setCurrency(res.data.currency || "NGN");
+        } else {
+          setError("Unable to load revenue analytics");
+        }
+      } catch (err) {
+        setError("Failed to fetch analytics");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRevenue();
+  }, []);
+
   const statCards: StatCard[] = [
     {
-      title: "Total Sales",
-      value: `$${stats?.totalSales?.toLocaleString() || "0"}`,
-      change: `+${stats?.monthlyGrowth || 0}%`,
-      changeType: "positive",
+      title: "Revenue (7 days)",
+      value: formatCurrency(summary.last_7_days || 0, currency),
+      subtext: "Last 7 days",
       icon: DollarSign,
       iconColor: "text-green-600",
       iconBg: "bg-green-50",
     },
     {
-      title: "Total Orders",
-      value: stats?.totalOrders?.toString() || "0",
-      change: `+${stats?.newCustomers || 0} new`,
-      changeType: "positive",
-      icon: ShoppingCart,
+      title: "Revenue (30 days)",
+      value: formatCurrency(summary.last_30_days || 0, currency),
+      subtext: "Last 30 days",
+      icon: Clock3,
       iconColor: "text-blue-600",
       iconBg: "bg-blue-50",
     },
     {
-      title: "Products Listed",
-      value: stats?.totalProducts?.toString() || "0",
-      change: `${stats?.lowStockItems || 0} low stock`,
-      changeType: stats?.lowStockItems > 0 ? "warning" : "neutral",
-      icon: Package,
+      title: "Revenue (3 months)",
+      value: formatCurrency(summary.last_3_months || 0, currency),
+      subtext: "Last 3 months",
+      icon: CalendarRange,
       iconColor: "text-purple-600",
       iconBg: "bg-purple-50",
     },
     {
-      title: "Average Rating",
-      value: stats?.averageRating?.toFixed(1) || "0.0",
-      change: "Based on reviews",
-      changeType: "neutral",
-      icon: Star,
-      iconColor: "text-yellow-600",
-      iconBg: "bg-yellow-50",
+      title: "Revenue (1 year)",
+      value: formatCurrency(summary.last_1_year || 0, currency),
+      subtext: "Last 12 months",
+      icon: BarChart3,
+      iconColor: "text-amber-600",
+      iconBg: "bg-amber-50",
     },
   ];
 
-  const getChangeColorClass = (type: StatCard["changeType"]): string => {
-    switch (type) {
-      case "positive":
-        return "text-green-600";
-      case "negative":
-        return "text-red-600";
-      case "warning":
-        return "text-yellow-600";
-      default:
-        return "text-gray-500";
-    }
-  };
-
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <h2 className="font-semibold text-lg text-gray-900 mb-6">
-        Business Overview
-      </h2>
-<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+      <h2 className="font-semibold text-lg text-gray-900 mb-6">Business Overview</h2>
+
+      {error && (
+        <div className="text-sm text-red-600 mb-4">{error}</div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
         {statCards.map((card, index) => {
           const IconComponent = card.icon;
           return (
             <div key={index} className="flex items-center space-x-4">
-              <div
-                className={`w-12 h-12 rounded-lg ${card.iconBg} flex items-center justify-center`}
-              >
+              <div className={`w-12 h-12 rounded-lg ${card.iconBg} flex items-center justify-center`}>
                 <IconComponent size={24} className={card.iconColor} />
               </div>
 
               <div className="flex-1">
-                <p className="text-sm text-gray-500 font-medium">
-                  {card.title}
+                <p className="text-sm text-gray-500 font-medium">{card.title}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {loading ? "Loading..." : card.value}
                 </p>
-                <p className="text-2xl font-bold text-gray-900">{card.value}</p>
-                <p
-                  className={`text-sm ${getChangeColorClass(card.changeType)}`}
-                >
-                  {card.change}
-                </p>
+                <p className="text-sm text-gray-500">{card.subtext}</p>
               </div>
             </div>
           );

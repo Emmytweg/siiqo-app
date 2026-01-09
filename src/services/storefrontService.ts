@@ -6,7 +6,7 @@ export const storefrontService = {
    * Fetch vendor settings/storefront data
    * Matches api.ts: /vendor/settings
    */
-  getStorefrontData: async (): Promise<ApiStorefrontResponse> => {
+  getStorefrontData: async (): Promise<any> => {
     const response = await api.get("/vendor/settings");
     return response.data;
   },
@@ -16,11 +16,11 @@ export const storefrontService = {
    * Matches api.ts: /vendor/update-settings using PATCH
    */
   updateStorefrontData: async (payload: Partial<StorefrontData> | FormData) => {
-    const headers = payload instanceof FormData 
-      ? { "Content-Type": "multipart/form-data" } 
-      : {};
+    // const headers = payload instanceof FormData 
+    //   ? { "Content-Type": "multipart/form-data" } 
+    //   : {};
 
-    const response = await api.patch("/vendor/update-settings", payload, { headers });
+    const response = await api.patch("/vendor/update-settings", payload);
     return response.data;
   },
 

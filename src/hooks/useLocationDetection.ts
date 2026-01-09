@@ -8,8 +8,14 @@ export const useLocationDetection = () => {
     const detectLocation = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await fetch("https://ipapi.co/json/");
+            const response = await fetch("https://ipapi.co/json/", {
+      headers: {
+        'User-Agent': '', // Good practice to identify your user agent
+      },
+      cache: 'no-store'
+    });
             const data = await response.json();
+
 
             if (data.country_name && data.region) {
                 const newLocation = { country: data.country_name, state: data.region, latitude: data.latitude, longitude: data.longitude };

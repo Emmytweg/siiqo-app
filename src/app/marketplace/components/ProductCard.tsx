@@ -10,8 +10,9 @@ import {
 } from "lucide-react";
 import { Product } from "@/types/products";
 import Skeleton from "@/components/skeleton";
+import AppImage from "@/components/ui/AppImage";
 import Button from "@/components/Button";
-
+import { useRouter } from "next/navigation";
 interface ProductCardProps {
   product: Product & any;
   onAddToCart: (product: Product) => void;
@@ -62,10 +63,15 @@ const ProductCard = ({
   const title =
     product.product_name || product.name || vendorName || "Untitled";
 
-  const imageSrc =
-    (product.images && product.images[0]) ||
-    product.image ||
-    "https://via.placeholder.com/400";
+  const imageSrc = (() => {
+    // product.image may be a URL string, or an object { url } / { path }
+    const firstImage = product.images && product.images[0];
+    const raw = firstImage || product.image;
+    if (!raw) return "";
+    if (typeof raw === "string") return raw;
+    // if object, try common keys
+    return raw.url || raw.path || raw.src || "";
+  })();
 
   const rating = product.rating ?? 0;
   const reviewCount = product.reviewCount ?? product.reviews ?? 0;
@@ -87,22 +93,24 @@ const ProductCard = ({
       : typeof product.price === "number"
       ? `₦${product.price.toLocaleString()}`
       : null;
-
+const router = useRouter();
   return (
     <div
       className="z-0  overflow-hidden transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-lg"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={() => router.push(`/products/${productId}`)}
+
     >
       {/* ---------------- IMAGE AREA ---------------- */}
       <div className="relative overflow-hidden bg-gray-100 aspect-square">
-        <img
+        <AppImage
           src={imageSrc}
           alt={String(title)}
-          className={`object-cover w-full h-full transform transition-transform duration-500 ${
+          fill
+          className={`object-cover transform transition-transform duration-500 ${
             isHovered ? "scale-105" : "scale-100"
           }`}
-          loading="lazy"
         />
 
         {/* Verified Badge */}

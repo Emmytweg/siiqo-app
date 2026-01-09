@@ -13,12 +13,13 @@ import { storefrontService } from "@/services/storefrontService";
 import { vendorService } from "@/services/vendorService";
 import BusinessStorefrontPreview from "./business-view/components/BusinessStorefrontPreview";
 import { productService } from "@/services/productService";
-
-type TabId = "public" | "preview" | "customize";
+import AddCatalog from "./components/AddCatalog";
+import { switchMode } from "@/services/api";
+type TabId = "public" |   "customize" | "add-catalog";
 
 const VendorStorefront: React.FC = () => {
   const router = useRouter();
-  const [storefrontData, setStorefrontData] = useState<StorefrontData | null>(null);
+  const [storefrontData, setStorefrontData] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("public");
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
@@ -28,13 +29,7 @@ const VendorStorefront: React.FC = () => {
     setLoading(true);
     try {
       // 1. Fetch from the specific settings API
-      const settingsResponse = await fetch("https://server.siiqo.com/api/vendor/settings", {
-        headers: {
-          // Add your authentication headers here if needed
-          "Content-Type": "application/json",
-        }
-      });
-      const settingsResult = await settingsResponse.json();
+      const settingsResult = await storefrontService.getStorefrontData();
 
       // 2. Fetch products
       const productsRes = await productService.getMyProducts();
@@ -84,7 +79,9 @@ const VendorStorefront: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
-
+useEffect(() => {
+  switchMode("vendor");
+})
   const handleSaveStorefront = async (updatedData: Partial<StorefrontData>) => {
     setSaving(true);
     try {
@@ -94,7 +91,7 @@ const VendorStorefront: React.FC = () => {
       localStorage.setItem("vendorStorefrontDetails", JSON.stringify(mergedData));
 
       // Update local state to trigger re-renders
-      setStorefrontData((prev) =>
+      setStorefrontData((prev:any) =>
         prev ? { ...prev, ...mergedData } : (mergedData as StorefrontData)
       );
 
@@ -110,36 +107,56 @@ const VendorStorefront: React.FC = () => {
   };
 
   const handlePublishStorefront = async () => {
+    if (!storefrontData) return;
+    
     setSaving(true);
     try {
-      const newPublishedState = !storefrontData?.isPublished;
-      
-      // OPTIONAL: Call API to toggle publish state
-      // await fetch(`https://server.siiqo.com/api/vendor/publish`, { method: 'POST', ... });
+      // Toggle the published state
+      const newPublishedState = !storefrontData.isPublished;
 
-      setStorefrontData(prev =>
-        prev ? { ...prev, isPublished: newPublishedState } : prev
-      );
+      // Prepare FormData with string value for is_published
+      const formData = new FormData();
+      formData.append("is_published", newPublishedState ? "true" : "false");
 
-      toast({
-        title: newPublishedState ? "Storefront Published!" : "Storefront Unpublished!",
-        variant: "default",
-      });
-    } catch (error) {
+      const response = await vendorService.updateVendorSettings(formData);
+
+      // Check for success status from API
+      if (response.status === "success") {
+        // Update local state only after successful API call
+        setStorefrontData((prev: any) =>
+          prev ? { ...prev, isPublished: newPublishedState } : prev
+        );
+
+        toast({
+          title: newPublishedState ? "Storefront Published!" : "Storefront Unpublished!",
+          description: newPublishedState 
+            ? "Your store is now visible to customers on the homepage." 
+            : "Your store has been taken offline and won't appear on the homepage.",
+          variant: "default",
+        });
+      } else {
+        throw new Error(response.message || "Failed to update storefront status");
+      }
+    } catch (error: any) {
       console.error("Publish error:", error);
+      toast({
+        title: "Update Failed",
+        description: error.response?.data?.message || error.message || "Could not update store status.",
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
   };
-
   const getStorefrontUrl = () => {
     return `${window.location.origin}/storefront/${storefrontData?.slug || 'my-shop'}`;
   };
 
   const tabs: { id: TabId; label: string; icon: string; description: string; }[] = [
     { id: "public", label: "Public View", icon: "ExternalLink", description: "Customer view" },
-    { id: "preview", label: "Preview", icon: "Eye", description: "See how it looks" },
+    // { id: "preview", label: "Preview", icon: "Eye", description: "See how it looks" },
     { id: "customize", label: "Customize", icon: "Palette", description: "Design your storefront" },
+    { id: "add-catalog", label: "Add Catalog", icon: "Add", description: "Create your catalog"}
   ];
 
   if (loading) return (
@@ -163,17 +180,24 @@ const VendorStorefront: React.FC = () => {
               <p className="text-text-muted">Manage your business: <strong>{storefrontData?.businessName}</strong></p>
             </div>
             <div className="flex items-center mt-4 space-x-3 lg:mt-0">
-              <Button variant="outline" onClick={() => setActiveTab("preview")}>
+              <Button variant="outline" onClick={() => setActiveTab("public")}>
                 <Icon name="Eye" size={16} className="mr-2" />
                 Live Preview
               </Button>
               <Button 
-                variant={storefrontData?.isPublished ? "secondary" : "primary"}
-                onClick={handlePublishStorefront}
-                disabled={saving}
-              >
-                {saving ? "Processing..." : (storefrontData?.isPublished ? "Unpublish" : "Publish Store")}
-              </Button>
+  variant={storefrontData?.isPublished ? "secondary" : "primary"}
+  onClick={handlePublishStorefront}
+  disabled={saving || loading}
+>
+  {saving ? (
+    <>
+      <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
+      Processing...
+    </>
+  ) : (
+    storefrontData?.isPublished ? "Unpublish Store" : "Publish Live Store"
+  )}
+</Button>
             </div>
           </div>
 
@@ -202,14 +226,20 @@ const VendorStorefront: React.FC = () => {
               />
             )}
 
-            {activeTab === "preview" && (
+            {/* {activeTab === "preview" && (
               <BusinessStorefrontPreview />
-            )}
+            )} */}
 
             {activeTab === "customize" && (
               <StorefrontCustomization
                 initialData={storefrontData}
                 onSuccess={loadData} // Refresh data after save
+              />
+            )}
+            {activeTab === "add-catalog" && (
+              <AddCatalog
+                // initialData={storefrontData}
+                // onSuccess={loadData} // Refresh data after save
               />
             )}
           </div>

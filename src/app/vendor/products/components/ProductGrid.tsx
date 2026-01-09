@@ -1,8 +1,9 @@
-import React, { JSX } from 'react';
+import React, { useState, JSX } from 'react';
 import Icon from '@/components/AppIcon';
 import Image from '@/components/ui/AppImage';
 import Button from '@/components/ui/new/Button';
 import { Checkbox } from '@/components/ui/new/Checkbox';
+import Pagination from './Pagination';
 
 import { Product, ProductStatus } from '@/types/vendor/products';
 
@@ -34,6 +35,13 @@ const ProductGrid: React.FC<ProductGridProps> = ({
     onDuplicateProduct,
     onDeleteProduct
 }) => {
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(6);
+
+    const totalPages = Math.ceil(products.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedProducts = products.slice(startIndex, endIndex);
     const getStatusBadge = (status: ProductStatus): JSX.Element => {
         const statusConfig: Record<ProductStatus, StatusConfig> = {
             active: { bg: 'bg-success/10', text: 'text-success', label: 'Active' },
@@ -72,8 +80,9 @@ const ProductGrid: React.FC<ProductGridProps> = ({
     }
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {products.map((product) => {
+        <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {paginatedProducts.map((product) => {
                 const stockStatus = getStockStatus(product.stock);
                 return (
                     <div key={product.id} className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-card transition-smooth">
@@ -140,7 +149,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
 
                             <div className="flex items-center justify-between mb-3">
                                 <span className="text-lg font-semibold text-foreground">
-                                    ${product.price}
+                                    ₦{product.final_price}
                                 </span>
                                 <div className="flex items-center space-x-1">
                                     <Icon name={stockStatus.icon} size={14} className={stockStatus.color} />
@@ -189,7 +198,17 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                     </div>
                 );
             })}
-        </div>
+            </div>
+
+            <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={products.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+            />
+        </>
     );
 };
 

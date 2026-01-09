@@ -33,8 +33,8 @@ const ConditionalHeader: React.FC = () => {
     return null;
   }
 
-  // Show vendor sidebar for all vendor pages (except auth, already handled above)
-  if (pathname.startsWith("/vendor")) {
+  // Show vendor sidebar for vendor-only areas; keep public vendor views on the consumer header
+  if (pathname.startsWith("/vendor") && !pathname.startsWith("/vendor-public-view")) {
     return <VendorHeader onLogout={handleLogout} />;
   }
 

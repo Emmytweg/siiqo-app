@@ -10,9 +10,9 @@ import {
 
 import InputField from "@/components/Input";
 import Button from "@/components/Button";
-import { vendorService } from "@/services/vendorService"; // Added switchMode
+import { vendorService } from "@/services/vendorService";
 import { switchMode } from "@/services/api";
-import { Loader2, MapPin, RefreshCw, CheckCircle2, ArrowLeft} from "lucide-react";
+import { Loader2, MapPin, RefreshCw, CheckCircle2, ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -63,18 +63,27 @@ const VendorOnboarding = () => {
       address: "",
       country: "",
       state: "",
+      // CHANGED: file inputs should not default to ""
+      logo: undefined,
+          banner: undefined,
+      bank_name: "",
+      account_number: "",
+      wallet_address: "",
+      latitude: "",
+      longitude: "",
     },
   });
 
-  // AUTOFILL LOGIC: Fills country, state, AND the address field
+  // AUTOFILL LOGIC
   useEffect(() => {
     if (locationDetected) {
       if (location.country) setValue("country", location.country);
       if (location.state) setValue("state", location.state);
-      
-      // Auto-populate the main address field if hook provides it
-    if (location.country) {
-        // Fallback to country and state if full address isn't available
+
+      if (location.latitude) setValue("latitude", location.latitude);
+      if (location.longitude) setValue("longitude", location.longitude);
+
+      if (location.country) {
         setValue("address", `${location.country}, ${location.state}`, { shouldValidate: true });
       }
     }
@@ -92,33 +101,51 @@ const VendorOnboarding = () => {
 
   const onSubmit = async (data: VendorOnboardingData) => {
     try {
-      // 1. Create the store (Onboarding)
-      const payload = {
-        business_name: data.business_name,
-        address: data.address,
-        description: data.description,
-        latitude: location.latitude || 6.4698,
-        longitude: location.longitude || 3.5852,
-      };
+      // CHANGED: prepare multipart FormData so logo/banner files are uploaded
+      const formData = new FormData();
 
-      await vendorService.vendorOnboarding(payload);
+      formData.append("business_name", data.business_name);
+      formData.append("address", data.address);
+      formData.append("description", data.description);
 
-      // 2. REAL API CALL: Update the user's role/mode on the server
-      // This ensures the backend knows this user is now a vendor
+      const lat =
+        Number((data as any).latitude) || (location.latitude as any) || 6.4698;
+      const lng =
+        Number((data as any).longitude) || (location.longitude as any) || 3.5852;
+
+      formData.append("latitude", String(lat));
+      formData.append("longitude", String(lng));
+
+      formData.append("business_name", data.business_name ?? "");
+formData.append("address", data.address ?? "");
+formData.append("description", data.description ?? "");
+formData.append("bank_name", data.bank_name ?? "");
+formData.append("account_number", data.account_number ?? "");
+formData.append("wallet_address", data.wallet_address ?? "");
+
+      // Pull files from RHF (file inputs return a FileList)
+      const logoFile: File | undefined = (data as any).logo?.[0];
+      const bannerFile: File | undefined = (data as any).banner?.[0];
+
+      if (logoFile) formData.append("logo", logoFile);
+      if (bannerFile) formData.append("banner", bannerFile);
+
+      // IMPORTANT: vendorService should send FormData (multipart)
+      await vendorService.vendorOnboarding(formData);
+
       await switchMode("vendor");
 
-      // 3. Optional: Clean up local storage to ensure fresh login
       localStorage.removeItem("user");
-      sessionStorage.removeItem("RSUsertarget_view");
+      sessionStorage.removeItem("RSUser");
 
       toast({ title: "Success!", description: "Store created and role updated." });
       setIsCompleted(true);
     } catch (error: any) {
       console.error("Onboarding error:", error);
-      toast({ 
-        variant: "destructive", 
-        title: "Error", 
-        description: error.response?.data?.message || "Onboarding failed" 
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.response?.data?.message || "Onboarding failed",
       });
     }
   };
@@ -126,11 +153,15 @@ const VendorOnboarding = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-6 lg:p-20 bg-gradient-to-br from-blue-50 via-white to-green-50">
       <AnimatePresence>
-         <div className="mb-8 text-center">
-                    <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
-                      <ArrowLeft className="h-4 w-4" /> Back to Marketplace
-                    </Link>
-                  </div>
+        <div className="mb-8 text-center">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to Marketplace
+          </Link>
+        </div>
+
         {!isCompleted ? (
           <motion.form
             key="form"
@@ -142,7 +173,9 @@ const VendorOnboarding = () => {
           >
             <div className="text-center">
               <h3 className="text-3xl font-bold text-gray-800">Store Setup</h3>
-              <p className="mt-2 text-sm text-gray-600">Provide your basic business details to go live.</p>
+              <p className="mt-2 text-sm text-gray-600">
+                Provide your basic business details to go live.
+              </p>
             </div>
 
             <div className="space-y-5">
@@ -173,7 +206,7 @@ const VendorOnboarding = () => {
                     {locationDetected ? "Refresh Location" : "Detect Location"}
                   </button>
                 </div>
-                
+
                 <InputField
                   placeholder="Street address, City"
                   {...register("address")}
@@ -181,10 +214,66 @@ const VendorOnboarding = () => {
                 />
 
                 {locationDetected && (
-                   <p className="text-[10px] text-green-600 flex items-center gap-1">
-                     <MapPin className="w-3 h-3" /> GPS Locked: {location.latitude}, {location.longitude}
-                   </p>
+                  <p className="text-[10px] text-green-600 flex items-center gap-1">
+                    <MapPin className="w-3 h-3" /> GPS Locked: {location.latitude}, {location.longitude}
+                  </p>
                 )}
+              </div>
+
+              {/* CHANGED: File input for Logo */}
+              <InputField
+                label="Logo*"
+                type="file"
+                accept="image/*"
+                {...register("logo")}
+                error={(errors as any).logo?.message}
+              />
+
+              {/* CHANGED: File input for Banner */}
+              <InputField
+                label="Banner*"
+                type="file"
+                accept="image/*"
+                {...register("banner")}
+                error={(errors as any).banner?.message}
+              />
+
+              <InputField
+                label="Bank Name*"
+                placeholder="Access Bank"
+                {...register("bank_name")}
+                error={errors.bank_name?.message}
+              />
+
+              <InputField
+                label="Account Number*"
+                placeholder="1234567890"
+                {...register("account_number")}
+                error={errors.account_number?.message}
+              />
+
+              <InputField
+                label="Wallet Address*"
+                placeholder="0x..."
+                {...register("wallet_address")}
+                error={errors.wallet_address?.message}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <InputField
+                  label="Latitude"
+                  placeholder="6.4698"
+                  {...register("latitude")}
+                  error={errors.latitude?.message}
+                  readOnly
+                />
+                <InputField
+                  label="Longitude"
+                  placeholder="3.5852"
+                  {...register("longitude")}
+                  error={errors.longitude?.message}
+                  readOnly
+                />
               </div>
             </div>
 

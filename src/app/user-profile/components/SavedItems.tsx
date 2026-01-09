@@ -1,451 +1,226 @@
-
-// src/app/user-profile/components/SavedItems.tsx
-
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Icon from "@/components/ui/AppIcon";
 import Image from "@/components/ui/AppImage";
+import { toast } from "sonner"; // Assuming you use sonner for notifications
+import { switchMode } from "@/services/api";
+import { useAuth } from "@/context/AuthContext";
 
 interface WishlistItem {
   id: number;
-  title: string;
+  name: string;
   price: number;
-  originalPrice?: number;
   image: string;
-  seller: string;
-  distance: string;
-  isAvailable: boolean;
-  savedDate: string;
-  priceDropped?: boolean;
-  originalSavedPrice?: number;
-  unavailableReason?: string;
-}
-
-interface SavedSearch {
-  id: number;
-  query: string;
-  filters: {
-    category?: string;
-    maxPrice?: number;
-    distance?: number;
-    condition?: string;
-  };
-  createdDate: string;
-  newResults: number;
-  lastChecked: string;
+  vendor_name: string;
 }
 
 const SavedItems = () => {
-  const [activeTab, setActiveTab] = useState<"wishlist" | "searches">(
-    "wishlist"
-  );
+  const [items, setItems] = useState<WishlistItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
   const router = useRouter();
+  const { user, isLoggedIn } = useAuth();
 
-  const wishlistItems: WishlistItem[] = [
-    {
-      id: 1,
-      title: "Professional Camera Lens - 50mm",
-      price: 450,
-      originalPrice: 599,
-      image:
-        "https://images.unsplash.com/photo-1606983340126-99ab4feaa64a?w=300&h=300&fit=crop",
-      seller: "PhotoGear Pro",
-      distance: "2.3 miles",
-      isAvailable: true,
-      savedDate: "2024-01-20",
-      priceDropped: true,
-      originalSavedPrice: 520,
-    },
-    {
-      id: 2,
-      title: "Vintage Wooden Dining Table",
-      price: 280,
-      image:
-        "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=300&h=300&fit=crop",
-      seller: "Antique Finds",
-      distance: "4.1 miles",
-      isAvailable: false,
-      savedDate: "2024-01-18",
-      unavailableReason: "Sold",
-    },
-    {
-      id: 3,
-      title: "Mountain Bike - Trek 2023",
-      price: 850,
-      image:
-        "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=300&fit=crop",
-      seller: "Cycle World",
-      distance: "1.8 miles",
-      isAvailable: true,
-      savedDate: "2024-01-15",
-    },
-    {
-      id: 4,
-      title: "Designer Sunglasses - Ray-Ban",
-      price: 120,
-      image:
-        "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=300&h=300&fit=crop",
-      seller: "Fashion Hub",
-      distance: "3.2 miles",
-      isAvailable: true,
-      savedDate: "2024-01-12",
-    },
-  ];
+  // 1. Fetch data from API
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        // Get token from localStorage
+        const token = sessionStorage.getItem("RSToken");
 
-  const savedSearches: SavedSearch[] = [
-    {
-      id: 1,
-      query: "iPhone 14 Pro",
-      filters: {
-        category: "Electronics",
-        maxPrice: 900,
-        distance: 10,
-        condition: "Like New",
-      },
-      createdDate: "2024-01-22",
-      newResults: 3,
-      lastChecked: "2024-01-25",
-    },
-    {
-      id: 2,
-      query: "Vintage leather jacket",
-      filters: {
-        category: "Clothing",
-        maxPrice: 200,
-        distance: 15,
-        condition: "Good",
-      },
-      createdDate: "2024-01-20",
-      newResults: 1,
-      lastChecked: "2024-01-24",
-    },
-    {
-      id: 3,
-      query: "Gaming setup",
-      filters: {
-        category: "Electronics",
-        maxPrice: 1500,
-        distance: 20,
-      },
-      createdDate: "2024-01-18",
-      newResults: 0,
-      lastChecked: "2024-01-25",
-    },
-  ];
+        if (!token) {
+          setError("Not authenticated. Please log in.");
+          setIsLoading(false);
+          return;
+        }
 
-  const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-  };
+        const response = await fetch("https://server.siiqo.com/api/buyers/favourites", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+        });
 
-  const handleRemoveFromWishlist = (itemId: number) => {
-    // Handle remove from wishlist
-    console.log("Remove item:", itemId); // Implement actual logic
-  };
+        const data = await response.json();
 
-  const handleDeleteSearch = (searchId: number) => {
-    // Handle delete saved search
-    console.log("Delete search:", searchId); // Implement actual logic
-  };
+        if (!response.ok || data.status === "error") {
+          setError(data.message || "Failed to fetch favourites");
+          return;
+        }
 
-  const handleRunSearch = (search: SavedSearch) => {
-    // Navigate to search results with filters
-    const params = new URLSearchParams();
-    if (search.filters.category)
-      params.set("category", search.filters.category);
-    if (search.filters.maxPrice)
-      params.set("maxPrice", search.filters.maxPrice.toString());
-    if (search.filters.distance)
-      params.set("distance", search.filters.distance.toString());
-    if (search.filters.condition)
-      params.set("condition", search.filters.condition);
+        // Map your API response to the WishlistItem interface
+        setItems(data.favourites || []);
+      } catch (err) {
+        setError("Failed to load your wishlist. Please try again later.");
+        console.error("Fetch error:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    router.push(`/search-results?q=${search.query}&${params.toString()}`);
+    if (isLoggedIn) {
+      fetchFavorites();
+    } else {
+      setIsLoading(false);
+      setError("Please log in to view your saved items.");
+    }
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    switchMode("buyer");
+  }, []);
+
+  // Pagination logic
+  const totalPages = Math.ceil(items.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedItems = items.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleRemoveItem = (itemId: number) => {
+    setItems(items.filter(item => item.id !== itemId));
+    toast.success("Item removed from wishlist");
   };
 
   return (
-    <div className="space-y-4">
-      {/* Tab Navigation */}
-      <div className="flex space-x-1 bg-surface-secondary rounded-lg p-1">
-        <button
-          onClick={() => setActiveTab("wishlist")}
-          className={`flex-1 flex items-center justify-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-            activeTab === "wishlist"
-              ? "bg-surface text-text-primary shadow-sm"
-              : "text-text-secondary hover:text-text-primary"
-          }`}
-        >
-          <Icon name="Heart" size={16} />
-          <span>Wishlist</span>
-          <span
-            className={`px-2 py-1 rounded-full text-xs ${
-              activeTab === "wishlist"
-                ? "bg-primary text-white"
-                : "bg-border text-text-tertiary"
-            }`}
-          >
-            {wishlistItems.length}
-          </span>
-        </button>
-        <button
-          onClick={() => setActiveTab("searches")}
-          className={`flex-1 flex items-center justify-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-            activeTab === "searches"
-              ? "bg-surface text-text-primary shadow-sm"
-              : "text-text-secondary hover:text-text-primary"
-          }`}
-        >
-          <Icon name="Search" size={16} />
-          <span>Saved Searches</span>
-          <span
-            className={`px-2 py-1 rounded-full text-xs ${
-              activeTab === "searches"
-                ? "bg-primary text-white"
-                : "bg-border text-text-tertiary"
-            }`}
-          >
-            {savedSearches.length}
-          </span>
-        </button>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-surface-secondary rounded-lg flex items-center justify-center">
+            <Icon name="Heart" size={20} className="text-primary" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-text-primary">Saved Items</h2>
+            <p className="text-sm text-text-secondary">{items.length} items saved</p>
+          </div>
+        </div>
       </div>
 
-      {/* Wishlist Tab */}
-      {activeTab === "wishlist" && (
-        <div className="space-y-4">
-          {wishlistItems.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {wishlistItems.map((item) => (
-                <div
-                  key={item.id}
-                  className={`bg-surface border border-border rounded-lg overflow-hidden hover:shadow-elevation-2 transition-shadow duration-200 ${
-                    !item.isAvailable ? "opacity-75" : ""
+      {/* Main Content Logic */}
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <p className="mt-4 text-text-secondary text-sm">Loading your items...</p>
+        </div>
+      ) : error ? (
+        <div className="text-center py-12 bg-red-50 rounded-xl border border-red-100">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Icon name="AlertCircle" size={24} className="text-red-600" />
+          </div>
+          <h3 className="text-lg font-medium text-text-primary mb-2">Access Restricted</h3>
+          <p className="text-text-secondary mb-6">{error}</p>
+          <button
+            onClick={() => router.push("/auth/login")}
+            className="bg-primary text-white px-6 py-2 rounded-lg font-medium hover:bg-primary-700 transition-colors"
+          >
+            Log In as Buyer
+          </button>
+        </div>
+      ) : items.length > 0 ? (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedItems.map((item) => (
+              <div
+                key={item.id}
+                className="bg-surface border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group"
+                onClick={() => router.push(`/products/${item.id}`)}
+              >
+                {/* Image Container */}
+                <div className="relative h-40 bg-surface-secondary overflow-hidden">
+                  <Image 
+                    src={item.image} 
+                    fill 
+                    alt={item.name} 
+                    className="object-cover group-hover:scale-110 transition-transform duration-300"
+                  />
+                  {/* Remove Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveItem(item.id);
+                    }}
+                    className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:bg-red-50 transition-colors"
+                    aria-label="Remove from wishlist"
+                  >
+                    <Icon name="X" size={16} className="text-red-500" />
+                  </button>
+                </div>
+
+                {/* Content */}
+                <div className="p-4">
+                  <p className="text-xs text-text-tertiary mb-1">{item.vendor_name}</p>
+                  <h3 className="font-medium text-text-primary line-clamp-2 mb-2">{item.name}</h3>
+                  <div className="flex items-center justify-between">
+                    <p className="text-lg font-bold text-primary">₦{item.price.toLocaleString()}</p>
+                    <Icon name="ChevronRight" size={16} className="text-text-secondary" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center space-x-2 mt-8 pt-4 border-t border-border">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg border border-border hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <Icon name="ChevronLeft" size={18} />
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`w-10 h-10 rounded-lg font-medium transition-colors ${
+                    currentPage === page
+                      ? "bg-primary text-white"
+                      : "border border-border hover:bg-surface-secondary"
                   }`}
                 >
-                  <div className="relative">
-                    <Image
-                      src={item.image}
-                      fill
-                      alt={item.title}
-                      className="w-full h-48 object-cover"
-                    />
-                    <div className="absolute top-3 left-3 flex space-x-2">
-                      {item.priceDropped && (
-                        <span className="px-2 py-1 bg-success text-white text-xs font-medium rounded-full">
-                          Price Drop!
-                        </span>
-                      )}
-                      {!item.isAvailable && (
-                        <span className="px-2 py-1 bg-error text-white text-xs font-medium rounded-full">
-                          {item.unavailableReason}
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => handleRemoveFromWishlist(item.id)}
-                      className="absolute top-3 right-3 p-2 bg-surface bg-opacity-90 rounded-full hover:bg-opacity-100 transition-colors duration-200"
-                    >
-                      <Icon
-                        name="Heart"
-                        size={16}
-                        className="text-accent fill-current"
-                      />
-                    </button>
-                  </div>
-
-                  <div className="p-4">
-                    <h3 className="font-medium text-text-primary line-clamp-2 mb-2">
-                      {item.title}
-                    </h3>
-
-                    <div className="flex items-center space-x-2 mb-2">
-                      <span className="text-lg font-semibold text-text-primary">
-                        ${item.price}
-                      </span>
-                      {item.originalPrice &&
-                        item.originalPrice > item.price && (
-                          <span className="text-sm text-text-tertiary line-through">
-                            ${item.originalPrice}
-                          </span>
-                        )}
-                      {item.priceDropped && item.originalSavedPrice && (
-                        <span className="text-xs text-success">
-                          (-${item.originalSavedPrice - item.price})
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between text-sm text-text-secondary mb-3">
-                      <span>{item.seller}</span>
-                      <div className="flex items-center space-x-1">
-                        <Icon name="MapPin" size={12} />
-                        <span>{item.distance}</span>
-                      </div>
-                    </div>
-
-                    <div className="text-xs text-text-tertiary mb-3">
-                      Saved on {formatDate(item.savedDate)}
-                    </div>
-
-                    <div className="flex space-x-2">
-                      {item.isAvailable ? (
-                        <>
-                          <button
-                            onClick={() => router.push("/product-detail")}
-                            className="flex-1 bg-primary text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors duration-200"
-                          >
-                            View Item
-                          </button>
-                          <button className="p-2 border border-border rounded-lg hover:bg-surface-secondary transition-colors duration-200">
-                            <Icon
-                              name="MessageCircle"
-                              size={16}
-                              className="text-text-secondary"
-                            />
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          disabled
-                          className="flex-1 bg-surface-secondary text-text-tertiary py-2 px-4 rounded-lg text-sm font-medium cursor-not-allowed"
-                        >
-                          No Longer Available
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  {page}
+                </button>
               ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 bg-surface-secondary rounded-full flex items-center justify-center mx-auto mb-4">
-                <Icon name="Heart" size={24} className="text-text-tertiary" />
-              </div>
-              <h3 className="text-lg font-medium text-text-primary mb-2">
-                Your wishlist is empty
-              </h3>
-              <p className="text-text-secondary mb-6">
-                Save items you're interested in to keep track of them and get
-                notified of price changes.
-              </p>
+
               <button
-                onClick={() => router.push("/")}
-                className="bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary-700 transition-colors duration-200"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg border border-border hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                Browse Products
+                <Icon name="ChevronRight" size={18} />
               </button>
             </div>
           )}
-        </div>
-      )}
 
-      {/* Saved Searches Tab */}
-      {activeTab === "searches" && (
-        <div className="space-y-4">
-          {savedSearches.length > 0 ? (
-            <div className="space-y-3">
-              {savedSearches.map((search) => (
-                <div
-                  key={search.id}
-                  className="bg-surface border border-border rounded-lg p-4 hover:shadow-elevation-1 transition-shadow duration-200"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Icon
-                          name="Search"
-                          size={16}
-                          className="text-text-secondary"
-                        />
-                        <h3 className="font-medium text-text-primary">
-                          "{search.query}"
-                        </h3>
-                        {search.newResults > 0 && (
-                          <span className="px-2 py-1 bg-primary text-white text-xs rounded-full">
-                            {search.newResults} new
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {search.filters.category && (
-                          <span className="px-2 py-1 bg-surface-secondary text-text-secondary text-xs rounded-full">
-                            {search.filters.category}
-                          </span>
-                        )}
-                        {search.filters.maxPrice && (
-                          <span className="px-2 py-1 bg-surface-secondary text-text-secondary text-xs rounded-full">
-                            Under ${search.filters.maxPrice}
-                          </span>
-                        )}
-                        {search.filters.distance && (
-                          <span className="px-2 py-1 bg-surface-secondary text-text-secondary text-xs rounded-full">
-                            Within {search.filters.distance} miles
-                          </span>
-                        )}
-                        {search.filters.condition && (
-                          <span className="px-2 py-1 bg-surface-secondary text-text-secondary text-xs rounded-full">
-                            {search.filters.condition}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="text-xs text-text-tertiary">
-                        Created {formatDate(search.createdDate)} • Last checked{" "}
-                        {formatDate(search.lastChecked)}
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => handleDeleteSearch(search.id)}
-                      className="p-2 rounded-lg hover:bg-surface-secondary transition-colors duration-200"
-                    >
-                      <Icon
-                        name="Trash2"
-                        size={16}
-                        className="text-text-secondary"
-                      />
-                    </button>
-                  </div>
-
-                  <div className="flex space-x-3">
-                    <button
-                      onClick={() => handleRunSearch(search)}
-                      className="flex-1 bg-primary text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors duration-200"
-                    >
-                      Run Search
-                    </button>
-                    <button className="px-4 py-2 border border-border rounded-lg text-sm font-medium text-text-secondary hover:bg-surface-secondary transition-colors duration-200">
-                      Edit
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 bg-surface-secondary rounded-full flex items-center justify-center mx-auto mb-4">
-                <Icon name="Search" size={24} className="text-text-tertiary" />
-              </div>
-              <h3 className="text-lg font-medium text-text-primary mb-2">
-                No saved searches
-              </h3>
-              <p className="text-text-secondary mb-6">
-                Save your searches to get notified when new matching items are
-                listed.
-              </p>
-              <button
-                onClick={() => router.push("/search-results")}
-                className="bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary-700 transition-colors duration-200"
-              >
-                Start Searching
-              </button>
-            </div>
-          )}
+          {/* Page Info */}
+          <p className="text-center text-sm text-text-secondary">
+            Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, items.length)} of {items.length} items
+          </p>
+        </>
+      ) : (
+        /* Empty State */
+        <div className="text-center py-16">
+          <div className="w-16 h-16 bg-surface-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+            <Icon name="Heart" size={24} className="text-text-tertiary" />
+          </div>
+          <h3 className="text-lg font-medium text-text-primary mb-2">
+            No saved items yet
+          </h3>
+          <p className="text-text-secondary mb-6">Start adding items to your wishlist</p>
+          <button
+            onClick={() => router.push("/")}
+            className="bg-primary text-white px-6 py-2 rounded-lg font-medium hover:bg-primary-700 transition-colors"
+          >
+            Start exploring
+          </button>
         </div>
       )}
     </div>

@@ -6,6 +6,7 @@ import Icon from "@/components/ui/AppIcon";
 import Image from "@/components/ui/AppImage";
 import Button from "@/components/Button";
 import { X, Phone, MessageSquare } from "lucide-react";
+import apiClient from "@/services/api";
 
 interface Seller {
   name: string;
@@ -16,6 +17,7 @@ interface Seller {
   memberSince: string;
   verifiedSeller: boolean;
   phoneNumber?: string; // This will map to whatsapp_chat from API
+  slug?: string; // From getActiveStoreFronts API
 }
 
 interface SellerCardProps {
@@ -57,9 +59,44 @@ const SellerCard = ({
     setShowContactModal(false);
   };
 
-  const navigateToSeller = () => {
-    // You can pass the vendor name as a query param if needed
-    router.push(`/seller-details?name=${encodeURIComponent(seller.name)}`);
+  const navigateToSeller = async () => {
+    try {
+      // Read token explicitly and include Authorization header
+      const token = typeof window !== "undefined"
+        ? sessionStorage.getItem("RSToken") || localStorage.getItem("RSToken")
+        : null;
+
+      if (!token) {
+        // If not authenticated, try the provided seller.slug
+        if (seller.slug) {
+          router.push(`/vendor-public-view/${seller.slug}`);
+          return;
+        }
+        alert("Please log in to retrieve your storefront.");
+        return;
+      }
+
+      const res = await apiClient.get("/vendor/settings", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const slugFromSettings = res?.data?.data?.store_settings?.storefront_link;
+      const finalSlug = slugFromSettings || seller.slug;
+
+      if (!finalSlug) {
+        alert("Store slug not available.");
+        return;
+      }
+
+      router.push(`/vendor-public-view/${finalSlug}`);
+    } catch (err) {
+      // Fallback to provided seller.slug if API call fails
+      if (seller.slug) {
+        router.push(`/vendor-public-view/${seller.slug}`);
+        return;
+      }
+      alert("Unable to retrieve store information. Please try again.");
+    }
   };
 
   return (

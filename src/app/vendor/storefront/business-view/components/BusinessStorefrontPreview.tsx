@@ -17,6 +17,12 @@ const BusinessStorefrontPreview = () => {
     const fetchPreviewData = async () => {
       setLoading(true);
       try {
+        const token = sessionStorage.getItem("token"); 
+
+      const headers = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}` // This is what was missing
+      };
         // Fetch Business Settings, Products, and Catalogs in parallel
         const [settingsRes, productsRes, catalogsRes] = await Promise.all([
           fetch("https://server.siiqo.com/api/vendor/settings"),

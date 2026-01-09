@@ -153,8 +153,8 @@ const VendorHeader: React.FC<VendorHeaderProps> = ({
                 </div>
               </div>
               <div className="p-2">
-                <button onClick={() => handleNavigation("/vendor/settings")} className="flex items-center w-full px-3 py-2 space-x-3 rounded-lg hover:bg-surface text-sm text-text-secondary"><Icon name="User" size={16} /><span>Profile</span></button>
-                <button onClick={() => handleNavigation("/")} className="flex items-center w-full px-3 py-2 space-x-3 rounded-lg hover:bg-surface text-sm text-text-secondary"><Icon name="ExternalLink" size={16} /><span>Customer View</span></button>
+                <button onClick={() => handleNavigation("/seller-details")} className="flex items-center w-full px-3 py-2 space-x-3 rounded-lg hover:bg-surface text-sm text-text-secondary"><Icon name="User" size={16} /><span>Profile</span></button>
+                <button onClick={() => handleNavigation("/")} className="flex items-center w-full px-3 py-2 space-x-3 rounded-lg hover:bg-surface text-sm text-text-secondary"><Icon name="ExternalLink" size={16} /><span>Customer App</span></button>
                 <hr className="my-2 border-border" />
                 <button onClick={handleLogoutAction} className="flex items-center w-full px-3 py-2 space-x-3 rounded-lg hover:bg-surface text-sm text-red-500"><Icon name="LogOut" size={16} /><span>Sign Out</span></button>
               </div>

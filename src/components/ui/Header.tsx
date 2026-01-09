@@ -4,17 +4,18 @@ import React, { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Icon from "./AppIcon";
 import Link from "next/link";
-import { ShoppingCart, Store, X, LayoutDashboard, LogOut, User, ArrowLeft } from "lucide-react";
+import { ShoppingCart, Store, X, LayoutDashboard, LogOut, User, ArrowLeft, Check, AlertCircle } from "lucide-react";
 import JumiaCartSystem from "@/app/CartSystem/page";
 import { useAuth } from "@/context/AuthContext";
 import Skeleton from "../skeleton";
 import Button from "../Button";
 import { switchMode } from "@/services/api";
 
-type OptionType = "shopping" | "vendor" | null;
+type OptionType = "buyer" | "vendor" | null;
+type ToastType = "success" | "error" | "loading";
 
 interface ModalOption {
-  id: "shopping" | "vendor";
+  id: "buyer" | "vendor";
   title: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -29,13 +30,19 @@ interface ModalOption {
   route: string;
 }
 
+interface Toast {
+  id: string;
+  message: string;
+  type: ToastType;
+}
+
 const Header: React.FC = () => {
   // --- State Management ---
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
-  const [selectedOption, setSelectedOption] = useState<OptionType>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
 
   // --- Refs & Hooks ---
   const desktopRef = useRef<HTMLDivElement | null>(null);
@@ -44,10 +51,10 @@ const Header: React.FC = () => {
   const pathname = usePathname() || "/";
   const { logout, user, isLoggedIn, isLoading } = useAuth();
 
-  // --- Derived State (Logic from Code 1) ---
+  // --- Derived State ---
   const userData = (user as any)?.data;
-  const isVendor = 
   const isRegisteredVendor = userData?.store_settings?.initialized === true;
+
   // --- Configuration ---
   const appPages = [
     "/vendor/dashboard",
@@ -57,14 +64,17 @@ const Header: React.FC = () => {
     "/user-profile",
     "/create-listing",
     "/vendor",
-    "/shopping"
+    "/shopping",
+    "/vendor-public-view"
   ];
-  const isAppPage = appPages.some((page) => pathname.startsWith(page));
+
+  const isSearchPage = pathname.startsWith("/search") || pathname.startsWith("/search-results");
+  const isAppPage = !isSearchPage && appPages.some((page) => pathname.startsWith(page));
   const showBackButton = pathname === "/product-detail" || pathname === "/create-listing";
 
   const modalOptions: ModalOption[] = [
     {
-      id: "shopping",
+      id: "buyer",
       title: "Start Shopping",
       description: "Browse our amazing collection of products and find exactly what you need.",
       icon: ShoppingCart,
@@ -76,7 +86,7 @@ const Header: React.FC = () => {
       buttonHoverColor: "group-hover:bg-purple-700",
       ringColor: "ring-purple-500",
       pulseColor: "bg-purple-600",
-      route: "/auth/login",
+      route: "/auth/signup",
     },
     {
       id: "vendor",
@@ -91,35 +101,73 @@ const Header: React.FC = () => {
       buttonHoverColor: "group-hover:bg-blue-700",
       ringColor: "ring-blue-500",
       pulseColor: "bg-blue-600",
-      route: "/auth/login",
+      route: "/auth/signup",
     },
   ];
 
+  // --- Toast Management ---
+  const addToast = (message: string, type: ToastType = "success") => {
+    const id = Date.now().toString();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    if (type !== "loading") {
+      setTimeout(() => removeToast(id), 3000);
+    }
+    return id;
+  };
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  };
+
   // --- Handlers ---
   const handleLogout = async () => {
+    const toastId = addToast("Logging out...", "loading");
     try {
       await logout();
+      removeToast(toastId);
+      addToast("Logged out successfully", "success");
       setIsOpen(false);
     } catch (error) {
+      removeToast(toastId);
+      addToast("Failed to logout", "error");
       console.error("Logout error:", error);
+    }
+  };
+
+  const handleSwitchMode = async (mode: "vendor" | "buyer") => {
+    setIsSwitching(true);
+    const toastId = addToast("Switching mode...", "loading");
+    try {
+      const response = await switchMode(mode);
+      const data = response.data;
+      removeToast(toastId);
+      addToast(data.message || "Mode switched successfully", "success");
+      return data;
+    } catch (error) {
+      removeToast(toastId);
+      addToast("Failed to switch mode", "error");
+      console.error("Error switching mode:", error);
+      throw error;
+    } finally {
+      setIsSwitching(false);
     }
   };
 
   const handleVendorAccess = async () => {
     try {
-      setIsSwitching(true);
       if (!isRegisteredVendor) {
+        addToast("Redirecting to vendor onboarding...", "loading");
         router.push("/auth/vendor-onboarding");
-      } else {
-        const response = await switchMode("vendor");
-        if (response.data.status === "success") {
-          router.push("/vendor/dashboard");
-        }
+        return;
+      }
+
+      const data = await switchMode("vendor");
+      if (data.status === 200) {
+        router.push("/vendor/dashboard");
       }
     } catch (error) {
       console.error("Switch mode failed", error);
     } finally {
-      setIsSwitching(false);
       setIsOpen(false);
     }
   };
@@ -130,17 +178,24 @@ const Header: React.FC = () => {
   };
 
   const openModal = () => setIsModalOpen(true);
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedOption(null);
-  };
+  const closeModal = () => setIsModalOpen(false);
 
   const handleCartOpen = () => {
     setIsCartOpen(true);
     setIsOpen(false);
+    addToast("Cart opened", "success");
   };
 
   // --- Effects ---
+  // Auto-switch to buyer mode when on app pages with cart header
+  useEffect(() => {
+    if (isAppPage && isLoggedIn && user?.active_view === 'vendor') {
+      handleSwitchMode('buyer').catch(error => {
+        console.error("Failed to auto-switch to buyer mode:", error);
+      });
+    }
+  }, [isAppPage, isLoggedIn, user?.active_view]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
@@ -164,6 +219,31 @@ const Header: React.FC = () => {
     setIsOpen(false);
   }, [pathname]);
 
+  // --- Toast Component ---
+  const ToastContainer = () => (
+    <div className="fixed bottom-4 right-4 z-[10000] flex flex-col gap-2 max-w-sm">
+      {toasts.map((toast) => (
+        <div
+          key={toast.id}
+          className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium animate-in slide-in-from-bottom duration-300 ${
+            toast.type === "success" ? "bg-green-500" :
+            toast.type === "error" ? "bg-red-500" :
+            "bg-blue-500"
+          }`}
+        >
+          {toast.type === "loading" && (
+            <div className="animate-spin">
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+            </div>
+          )}
+          {toast.type === "success" && <Check size={18} />}
+          {toast.type === "error" && <AlertCircle size={18} />}
+          <span>{toast.message}</span>
+        </div>
+      ))}
+    </div>
+  );
+
   // --- Sub-Renders ---
   const renderVendorButton = () => {
     if (isRegisteredVendor) {
@@ -171,7 +251,7 @@ const Header: React.FC = () => {
         <button 
           onClick={handleVendorAccess} 
           disabled={isSwitching}
-          className="flex items-center w-full gap-2 p-3 text-sm font-medium text-left hover:bg-surface-secondary rounded-md transition-colors"
+          className="flex items-center w-full gap-2 p-3 text-sm font-medium text-left hover:bg-surface-secondary rounded-md transition-colors disabled:opacity-50"
         >
           <LayoutDashboard size={16} /> 
           {isSwitching ? "Switching..." : "Go to Dashboard"}
@@ -180,7 +260,11 @@ const Header: React.FC = () => {
     }
     return (
       <button 
-        onClick={() => { router.push("/auth/vendor-onboarding"); setIsOpen(false); }} 
+        onClick={() => { 
+          addToast("Redirecting to vendor onboarding...", "loading");
+          router.push("/auth/vendor-onboarding"); 
+          setIsOpen(false); 
+        }} 
         className="flex items-center w-full gap-2 p-3 text-sm font-medium text-left hover:bg-surface-secondary rounded-md transition-colors"
       >
         <Store size={16} /> Become a Vendor
@@ -214,7 +298,11 @@ const Header: React.FC = () => {
                     <h3 className="mb-2 text-lg font-semibold text-gray-800 sm:text-xl">{option.title}</h3>
                     <p className="mb-4 text-sm text-gray-600">{option.description}</p>
                     <button
-                      onClick={() => { setSelectedOption(option.id); router.push(option.route); }}
+                      onClick={() => { 
+                        addToast("Redirecting...", "loading");
+                        router.push(option.route); 
+                        closeModal();
+                      }}
                       className={`inline-block ${option.buttonColor} text-white px-5 py-2 rounded-lg font-medium text-sm ${option.buttonHoverColor} transition-colors`}
                     >
                       {option.buttonText}
@@ -230,124 +318,134 @@ const Header: React.FC = () => {
   };
 
   // --- MAIN RENDER ---
-
-  // 1) Public Header
   if (!isAppPage) {
     return (
-      <header className="sticky top-0 z-[200] bg-white border-b border-gray-100">
-        <div className="flex items-center justify-between h-16 px-4 mx-auto max-w-7xl md:px-6">
-          <Link href="/" className="flex items-center space-x-2 group">
-            <img src="/images/siiqo.png" alt="Logo" className="w-full h-14" />
-          </Link>
-          <div className="flex items-center gap-4">
-            {isLoading ? <Skeleton type="rect" width="100px" height="36px" /> : 
-             isLoggedIn ? (
-              <Button variant="navy" onClick={() => router.push(user?.active_view === 'vendor' ? "/vendor/dashboard" : "/user-profile")}>
-                Dashboard
-              </Button>
+      <>
+        <header className="sticky top-0 z-[200] bg-white border-b border-gray-100">
+          <div className="flex items-center justify-between h-16 px-4 mx-auto max-w-7xl md:px-6">
+            <Link href="/" className="flex items-center space-x-2 group">
+              <img src="/images/siiqo.png" alt="Logo" className="w-full h-14" />
+            </Link>
+            <div className="flex items-center gap-4">
+              {isLoading ? <Skeleton type="rect" width="100px" height="36px" /> : 
+               isLoggedIn ? (
+                <Button variant="navy" onClick={() => router.push(user?.active_view === 'vendor' ? "/vendor/dashboard" : "/user-profile")}>
+                  {user?.active_view === 'vendor' ? "Vendor Dashboard" : "User Profile"}
+                </Button>
+              ) : (
+                <Button variant="navy" onClick={openModal}>Get Started</Button>
+              )}
+            </div>
+          </div>
+          <GetStartedModal />
+        </header>
+        <ToastContainer />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <header className="sticky top-0 z-[200] bg-white border-b border-border">
+        <div className="flex items-center justify-between h-16 px-4 mx-auto max-w-7xl md:h-18 md:px-2">
+          <div className="flex items-center space-x-4">
+            {showBackButton ? (
+              <button 
+              onClick={() => { 
+                addToast("Going back...", "loading"); 
+                window.history.length > 1 ? router.back() : router.push("/"); 
+              }} 
+              disabled={isSwitching}
+              className="p-2 -ml-2 transition-colors rounded-lg hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+              <ArrowLeft size={20} />
+              </button>
+            ) : (
+              <Link href="/" className="block">
+              <img src="/images/siiqo.png" alt="Logo" className="w-full h-14" />
+              </Link>
+            )}
+          </div>
+
+          {/* Desktop actions */}
+          <div className="items-center hidden sm:flex gap-x-3">
+            {isLoading ? (
+              <Skeleton type="rect" width="150px" height="30px" />
+            ) : isLoggedIn ? (
+              <>
+                <span className="hidden text-sm text-gray-600 lg:block">Welcome, {userData?.personal_info?.fullname || user?.fullname}</span>
+                <button onClick={handleCartOpen} className="relative p-2 transition-colors rounded-lg hover:bg-surface-secondary">
+                  <ShoppingCart size={20} className="text-text-primary" />
+                  <div className="absolute w-2 h-2 bg-red-500 rounded-full -top-1 -right-1 border-1 border-surface" />
+                </button>
+                
+                <div className="relative" ref={desktopRef}>
+                  <button onClick={() => setIsOpen(!isOpen)} className="p-2 transition-colors rounded-lg hover:bg-surface-secondary">
+                    <Icon name="AlignJustify" size={20} />
+                  </button>
+                  {isOpen && (
+                    <div className="absolute right-0 z-10 flex flex-col gap-3 p-4 mt-2 bg-white border rounded-lg shadow-xl w-60 border-surface-border">
+                      <button onClick={() => { router.push("/user-profile"); setIsOpen(false); }} className={`w-full text-left p-3 hover:bg-surface-secondary flex items-center gap-2 text-sm font-medium rounded-md ${pathname === '/user-profile' ? 'hidden' : 'flex'}`}>
+                       <User size={16} /> { pathname === '/user-profile' ? "" : `My Profile `}
+                      </button>
+                      {renderVendorButton()}
+                      <button onClick={handleLogout} className="w-full text-left p-3 text-white bg-red-600 hover:bg-red-700 flex items-center gap-2 text-sm font-medium rounded-md">
+                        <LogOut size={16} /> Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <Button variant="navy" onClick={() => router.push("/auth/login")}>Login</Button>
+            )}
+          </div>
+
+          {/* Mobile actions */}
+          <div className="sm:hidden flex items-center gap-2">
+            {isLoggedIn ? (
+              <div className="relative" ref={mobileRef}>
+                <button onClick={() => setIsOpen(!isOpen)} className="p-2 rounded-lg hover:bg-surface-secondary">
+                  <Icon name="AlignJustify" size={20} />
+                </button>
+                {isOpen && (
+                  <div className="absolute right-0 z-10 flex flex-col gap-2 p-4 mt-2 bg-white border rounded-lg shadow-xl w-60 border-surface-border">
+                    <span className="pb-2 text-sm font-bold border-b">Hi, {userData?.personal_info?.fullname || user?.fullname || "User"}</span>
+                    <button onClick={handleCartOpen} className="flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-gray-800 rounded-lg">
+                      <ShoppingCart size={16} className="mr-2" /> Cart
+                    </button>
+                    {renderVendorButton()}
+                    <button onClick={handleLogout} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg text-left">
+                      <LogOut size={16} className="inline mr-2" /> Logout
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <Button variant="navy" onClick={openModal}>Get Started</Button>
             )}
           </div>
         </div>
-        <GetStartedModal />
-      </header>
-    );
-  }
 
-  // 2) App/Dashboard Header
-  return (
-    <header className="sticky top-0 z-[200] bg-white border-b border-border">
-      <div className="flex items-center justify-between h-16 px-4 mx-auto max-w-7xl md:h-18 md:px-2">
-        <div className="flex items-center space-x-4">
-          {showBackButton ? (
-            <button onClick={() => window.history.length > 1 ? router.back() : router.push("/")} className="p-2 -ml-2 transition-colors rounded-lg hover:bg-surface-secondary">
-              <ArrowLeft size={20} />
-            </button>
-          ) : (
-            <Link href="/" className="block">
-              <img src="/images/siiqo.png" alt="Logo" className="w-full h-14" />
-            </Link>
-          )}
-        </div>
-
-        {/* Desktop actions */}
-        <div className="items-center hidden sm:flex gap-x-3">
-          {isLoading ? (
-            <Skeleton type="rect" width="150px" height="30px" />
-          ) : isLoggedIn ? (
-            <>
-              <span className="hidden text-sm text-gray-600 lg:block">Welcome, {getFirstName()}</span>
-              <button onClick={handleCartOpen} className="relative p-2 transition-colors rounded-lg hover:bg-surface-secondary">
-                <ShoppingCart size={20} className="text-text-primary" />
-                <div className="absolute w-2 h-2 bg-red-500 rounded-full -top-1 -right-1 border-1 border-surface" />
-              </button>
-              
-              <div className="relative" ref={desktopRef}>
-                <button onClick={() => setIsOpen(!isOpen)} className="p-2 transition-colors rounded-lg hover:bg-surface-secondary">
-                  <Icon name="AlignJustify" size={20} />
+        {/* Cart Drawer */}
+        {isCartOpen && (
+          <div className="fixed inset-0 z-[300]">
+            <div className="fixed inset-0 bg-black/50" onClick={() => setIsCartOpen(false)} />
+            <div className="fixed top-0 right-0 h-full bg-white shadow-lg w-full sm:w-96 animate-in slide-in-from-right duration-300">
+              <div className="p-4 h-full overflow-y-auto">
+                <button onClick={() => setIsCartOpen(false)} className="float-right p-2 rounded hover:bg-gray-100">
+                  <X className="w-5 h-5" />
                 </button>
-                {isOpen && (
-                  <div className="absolute right-0 z-10 flex flex-col gap-3 p-4 mt-2 bg-white border rounded-lg shadow-xl w-60 border-surface-border">
-                    <button onClick={() => { router.push("/user-profile"); setIsOpen(false); }} className="w-full text-left p-3 hover:bg-surface-secondary flex items-center gap-2 text-sm font-medium rounded-md">
-                      <User size={16} /> My Profile
-                    </button>
-                    {renderVendorButton()}
-                    <button onClick={handleLogout} className="w-full text-left p-3 text-white bg-red-600 hover:bg-red-700 flex items-center gap-2 text-sm font-medium rounded-md">
-                      <LogOut size={16} /> Logout
-                    </button>
-                  </div>
-                )}
+                <JumiaCartSystem />
               </div>
-            </>
-          ) : (
-            <Button variant="navy" onClick={() => router.push("/auth/login")}>Login</Button>
-          )}
-        </div>
-
-        {/* Mobile actions */}
-        <div className="sm:hidden flex items-center gap-2">
-          {isLoggedIn ? (
-            <div className="relative" ref={mobileRef}>
-              <button onClick={() => setIsOpen(!isOpen)} className="p-2 rounded-lg hover:bg-surface-secondary">
-                <Icon name="AlignJustify" size={20} />
-              </button>
-              {isOpen && (
-                <div className="absolute right-0 z-10 flex flex-col gap-2 p-4 mt-2 bg-white border rounded-lg shadow-xl w-60 border-surface-border">
-                  <span className="pb-2 text-sm font-bold border-b">Hi, {getFirstName()}</span>
-                  <button onClick={handleCartOpen} className="flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-gray-800 rounded-lg">
-                    <ShoppingCart size={16} className="mr-2" /> Cart
-                  </button>
-                  {renderVendorButton()}
-                  <button onClick={handleLogout} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg text-left">
-                    <LogOut size={16} className="inline mr-2" /> Logout
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <Button variant="navy" onClick={openModal}>Get Started</Button>
-          )}
-        </div>
-      </div>
-
-      {/* Cart Drawer */}
-      {isCartOpen && (
-        <div className="fixed inset-0 z-[300]">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setIsCartOpen(false)} />
-          <div className="fixed top-0 right-0 h-full bg-white shadow-lg w-full sm:w-96 animate-in slide-in-from-right duration-300">
-            <div className="p-4 h-full overflow-y-auto">
-              <button onClick={() => setIsCartOpen(false)} className="float-right p-2 rounded hover:bg-gray-100">
-                <X className="w-5 h-5" />
-              </button>
-              <JumiaCartSystem />
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <GetStartedModal />
-    </header>
+        <GetStartedModal />
+      </header>
+      <ToastContainer />
+    </>
   );
 };
 

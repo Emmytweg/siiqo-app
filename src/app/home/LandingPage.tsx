@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Search, ShoppingBag, AlertCircle, MapPin, X, RefreshCw, ChevronRight, Store } from "lucide-react";
+import { Search, AlertCircle, MapPin, X, RefreshCw, ChevronRight, Store, ChevronLeft } from "lucide-react";
 import { Storefront } from "@/types/storeFront";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import {
@@ -31,6 +31,8 @@ const itemVariants: Variants = {
   },
 };
 
+const ITEMS_PER_PAGE = 8;
+
 const LandingPage: React.FC<{ onRefresh?: () => Promise<void> }> = ({ onRefresh }) => {
   const [distance, setDistance] = useState<string>("2 km");
   const [verifiedOnly, setVerifiedOnly] = useState<boolean>(false);
@@ -38,15 +40,23 @@ const LandingPage: React.FC<{ onRefresh?: () => Promise<void> }> = ({ onRefresh 
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [currentPage, setCurrentPage] = useState<number>(1);
   
   const router = useRouter();
 
-  // 2. The single source of truth for fetching
-  const loadData = async () => {
+  const loadData = async (query: string = "") => {
     setIsLoading(true);
     setError(null);
+    setCurrentPage(1);
     try {
-      const response = await fetch("https://server.siiqo.com/api/marketplace/search");
+      let url = "https://server.siiqo.com/api/marketplace/search";
+      
+      // Add search query parameter if provided
+      if (query.trim()) {
+        url += `?q=${encodeURIComponent(query.trim())}`;
+      }
+      
+      const response = await fetch(url);
       if (!response.ok) throw new Error("Failed to fetch data from server");
       
       const result = await response.json();
@@ -77,10 +87,19 @@ const LandingPage: React.FC<{ onRefresh?: () => Promise<void> }> = ({ onRefresh 
     return true;
   });
 
+  const totalPages = Math.ceil(filteredStorefronts.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedStorefronts = filteredStorefronts.slice(
+    startIndex,
+    startIndex + ITEMS_PER_PAGE
+  );
+
   const handleClearFilters = () => {
     setSearchTerm("");
     setVerifiedOnly(false);
     setDistance("2 km");
+    setCurrentPage(1);
+    loadData(""); // Load all results when filters are cleared
   };
 
   const handleRefresh = async () => {
@@ -93,7 +112,12 @@ const LandingPage: React.FC<{ onRefresh?: () => Promise<void> }> = ({ onRefresh 
   };
 
   const handleSignUp = () => {
-    router.push("/auth/signup"); // Adjust based on your actual route
+    router.push("/auth/signup");
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -133,7 +157,17 @@ const LandingPage: React.FC<{ onRefresh?: () => Promise<void> }> = ({ onRefresh 
                 type="text"
                 placeholder="Search for stores, services, or products..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSearchTerm(value);
+                  setCurrentPage(1);
+                  // Trigger search when user types
+                  if (value.trim()) {
+                    loadData(value);
+                  } else {
+                    loadData(""); // Load all results when search is cleared
+                  }
+                }}
                 className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#E0921C] focus:border-transparent transition-all duration-200 sm:text-sm"
               />
             </div>
@@ -161,7 +195,10 @@ const LandingPage: React.FC<{ onRefresh?: () => Promise<void> }> = ({ onRefresh 
                     type="checkbox"
                     className="sr-only"
                     checked={verifiedOnly}
-                    onChange={(e) => setVerifiedOnly(e.target.checked)}
+                    onChange={(e) => {
+                      setVerifiedOnly(e.target.checked);
+                      setCurrentPage(1);
+                    }}
                   />
                   <motion.div 
                     className={`block w-10 h-6 rounded-full transition-colors duration-300 ${verifiedOnly ? 'bg-[#E0921C]' : 'bg-gray-300'}`}
@@ -259,20 +296,63 @@ const LandingPage: React.FC<{ onRefresh?: () => Promise<void> }> = ({ onRefresh 
         {!isLoading && !error && (
           <>
             {filteredStorefronts.length > 0 ? (
-              <motion.div 
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-              >
-                {filteredStorefronts.map((store) => (
-                  <motion.div key={store.id} variants={itemVariants}>
-                    <StorefrontCard stores={store} />
+              <>
+                <motion.div 
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                >
+                  {paginatedStorefronts.map((store) => (
+                    <motion.div key={store.id} variants={itemVariants}>
+                      <StorefrontCard stores={store} />
+                    </motion.div>
+                  ))}
+                </motion.div>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center justify-center gap-2 mt-12"
+                  >
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="p-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => handlePageChange(page)}
+                          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                            currentPage === page
+                              ? "bg-[#E0921C] text-white"
+                              : "border border-gray-200 text-gray-700 hover:bg-gray-100"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="p-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight size={20} />
+                    </button>
                   </motion.div>
-                ))}
-              </motion.div>
+                )}
+              </>
             ) : (
-              /* THE NEW EMPTY STATE */
+              /* EMPTY STATE */
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}

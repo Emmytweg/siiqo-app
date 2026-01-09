@@ -132,8 +132,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       error,
       login,
       logout,
+      refreshUserProfile: fetchUserProfile,
     }),
-    [isLoggedIn, user, isLoading, error, login, logout]
+    [isLoggedIn, user, isLoading, error, login, logout, fetchUserProfile]
   );
 
   return (

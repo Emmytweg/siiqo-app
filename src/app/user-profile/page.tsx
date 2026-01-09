@@ -7,12 +7,13 @@ import Settings from "./components/Settings";
 import { useRouter } from "next/navigation";
 import { userService } from "@/services/userService";
 import { useAuth } from "@/context/AuthContext";
+import { switchMode } from "@/services/api";
 
 const UserProfile = () => {
   const [activeTab, setActiveTab] = useState<string>("history");
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const { logout } = useAuth();
+  const { logout, refreshUserProfile } = useAuth();
   const router = useRouter();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -26,6 +27,11 @@ const UserProfile = () => {
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
+    switchMode("buyer");
+  }, []);
+
+  console.log("USER PROFILE DATA:", user);
+  useEffect(() => {
     const fetchLiveProfile = async () => {
       try {
         setLoading(true);
@@ -33,6 +39,11 @@ const UserProfile = () => {
         const profileData = response.data;
 
         setUser(profileData);
+        
+        // Update the AuthContext with the fresh profile data
+        if (refreshUserProfile) {
+          await refreshUserProfile();
+        }
         
         setEditData({
           name: profileData.personal_info?.fullname || profileData.store_settings?.business_name || "User",
@@ -48,7 +59,7 @@ const UserProfile = () => {
     };
 
     fetchLiveProfile();
-  }, []);
+  }, [refreshUserProfile]);
 
   const handleSaveProfile = async () => {
     try {
@@ -183,9 +194,9 @@ const UserProfile = () => {
             >
               {isEditing ? "SAVE CHANGES" : "EDIT PROFILE"}
             </button>
-            <button onClick={logout} className="px-6 py-2 border border-red-200 text-red-500 rounded-full text-sm font-bold hover:bg-red-50">
+            {/* <button onClick={logout} className="px-6 py-2 border border-red-200 text-red-500 rounded-full text-sm font-bold hover:bg-red-50">
               LOGOUT
-            </button>
+            </button> */}
           </div>
         </div>
 
@@ -237,7 +248,7 @@ const UserProfile = () => {
 
           {/* MAIN CONTENT */}
           <main className="md:col-span-8">
-             <div className="mb-6 border rounded-3xl bg-white shadow-sm overflow-hidden min-h-[500px]">
+             <div className="mb-20 border rounded-3xl bg-white shadow-sm overflow-hidden min-h-[500px]">
                 <div className="flex border-b bg-gray-50/50">
                   {['history', 'saved', 'settings'].map((tab) => (
                     <button 

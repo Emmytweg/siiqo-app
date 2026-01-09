@@ -11,10 +11,10 @@ export interface DealData {
   rating: number;
   condition: string;
   id:number;
-  image: null | string;
+  image: string;
   name:  string;
   price:  number;
-  vendor_name: null | string;
+  vendor_name:  string;
   crypto_price: null | number;
 }
 
@@ -23,13 +23,14 @@ export interface NearbyDealCardProps {
     id: number | string;
   name: string;
   price: number;
-    images: string[];
-    vendor: { vendor_name?: string } | null;
+    images: string;
+    vendor_name:  string ;
   };
   dealData: DealData;
   onClick: (id: any) => void;
   className?: string; // Added to accept external width/styling
 }
+
 
 const NearbyDealCard: React.FC<NearbyDealCardProps> = ({
   product,
@@ -39,19 +40,37 @@ const NearbyDealCard: React.FC<NearbyDealCardProps> = ({
 }) => {
   const [showLoadingModal, setShowLoadingModal] = useState(false);
   const [btnDisabled, setBtnDisabled] = useState(false);
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [products, setProducts] = useState<any[]>([]);
+    const [error, setError] = useState<string | null>(null);
+    const [currentPage, setCurrentPage] = useState<number>(1);
+  
+    const fetchProducts = async () => {
+    setIsLoading(true);
+    try {
+      setError(null);
+      const response = await fetch("https://server.siiqo.com/api/marketplace/search");
+      const data = await response.json();
+      setProducts(data.data.nearby_products);
+      setCurrentPage(1);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch products");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div
       onClick={() => onClick(product.id)}
-      className={`transition-all duration-200 border rounded-lg cursor-pointer w-72 bg-surface border-border hover:shadow-elevation-2 flex flex-col h-full ${className}`}
+      className={`transition-all duration-200 border rounded-lg cursor-pointer w-full bg-surface border-border hover:shadow-elevation-2 flex flex-col h-full ${className}`}
     >
       {/* 1. Image Section - Fixed height, no stretching */}
       <div className="relative w-full h-48 overflow-hidden rounded-t-lg shrink-0">
         <Image
           src={
-            product.images?.[0] ||
-            "https://via.placeholder.com/400x300?text=No+Image"
-          }
+            dealData.image           }
+          
           alt={product.name}
           fill={true}
           className="object-cover"
@@ -105,7 +124,8 @@ const NearbyDealCard: React.FC<NearbyDealCardProps> = ({
         {/* 3. Bottom Row - Always aligned at the bottom of the card */}
         <div className="flex items-center justify-between pt-3 border-t border-border mt-auto shrink-0">
           <span className="text-xs text-text-secondary line-clamp-1 max-w-[120px]">
-            {dealData.vendor_name || "Unknown Vendor"}
+            {dealData.vendor_name}
+          
           </span>
           <Button
             onClick={(e) => {
@@ -114,7 +134,7 @@ const NearbyDealCard: React.FC<NearbyDealCardProps> = ({
               setBtnDisabled(true);
               // small delay to show modal before navigating
               setTimeout(() => {
-                onClick(product.name);
+                onClick(product.id);
               }, 700);
             }}
             disabled={btnDisabled}

@@ -123,6 +123,7 @@ const ToastContainer: React.FC<{
 const ProductManagement: React.FC = () => {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   // Mobile Collapse States
   const [isStatsCollapsed, setIsStatsCollapsed] = useState(true);
@@ -131,6 +132,8 @@ const ProductManagement: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [sortOption, setSortOption] = useState<string>("created-desc");
+  const [showInStockOnly, setShowInStockOnly] = useState<boolean>(false);
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
   const [showStockAlerts, setShowStockAlerts] = useState<boolean>(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -140,24 +143,12 @@ const ProductManagement: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [vendorData, setVendorData] = useState<VendorData | null>(null);
+  const [categories, setCategories] = useState<Array<{ id: number; name: string }>>([]);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [confirmDeleteName, setConfirmDeleteName] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
 
-  const loadProducts = async () => {
-  try {
-    const response = await vendorService.getMyProducts();
-    // CRITICAL: Navigating your specific JSON structure
-    // response.data[0].products
-    if (response.data && response.data[0]?.products) {
-      setProducts(response.data[0].products);
-    }
-  } catch (error) {
-    toast.error("Failed to fetch products");
-  }
-};
-
-useEffect(() => {
-  loadProducts();
-}, []);
   const addToast = (toast: Omit<Toast, "id">): string => {
     const id = Date.now().toString();
     setToasts((prev) => [...prev, { ...toast, id }]);
@@ -173,39 +164,69 @@ useEffect(() => {
     const fetchVendorProducts = async () => {
       setLoading(true);
       try {
-        const { data } = await productService.getMyProducts();
-        if (data.products) {
-          const formattedProducts: Product[] = data.products.map(
-          (product: any) => ({
+        const response = await productService.getMyProducts();
+
+        // Expected shape: { status, data: [ { catalog_id, catalog_name, products: [...] }, ... ] }
+        const catalogs = Array.isArray(response?.data)
+          ? response.data
+          : Array.isArray(response?.data?.data)
+            ? response.data.data
+            : [];
+
+        // Flatten all products across catalogs, keeping catalog metadata if needed later
+        const productsArray = catalogs.flatMap((catalog: any) => {
+          if (!Array.isArray(catalog?.products)) return [];
+          return catalog.products.map((p: any) => ({
+            ...p,
+            catalog_id: catalog.catalog_id,
+            catalog_name: catalog.catalog_name,
+          }));
+        });
+
+        if (productsArray.length > 0) {
+          const formattedProducts: Product[] = productsArray.map((product: any) => ({
             id: product.id || product._id,
-            name: product.product_name,
+            name: product.product_name || product.name,
             image: product.images?.[0] || "https://via.placeholder.com/150",
-            images: product.images || [], // Add this line to set the images array
-            category: product.category,
+            images: product.images || [],
+            category: product.category || "Uncategorized",
             sku: product.sku || `SKU-${product.id}`,
-            price: product.product_price,
-            stock: product.quantity || 0,
+            final_price: product.final_price ?? product.product_price ?? product.price ?? 0,
+            stock: product.quantity ?? 0,
             status: product.status || "active",
             createdAt: product.createdAt || new Date().toISOString(),
             views: product.views || 0,
             description: product.description,
-          })
-        )
+          }));
           setProducts(formattedProducts);
         } else {
-          throw new Error("Unexpected response format");
+          console.warn("No products found in response:", response);
+          setProducts([]);
         }
       } catch (err) {
         console.error("Error fetching vendor products:", err);
+        setError("Failed to load products");
       } finally {
         setLoading(false);
       }
     };
 
+    const fetchCategories = async () => {
+      try {
+        const response = await productService.getCategories();
+        if (response.categories && Array.isArray(response.categories)) {
+          setCategories(response.categories);
+        }
+      } catch (err) {
+        console.error("Error fetching categories:", err);
+      }
+    };
+
     fetchVendorProducts();
+    fetchCategories();
   }, []);
 
-  // --- Filtering ---
+  // --- Filtering & Sorting ---
   useEffect(() => {
     let filtered = [...products];
 
@@ -221,12 +242,43 @@ useEffect(() => {
       filtered = filtered.filter(
         (product) =>
           product.name.toLowerCase().includes(lowercasedQuery) ||
-          product.sku.toLowerCase().includes(lowercasedQuery)
+          product.sku?.toLowerCase().includes(lowercasedQuery) ||
+          product.category?.toLowerCase().includes(lowercasedQuery) ||
+          product.description?.toLowerCase().includes(lowercasedQuery) ||
+          String(product.id).includes(lowercasedQuery)
       );
     }
 
+    if (showInStockOnly) {
+      filtered = filtered.filter((product) => product.stock && product.stock > 0);
+    }
+
+    // --- Apply Sorting ---
+    filtered = filtered.sort((a, b) => {
+      switch (sortOption) {
+        case "name-asc":
+          return a.name.localeCompare(b.name);
+        case "name-desc":
+          return b.name.localeCompare(a.name);
+        case "price-asc":
+          return (a.final_price || 0) - (b.final_price || 0);
+        case "price-desc":
+          return (b.final_price || 0) - (a.final_price || 0);
+        case "stock-asc":
+          return (a.stock || 0) - (b.stock || 0);
+        case "stock-desc":
+          return (b.stock || 0) - (a.stock || 0);
+        case "created-desc":
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        case "created-asc":
+          return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+        default:
+          return 0;
+      }
+    });
+
     setFilteredProducts(filtered);
-  }, [products, selectedCategory, searchQuery]);
+  }, [products, selectedCategory, searchQuery, sortOption, showInStockOnly]);
 
   // --- Handlers ---
   const handleCategorySelect = (category: string | null): void => {
@@ -263,15 +315,13 @@ useEffect(() => {
     setEditingProduct(null);
     setShowAddModal(true);
   };
-
-  // const handleEditProduct = (productId: number): void => {
-  //   const product = products.find((p) => p.id === productId);
-  //   if (product) {
-  //     setEditingProduct(product);
-  //     setShowAddModal(true);
-  //   }
-  // };
-
+const handleEditProduct = (productId: number) => {
+  const productToEdit = products.find(p => p.id === productId);
+  if (productToEdit) {
+    setEditingProduct(productToEdit);
+    setShowAddModal(true);
+  }
+};
   const handleDuplicateProduct = (productId: number): void => {
     const product = products.find((p) => p.id === productId);
     if (product) {
@@ -304,18 +354,25 @@ useEffect(() => {
   };
 
   const handleDeleteProduct = (productId: number): void => {
-    if (
-      typeof window !== "undefined" &&
-      window.confirm("Are you sure you want to delete this product?")
-    ) {
-      const loadingToastId = addToast({
-        type: "loading",
-        title: "Deleting product...",
-        message: "Please wait while we remove this product.",
-        duration: 0,
-      });
+    const product = products.find((p) => p.id === productId);
+    setConfirmDeleteId(productId);
+    setConfirmDeleteName(product?.name || "this product");
+  };
 
-      setTimeout(() => {
+  const confirmDeleteProduct = (): void => {
+    if (confirmDeleteId == null) return;
+    const productId = confirmDeleteId;
+    const loadingToastId = addToast({
+      type: "loading",
+      title: "Deleting product...",
+      message: "Please wait while we remove this product.",
+      duration: 0,
+    });
+    setIsDeleting(true);
+
+    productService
+      .deleteProduct(productId)
+      .then(() => {
         const deletedProduct = products.find((p) => p.id === productId);
         setProducts((prev) => prev.filter((p) => p.id !== productId));
         setSelectedProducts((prev) => prev.filter((id) => id !== productId));
@@ -329,18 +386,32 @@ useEffect(() => {
             : "Product has been removed.",
           duration: 4000,
         });
-      }, 1000);
-    }
+      })
+      .catch((error) => {
+        removeToast(loadingToastId);
+        addToast({
+          type: "error",
+          title: "Failed to delete product",
+          message:
+            error?.response?.data?.message ||
+            "An error occurred while deleting the product.",
+          duration: 4000,
+        });
+      })
+      .finally(() => {
+        setIsDeleting(false);
+        setConfirmDeleteId(null);
+        setConfirmDeleteName(null);
+      });
+  };
+
+  const cancelDeleteProduct = () => {
+    if (isDeleting) return;
+    setConfirmDeleteId(null);
+    setConfirmDeleteName(null);
   };
 
   // 1. Full Edit (Opens the Wizard)
-const handleEditProduct = (productId: number) => {
-  const productToEdit = products.find(p => p.id === productId);
-  if (productToEdit) {
-    setEditingProduct(productToEdit); // This triggers your AddProductWizard modal
-    setShowAddModal(true);
-  }
-};
 
 // 2. Quick Edit (Updates price directly from table)
 const handleQuickEdit = async (productId: number, field: string, value: string | number) => {
@@ -444,7 +515,15 @@ const handleQuickEdit = async (productId: number, field: string, value: string |
 
       if (editingProduct) {
         // Use the link: https://server.siiqo.com/api/products/update/{id}
-        await productService.editProduct(editingProduct.id, apiData);
+        const formDataPayload = new FormData();
+        Object.entries(apiData).forEach(([key, value]) => {
+          if (Array.isArray(value)) {
+            value.forEach((item) => formDataPayload.append(key, item));
+          } else {
+            formDataPayload.append(key, String(value));
+          }
+        });
+        await productService.editProduct(editingProduct.id, formDataPayload);
         
         setProducts((prev) =>
           prev.map((p) =>
@@ -454,7 +533,7 @@ const handleQuickEdit = async (productId: number, field: string, value: string |
                   name: apiData.product_name,
                   description: apiData.description,
                   category: apiData.category,
-                  price: apiData.product_price / 100, // Convert back from cents if necessary
+                  final_price: apiData.product_price / 100,
                   stock: apiData.quantity,
                   status: apiData.status as ProductStatus,
                   image: apiData.images[0] || p.image,
@@ -463,13 +542,21 @@ const handleQuickEdit = async (productId: number, field: string, value: string |
           )
         );
       } else {
-        const response = await productService.addProduct(apiData);
+        const formDataPayload = new FormData();
+        Object.entries(apiData).forEach(([key, value]) => {
+          if (Array.isArray(value)) {
+            value.forEach((item) => formDataPayload.append(key, item));
+          } else {
+            formDataPayload.append(key, String(value));
+          }
+        });
+        const response = await productService.addProduct(formDataPayload);
         const newProduct: Product = {
           id: response.data?.id || Date.now(),
           name: apiData.product_name,
           description: apiData.description,
           category: apiData.category,
-          price: apiData.product_price / 100,
+          final_price: apiData.product_price / 100,
           status: apiData.status as ProductStatus,
           image: apiData.images[0] || "https://via.placeholder.com/150",
           sku: `SKU-${Date.now()}`,
@@ -492,6 +579,151 @@ const handleQuickEdit = async (productId: number, field: string, value: string |
       setError(msg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Export to Excel
+  const handleExportExcel = () => {
+    try {
+      const exportData = filteredProducts.map((product) => ({
+        "Product ID": product.id,
+        "Product Name": product.name,
+        "Category": product.category,
+        "SKU": product.sku,
+        "Price": `₦${product.final_price}`,
+        "Stock": product.stock,
+        "Status": product.status,
+        "Description": product.description || "",
+        "Created Date": new Date(product.createdAt).toLocaleDateString(),
+        "Views": product.views,
+      }));
+
+      // Create CSV content
+      const headers = Object.keys(exportData[0]);
+      const csvContent = [
+        headers.join(","),
+        ...exportData.map((row) =>
+          headers.map((header) => {
+            const value = row[header as keyof typeof row];
+            // Escape quotes and wrap in quotes if contains comma
+            return typeof value === "string" && value.includes(",")
+              ? `"${value.replace(/"/g, '""')}"`
+              : value;
+          }).join(",")
+        ),
+      ].join("\n");
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", `products-${new Date().getTime()}.csv`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success("Products exported to Excel successfully!");
+      setShowExportMenu(false);
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Failed to export products to Excel");
+    }
+  };
+
+  // Export to PDF
+  const handleExportPDF = () => {
+    try {
+      const exportData = filteredProducts.map((product) => ({
+        "Product ID": product.id,
+        "Product Name": product.name,
+        "Category": product.category,
+        "SKU": product.sku,
+        "Price": `₦${product.final_price}`,
+        "Stock": product.stock,
+        "Status": product.status,
+        "Description": product.description || "",
+        "Created Date": new Date(product.createdAt).toLocaleDateString(),
+        "Views": product.views,
+      }));
+
+      // Create HTML table for PDF
+      let htmlContent = `
+        <html>
+          <head>
+            <title>Product Export</title>
+            <style>
+              body { font-family: Arial, sans-serif; }
+              h1 { text-align: center; color: #333; }
+              table { 
+                width: 100%; 
+                border-collapse: collapse; 
+                margin-top: 20px;
+              }
+              th { 
+                background-color: #075E54; 
+                color: white; 
+                padding: 10px; 
+                text-align: left; 
+                font-size: 12px;
+              }
+              td { 
+                padding: 8px; 
+                border-bottom: 1px solid #ddd; 
+                font-size: 11px;
+              }
+              tr:nth-child(even) { background-color: #f2f2f2; }
+              .footer { 
+                text-align: center; 
+                margin-top: 30px; 
+                font-size: 10px; 
+                color: #666;
+              }
+            </style>
+          </head>
+          <body>
+            <h1>Product Catalog Export</h1>
+            <p>Exported on: ${new Date().toLocaleString()}</p>
+            <p>Total Products: ${exportData.length}</p>
+            <table>
+              <thead>
+                <tr>
+                  ${Object.keys(exportData[0]).map((key) => `<th>${key}</th>`).join("")}
+                </tr>
+              </thead>
+              <tbody>
+                ${exportData
+                  .map(
+                    (row) => `
+                  <tr>
+                    ${Object.values(row).map((value) => `<td>${value}</td>`).join("")}
+                  </tr>
+                `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+            <div class="footer">
+              <p>This is an auto-generated report from Siiqo Product Management System</p>
+            </div>
+          </body>
+        </html>
+      `;
+
+      // Open print dialog
+      const printWindow = window.open("", "", "width=800,height=600");
+      if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        printWindow.print();
+      }
+
+      toast.success("PDF export dialog opened!");
+      setShowExportMenu(false);
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Failed to export products to PDF");
     }
   };
 
@@ -548,13 +780,35 @@ const handleQuickEdit = async (productId: number, field: string, value: string |
                   Alerts ({lowStockCount + outOfStockCount})
                 </Button>
               )}
-              <Button
-                variant="outline"
-                iconName="Download"
-                iconPosition="left"
-              >
-                Export
-              </Button>
+              <div className="relative">
+                <Button
+                  variant="outline"
+                  iconName="Download"
+                  iconPosition="left"
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                >
+                  Export
+                </Button>
+
+                {showExportMenu && (
+                  <div className="absolute top-full right-0 mt-2 w-48 bg-popover border border-border rounded-lg shadow-lg z-50 overflow-hidden">
+                    <button
+                      onClick={handleExportExcel}
+                      className="w-full text-left px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-all flex items-center gap-2"
+                    >
+                      <Icon name="FileText" size={16} />
+                      Export as Excel (CSV)
+                    </button>
+                    <button
+                      onClick={handleExportPDF}
+                      className="w-full text-left px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-all border-t border-border flex items-center gap-2"
+                    >
+                      <Icon name="File" size={16} />
+                      Export as PDF
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -651,6 +905,8 @@ const handleQuickEdit = async (productId: number, field: string, value: string |
                  <CategoryTree
                     onCategorySelect={handleCategorySelect}
                     selectedCategory={selectedCategory}
+                    categories={categories}
+                    products={products}
                   />
               </div>
             </div>
@@ -665,6 +921,12 @@ const handleQuickEdit = async (productId: number, field: string, value: string |
                 selectedProducts={selectedProducts}
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
+                sortOption={sortOption}
+                onSortChange={setSortOption}
+                showInStockOnly={showInStockOnly}
+                onStockFilterChange={setShowInStockOnly}
+                selectedCategory={selectedCategory}
+                onCategoryChange={setSelectedCategory}
               />
 
               {loading ? (
@@ -720,6 +982,41 @@ const handleQuickEdit = async (productId: number, field: string, value: string |
           onSave={handleSaveProduct}
           editingProduct={editingProduct}
         />
+
+        {/* Delete confirmation modal */}
+        {confirmDeleteId !== null && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/40 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-md rounded-xl shadow-xl border border-border p-6 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-error/10 text-error flex items-center justify-center">
+                  <Icon name="Trash2" size={18} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold">Delete product?</h3>
+                  <p className="text-sm text-muted-foreground">
+                    This will remove {confirmDeleteName || "this product"} from your catalog.
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <Button
+                  variant="ghost"
+                  onClick={cancelDeleteProduct}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={confirmDeleteProduct}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {showStockAlerts && (
           <StockAlerts onClose={() => setShowStockAlerts(false)} />

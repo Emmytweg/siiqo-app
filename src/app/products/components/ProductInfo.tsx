@@ -1,13 +1,16 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { X, AlertCircle } from 'lucide-react';
 import Icon from '@/components/ui/AppIcon';
 import { useToast } from "@/hooks/use-toast"; // Assuming you have a toast hook for feedback
-
+import { useAuth } from '@/context/AuthContext';
+import api from '@/services/api';
+import { switchMode } from '@/services/api';
 interface Product {
     title: string;
     price: number;
-    originalPrice: number;
     rating: number;
     reviewCount: number;
     distance: number; 
@@ -21,7 +24,8 @@ interface Product {
 }
 
 interface ProductInfoProps {
-    product: Product;
+    productData: Product;
+    productId: number; // Product ID for API calls
     isWishlisted: boolean;
     onWishlistToggle: () => void;
     // onShare is now handled internally or passed as a callback
@@ -31,7 +35,8 @@ interface ProductInfoProps {
 }
 
 const ProductInfo = ({
-    product,
+    productData: product,
+    productId,
     isWishlisted,
     onWishlistToggle,
     showFullDescription,
@@ -39,7 +44,13 @@ const ProductInfo = ({
     isMobile = false
 }: ProductInfoProps) => {
     const { toast } = useToast();
+    const router = useRouter();
+    const { user, isLoggedIn } = useAuth();
+    const [showBuyerModal, setShowBuyerModal] = useState(false);
+    const [isLoadingWishlist, setIsLoadingWishlist] = useState(false);
 
+    // Check if user is in buyer mode
+    const isBuyerMode = isLoggedIn && switchMode("buyer")
     const formatTimeAgo = (date: Date): string => {
         const now = new Date();
         const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
@@ -50,6 +61,101 @@ const ProductInfo = ({
         return `${diffInDays}d ago`;
     };
 
+    // --- WISHLIST TOGGLE WITH API CALL ---
+    const handleWishlistToggle = async () => {
+        if (!isBuyerMode) {
+            setShowBuyerModal(true);
+            return;
+        }
+
+        setIsLoadingWishlist(true);
+        try {
+            const response = await api.post(`/buyers/favourites/${productId}`);
+            
+            if (response.data.status === 'success') {
+                onWishlistToggle();
+                toast({
+                    title: isWishlisted ? "Removed from Favourites" : "Added to Favourites",
+                    description: isWishlisted 
+                        ? "Product removed from your favourites."
+                        : "Product added to your favourites.",
+                });
+            }
+        } catch (error) {
+            console.error("Failed to update wishlist:", error);
+            toast({
+                title: "Error",
+                description: "Failed to update wishlist. Please try again.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsLoadingWishlist(false);
+        }
+    };
+
+    // --- BUYER MODE MODAL ---
+    const BuyerModeModal = () => (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 md:p-8 animate-in zoom-in duration-300">
+                <div className="relative">
+                    <button
+                        onClick={() => setShowBuyerModal(false)}
+                        className="absolute -top-2 -right-2 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                    >
+                        <X className="w-5 h-5 text-gray-500" />
+                    </button>
+
+                    <div className="text-center">
+                        <div className="w-16 h-16 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <AlertCircle className="w-8 h-8 text-yellow-600" />
+                        </div>
+
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                            Switch to Buyer Mode
+                        </h2>
+
+                        <p className="text-gray-600 text-sm leading-relaxed mb-6">
+                            {isLoggedIn
+                                ? "You need to switch to buyer mode to add items to your favourites."
+                                : "Please log in as a buyer to add items to your favourites."}
+                        </p>
+
+                        <div className="space-y-3">
+                            {isLoggedIn ? (
+                                <button
+                                    onClick={() => {
+                                        setShowBuyerModal(false);
+                                        alert("Please use the mode switcher in the header to switch to buyer mode");
+                                    }}
+                                    className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                                >
+                                    Switch to Buyer Mode
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => {
+                                        setShowBuyerModal(false);
+                                        router.push("/auth/login");
+                                    }}
+                                    className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                                >
+                                    Log In
+                                </button>
+                            )}
+
+                            <button
+                                onClick={() => setShowBuyerModal(false)}
+                                className="w-full py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
     // --- CUSTOM SHARE LOGIC ---
     const handleShare = async () => {
         // 1. Format the name and distance (location)
@@ -58,7 +164,7 @@ const ProductInfo = ({
         const locationTag = `${product.distance}-miles-away`;
         
         // 2. Construct the specific string: name+location
-        const shareUrl = `https://${window.location.hostname}/product/${formattedName}/${locationTag}`;
+        const shareUrl = window.location.href;
         
         // 3. Copy to clipboard
         try {
@@ -72,9 +178,10 @@ const ProductInfo = ({
         }
     };
 
-    const discountPercentage = Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100);
+    const discountPercentage = Math.round(((product.price - product.price) / product.price) * 100);
 
     return (
+      <>
       <div className="space-y-6">
         {/* Header with Actions */}
         <div className="flex items-start justify-between">
@@ -86,12 +193,12 @@ const ProductInfo = ({
             {/* Price Section */}
             <div className="flex items-center mb-3 space-x-3">
               <span className="text-2xl font-bold md:text-3xl text-text-primary">
-                ${product.price}
+                ₦{product.price.toLocaleString()}
               </span>
-              {product.originalPrice > product.price && (
+              {product.price > product.price && (
                 <>
                   <span className="text-lg line-through text-text-secondary">
-                    ${product.originalPrice}
+                    ₦{product.price}
                   </span>
                   <span className="px-2 py-1 text-sm font-medium text-orange-500 bg-orange-100 rounded">
                     {discountPercentage}% OFF
@@ -124,12 +231,13 @@ const ProductInfo = ({
           <div className="flex flex-col md:flex-row items-center space-x-2">
             <button
               type="button"
-              onClick={onWishlistToggle}
+              onClick={handleWishlistToggle}
+              disabled={isLoadingWishlist}
               className={`p-1 rounded-full transition-all duration-200 ${
                 isWishlisted
                   ? "bg-white text-slate-900"
                   : "bg-white text-orange-500"
-              }`}
+              } ${isLoadingWishlist ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <Icon
                 name="Heart"
@@ -156,14 +264,14 @@ const ProductInfo = ({
               {product.availability}
             </span>
           </div>
-          <div className="flex items-center space-x-2 text-sm text-text-secondary">
+          {/* <div className="flex items-center space-x-2 text-sm text-text-secondary">
             <Icon name="Eye" size={16} />
             <span>{product.views} views</span>
-          </div>
-          <div className="flex items-center space-x-2 text-sm text-text-secondary">
+          </div> */}
+          {/* <div className="flex items-center space-x-2 text-sm text-text-secondary">
             <Icon name="Users" size={16} />
             <span>{product.watchers} watching</span>
-          </div>
+          </div> */}
         </div>
 
         <div className="flex items-center justify-between py-4 border-t border-b border-border">
@@ -217,7 +325,10 @@ const ProductInfo = ({
           </div>
         </div>
       </div>
-    );
+
+      {showBuyerModal && <BuyerModeModal />}
+    </>
+  );
 };
 
 export default ProductInfo;

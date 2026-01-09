@@ -8,6 +8,7 @@ import {
   useCartNotifications,
   useCartLoading,
 } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 
 import NotificationToast from "@/components/ui/NotificationToast";
 import Skeleton from "@/components/skeleton";
@@ -18,22 +19,24 @@ import {
   Truck,
   CreditCard,
   Check,
+  AlertCircle,
 } from "lucide-react";
 import DeliveryForm from "@/app/CartSystem/checkout/components/DeliveryForm";
 import PaymentForm from "@/app/CartSystem/checkout/components/PaymentForm";
 import Button from "@/components/Button";
 import OrderTracking from "./checkout/components/OrderTracking";
 import { useCartModal } from "@/context/cartModalContext";
-
+import switchMode from '@/services/api';
 export default function JumiaCartSystem() {
   const cartItems = useCartItems();
   const { totalItems, totalPrice } = useCartTotals();
-  const { fetchCart, updateCartItem, deleteCartItem, clearCart } =
+  const { fetchCart, updateCartItem, deleteCartItem, clearCart, checkout } =
     useCartActions();
   const { notifications, removeNotification } = useCartNotifications();
   const isLoading = useCartLoading();
+  const { user } = useAuth();
 
-const { isCartOpen, currentStep, setCurrentStep, closeCart, openCart } = useCartModal();
+  const { isCartOpen, currentStep, setCurrentStep, closeCart, openCart } = useCartModal();
 
   const [deliveryData, setDeliveryData] = useState({
     firstName: "",
@@ -47,35 +50,51 @@ const { isCartOpen, currentStep, setCurrentStep, closeCart, openCart } = useCart
     deliveryInstructions: "",
   });
 
-  const [paymentData, setPaymentData] = useState({
-    paymentMethod: "pod",
+  const [paymentData, setPaymentData] = useState<{ paymentMethod: "whatsapp" | "pod" }>({
+    paymentMethod: "whatsapp",
   });
 
-  useEffect(() => {
-    fetchCart();
-  }, [fetchCart]);
+  const [orderDetails, setOrderDetails] = useState<any>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-const handleCheckout = () => {
-  openCart(1);
-  setCurrentStep(1);
-};
+  // Check if user is in buyer mode
+  const isBuyerMode =  switchMode("buyer");
+
+  useEffect(() => {
+    const loadCart = async () => {
+      if (await isBuyerMode) {
+        fetchCart();
+      }
+    };
+    loadCart();
+  }, [fetchCart, isBuyerMode]);
+
+  const handleCheckout = () => {
+    if (!isBuyerMode) {
+      setCheckoutError("Please switch to buyer mode to checkout");
+      return;
+    }
+    openCart(1);
+    setCurrentStep(1);
+  };
 
   const handleDeliverySubmit = (data: any) => {
     setDeliveryData(data);
     setCurrentStep(2);
   };
 
-  const handlePaymentSubmit = (data: any) => {
+  const handlePaymentSubmit = async (data: any) => {
     setPaymentData(data);
+    setCheckoutError(null);
 
-    console.log("Order Summary:", {
-      delivery: deliveryData,
-      payment: data,
-      items: cartItems,
-      total: totalPrice,
-    });
-
-    setCurrentStep(3);
+    try {
+      // Call checkout API
+      const orders = await checkout(data.paymentMethod || "whatsapp");
+      setOrderDetails(orders);
+      setCurrentStep(3);
+    } catch (error: any) {
+      setCheckoutError(error.message || "Checkout failed");
+    }
   };
 
   const handleBack = () => {
@@ -92,7 +111,18 @@ const handleCheckout = () => {
 
   return (
     <div className="flex flex-col items-center justify-center w-full h-screen mx-auto">
-      <div className="flex flex-col w-full h-full lg:w-96">
+      {!isBuyerMode && (
+        <div className="fixed top-0 left-0 right-0 z-40 p-4 bg-yellow-50 border-b border-yellow-200">
+          <div className="flex items-center gap-3 max-w-7xl mx-auto">
+            <AlertCircle size={20} className="text-yellow-600 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-yellow-800">Switch to Buyer Mode</p>
+              <p className="text-xs text-yellow-700">You need to switch to buyer mode to use the cart system</p>
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="flex flex-col w-full h-full lg:w-96" style={{ marginTop: !isBuyerMode ? "72px" : "0" }}>
         {notifications.map(notification => (
           <NotificationToast
             key={notification.id}
@@ -220,11 +250,16 @@ const handleCheckout = () => {
               type="button"
               variant="orange"
               onClick={handleCheckout}
-              disabled={isLoading || cartItems.length === 0}
+              disabled={isLoading || cartItems.length === 0 || !isBuyerMode}
               className="w-full py-2 mt-4 text-sm disabled:bg-gray-300"
             >
-              Proceed to Checkout
+              {!isBuyerMode ? "Switch to Buyer Mode" : "Proceed to Checkout"}
             </Button>
+            {checkoutError && (
+              <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                {checkoutError}
+              </div>
+            )}
           </div>
         </div>
       </div>

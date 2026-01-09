@@ -1,357 +1,224 @@
-// src/app/user-profile/components/MyListings.tsx
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Icon from '@/components/ui/AppIcon';
 import Image from '@/components/ui/AppImage';
+import { toast } from 'sonner';
+import api from '@/services/api'; 
 
-interface Listing {
+interface Product {
     id: number;
-    title: string;
-    price: number;
-    originalPrice?: number;
-    image: string;
-    status: 'active' | 'sold' | 'expired';
-    views: number;
-    likes: number;
-    messages: number;
-    datePosted: string;
+    name: string;
+    final_price: number;
+    original_price: number;
+    images: string[];
+    status: string;
     category: string;
     condition: string;
-    soldDate?: string;
+    quantity: number;
+}
+
+interface Catalog {
+    id: number;
+    name: string;
+    description?: string;
+    product_count?: number;
 }
 
 const MyListings = () => {
-    const [filter, setFilter] = useState('all');
     const router = useRouter();
+    const [viewMode, setViewMode] = useState<'products' | 'catalogs'>('products');
+    const [selectedCatalog, setSelectedCatalog] = useState<Catalog | null>(null);
+    
+    const [products, setProducts] = useState<Product[]>([]);
+    const [catalogs, setCatalogs] = useState<Catalog[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const listings: Listing[] = [
-        {
-            id: 1,
-            title: "iPhone 14 Pro - Space Black",
-            price: 899,
-            originalPrice: 1099,
-            image: "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=300&h=300&fit=crop",
-            status: "active",
-            views: 45,
-            likes: 12,
-            messages: 8,
-            datePosted: "2024-01-15",
-            category: "Electronics",
-            condition: "Like New"
-        },
-        {
-            id: 2,
-            title: "Vintage Leather Jacket",
-            price: 120,
-            image: "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=300&h=300&fit=crop",
-            status: "sold",
-            views: 89,
-            likes: 23,
-            messages: 15,
-            datePosted: "2024-01-10",
-            category: "Clothing",
-            condition: "Good",
-            soldDate: "2024-01-20"
-        },
-        {
-            id: 3,
-            title: "MacBook Air M2 - Silver",
-            price: 1050,
-            image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=300&h=300&fit=crop",
-            status: "active",
-            views: 67,
-            likes: 18,
-            messages: 12,
-            datePosted: "2024-01-12",
-            category: "Electronics",
-            condition: "Excellent"
-        },
-        {
-            id: 4,
-            title: "Yoga Mat Set with Blocks",
-            price: 35,
-            image: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=300&h=300&fit=crop",
-            status: "expired",
-            views: 23,
-            likes: 5,
-            messages: 3,
-            datePosted: "2023-12-20",
-            category: "Sports",
-            condition: "Good"
-        },
-        {
-            id: 5,
-            title: "Designer Handbag - Coach",
-            price: 180,
-            image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=300&h=300&fit=crop",
-            status: "active",
-            views: 34,
-            likes: 9,
-            messages: 6,
-            datePosted: "2024-01-18",
-            category: "Fashion",
-            condition: "Like New"
-        },
-        {
-            id: 6,
-            title: "Gaming Chair - Ergonomic",
-            price: 220,
-            image: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=300&h=300&fit=crop",
-            status: "sold",
-            views: 56,
-            likes: 14,
-            messages: 11,
-            datePosted: "2024-01-08",
-            category: "Furniture",
-            condition: "Excellent",
-            soldDate: "2024-01-25"
-        }
-    ];
+    // Fetch initial data
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                const [prodRes, catRes] = await Promise.all([
+                    api.get('/products/my-products'),
+                    api.get('/products/catalogs')
+                ]);
 
-    interface FilterOption {
-        value: string;
-        label: string;
-        count: number;
-    }
+                if (prodRes.data.status === 'success') {
+                    // Flatten the nested structure from your API response
+                    const allProducts = prodRes.data.data.flatMap((item: any) => item.products);
+                    setProducts(allProducts);
+                }
 
-    const filterOptions: FilterOption[] = [
-        { value: 'all', label: 'All Items', count: listings.length },
-        { value: 'active', label: 'Active', count: listings.filter(item => item.status === 'active').length },
-        { value: 'sold', label: 'Sold', count: listings.filter(item => item.status === 'sold').length },
-        { value: 'expired', label: 'Expired', count: listings.filter(item => item.status === 'expired').length }
-    ];
+                if (catRes.data.status === 'success') {
+                    setCatalogs(catRes.data.catalogs);
+                }
+            } catch (error) {
+                console.error("Error fetching listings:", error);
+                toast.error("Failed to load your listings");
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    const filteredListings = filter === 'all'
-        ? listings
-        : listings.filter(listing => listing.status === filter);
+        fetchData();
+    }, []);
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'active':
-                return 'bg-white text-success border-success-100';
-            case 'sold':
-                return 'bg-[#E0921C] text-primary border-[#E0921C] ';
-            case 'expired':
-                return 'bg-red-500 text-error border-red-500';
-            default:
-                return 'bg-surface-secondary text-text-secondary border-border';
+    const handleCatalogClick = async (catalog: Catalog) => {
+        try {
+            setLoading(true);
+            // Assuming your backend supports filtering by catalog_id or you find them in the current products state
+            // If there's a specific API for catalog products: api.get(`/products/catalog/${catalog.id}`)
+            setSelectedCatalog(catalog);
+            setViewMode('products'); // Switch to product view to show that catalog's items
+        } catch (err) {
+            toast.error("Could not load catalog products");
+        } finally {
+            setLoading(false);
         }
     };
 
-    const getStatusLabel = (status: string) => {
-        switch (status) {
-            case 'active':
-                return 'Active';
-            case 'sold':
-                return 'Sold';
-            case 'expired':
-                return 'Expired';
-            default:
-                return status;
-        }
-    };
+    // Filter products if a catalog is selected
+    const displayedProducts = selectedCatalog 
+        ? products.filter(p => (p as any).catalog_id === selectedCatalog.id)
+        : products;
 
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-        });
-    };
+    if (loading) return (
+        <div className="flex justify-center py-20">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        </div>
+    );
 
     return (
-        <div className="space-y-4">
-            {/* Filter Tabs */}
-            <div className="flex justify-between overflow-x-scroll md:px-4 md:overflow-x-hidden space-x-2 bg-transparent">
-                {filterOptions.map((option) => (
+        <div className="space-y-6  ">
+            {/* Top Navigation & Tabs */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex p-1 bg-gray-100 rounded-xl w-full sm:w-auto">
                     <button
-                        key={option.value}
-                        onClick={() => setFilter(option.value)}
-                        className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 whitespace-nowrap ${filter === option.value
-                            ? 'bg-surface text-text-primary shadow-sm'
-                            : 'bg-surface-secondary text-text-secondary hover:text-text-primary'
-                            }`}
+                        onClick={() => { setViewMode('products'); setSelectedCatalog(null); }}
+                        className={`flex-1 sm:px-6 py-2 rounded-lg text-sm font-bold transition-all ${
+                            viewMode === 'products' && !selectedCatalog ? 'bg-white shadow-sm text-black' : 'text-text-secondary'
+                        }`}
                     >
-                        {option.label}
-                        <span className={`absolute top-1 -right-2 w-4 h-4 rounded-full text-xs font-semibold flex items-center justify-center ${filter === option.value
-                            ? 'bg-[#E0921C] text-white' : 'bg-border text-text-tertiary'
-                            }`}>
-                            {option.count}
-                        </span>
+                        View By Products
                     </button>
-                ))}
+                    <button
+                        onClick={() => setViewMode('catalogs')}
+                        className={`flex-1 sm:px-6 py-2 rounded-lg text-sm font-bold transition-all ${
+                            viewMode === 'catalogs' ? 'bg-white shadow-sm text-black' : 'text-text-secondary'
+                        }`}
+                    >
+                        View By Catalogs
+                    </button>
+                </div>
+
+                {selectedCatalog && (
+                    <button 
+                        onClick={() => { setSelectedCatalog(null); setViewMode('catalogs'); }}
+                        className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+                    >
+                        <Icon name="ArrowLeft" size={16} /> Back to Catalogs
+                    </button>
+                )}
             </div>
 
-            {/* Listings Grid */}
-                        {filteredListings.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
-                                {filteredListings.map((listing) => (
-                                    <div
-                                        key={listing.id}
-                                        className="bg-surface border border-border rounded-lg overflow-hidden hover:shadow-elevation-2 transition-shadow duration-200 flex flex-col h-full"
-                                    >
-                                        {/* Image */}
-                                        <div className="relative w-full h-36 sm:h-44 md:h-48 lg:h-56">
-                                            <Image
-                                                src={listing.image}
-                                                fill
-                                                alt={listing.title}
-                                                className="object-cover"
-                                                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                            />
-                                            <div className="absolute top-3 left-3">
-                                                <span
-                                                    className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
-                                                        listing.status
-                                                    )}`}
-                                                >
-                                                    {getStatusLabel(listing.status)}
-                                                </span>
-                                            </div>
+            {/* Header Title */}
+            <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-text-primary">
+                    {selectedCatalog ? `Catalog: ${selectedCatalog.name}` : viewMode === 'products' ? 'All Products' : 'My Catalogs'}
+                </h2>
+                <span className="text-xs font-bold px-2 py-1 bg-gray-100 rounded-full text-text-secondary">
+                    {viewMode === 'products' ? displayedProducts.length : catalogs.length} items
+                </span>
+            </div>
 
-                                            {/* top-right quick actions: icons on mobile, full buttons on sm+ */}
-                                            <div className="absolute top-3 right-3 flex items-center space-x-2">
-                                                <button
-                                                    aria-label="Edit listing"
-                                                    className="p-2 bg-surface bg-opacity-90 rounded-full hover:bg-opacity-100 transition-colors duration-200"
-                                                >
-                                                    <Icon name="Edit" size={14} className="text-text-primary" />
-                                                </button>
-                                                <button
-                                                    aria-label="More options"
-                                                    className="p-2 bg-surface bg-opacity-90 rounded-full hover:bg-opacity-100 transition-colors duration-200"
-                                                >
-                                                    <Icon name="MoreVertical" size={14} className="text-text-primary" />
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Body */}
-                                        <div className="p-3 sm:p-4 flex-1 flex flex-col">
-                                            <div className="mb-1 sm:mb-2">
-                                                <h3 className="font-medium text-text-primary text-sm sm:text-base line-clamp-2">
-                                                    {listing.title}
-                                                </h3>
-                                            </div>
-
-                                            <div className="flex items-center space-x-2 mb-2">
-                                                <span className="text-base sm:text-lg font-semibold text-text-primary">
-                                                    ${listing.price}
-                                                </span>
-                                                {listing.originalPrice && listing.originalPrice > listing.price && (
-                                                    <span className="text-xs sm:text-sm text-text-tertiary line-through">
-                                                        ${listing.originalPrice}
-                                                    </span>
-                                                )}
-                                            </div>
-
-                                            <div className="flex items-center justify-between text-xs sm:text-sm text-text-secondary mb-2">
-                                                <span className="truncate text-ellipsis">
-                                                    {listing.category} • {listing.condition}
-                                                </span>
-                                                <span className="whitespace-nowrap ml-2">{formatDate(listing.datePosted)}</span>
-                                            </div>
-
-                                            {listing.status === 'sold' && listing.soldDate && (
-                                                <div className="text-sm text-success mb-2">
-                                                    Sold on {formatDate(listing.soldDate)}
-                                                </div>
-                                            )}
-
-                                            {/* Stats & actions */}
-                                            <div className="flex items-center justify-between gap-2 mt-auto pt-3 border-t border-border">
-                                                <div className="flex items-center space-x-4 text-sm text-text-secondary">
-                                                    <div className="flex items-center space-x-1 text-xs sm:text-sm">
-                                                        <Icon name="Eye" size={14} />
-                                                        <span>{listing.views}</span>
-                                                    </div>
-                                                    <div className="flex items-center space-x-1 text-xs sm:text-sm">
-                                                        <Icon name="Heart" size={14} />
-                                                        <span>{listing.likes}</span>
-                                                    </div>
-                                                    {/* hide messages on very small screens to save space */}
-                                                    <div className="hidden sm:flex items-center space-x-1 text-xs sm:text-sm">
-                                                        <Icon name="MessageCircle" size={14} />
-                                                        <span>{listing.messages}</span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex items-center space-x-2 shrink-0">
-                                                    {/* On very small screens show compact icon menu, on sm+ show text actions */}
-                                                    <button
-                                                        aria-label="More actions"
-                                                        className="p-2 rounded-md bg-surface sm:hidden"
-                                                    >
-                                                        <Icon name="MoreVertical" size={16} />
-                                                    </button>
-
-                                                    {listing.status === 'active' && (
-                                                        <>
-                                                            <button className="hidden sm:inline text-primary hover:underline text-sm">
-                                                                Edit
-                                                            </button>
-                                                            <button className="hidden sm:inline text-text-secondary hover:text-text-primary text-sm">
-                                                                Share
-                                                            </button>
-                                                            {/* mobile-friendly icon for quick share */}
-                                                            <button className="inline sm:hidden p-2 rounded-md bg-surface" aria-label="Share">
-                                                                <Icon name="Share" size={16} />
-                                                            </button>
-                                                        </>
-                                                    )}
-
-                                                    {listing.status === 'expired' && (
-                                                        <>
-                                                            <button className="text-primary hover:underline text-sm">
-                                                                <span className="hidden sm:inline">Relist</span>
-                                                                <span className="inline sm:hidden">
-                                                                    <Icon name="RefreshCw" size={16} />
-                                                                </span>
-                                                            </button>
-                                                        </>
-                                                    )}
-
-                                                    {listing.status === 'sold' && (
-                                                        <button className="text-text-secondary hover:text-text-primary text-sm">
-                                                            <span className="hidden sm:inline">View</span>
-                                                            <span className="inline sm:hidden">
-                                                                <Icon name="Eye" size={16} />
-                                                            </span>
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
+            {/* Content Grid */}
+            {viewMode === 'products' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {displayedProducts.map((product) => (
+                        <div key={product.id} className="bg-surface border border-border rounded-2xl overflow-hidden hover:shadow-lg transition-all flex flex-col group">
+                            <div className="relative aspect-square w-full">
+                                <Image
+                                    src={product.images[0] || "/placeholder-product.png"}
+                                    fill
+                                    alt={product.name}
+                                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                />
+                                <div className="absolute top-3 left-3">
+                                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/90 backdrop-blur-sm border shadow-sm">
+                                        {product.status}
+                                    </span>
+                                </div>
                             </div>
-                        ) : (
-                <div className="text-center py-12">
-                    <div className="w-16 h-16 bg-surface-secondary rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Icon name="Package" size={24} className="text-text-tertiary" />
-                    </div>
-                    <h3 className="text-lg font-medium text-text-primary mb-2">
-                        No {filter === 'all' ? '' : filter} listings found
-                    </h3>
-                    <p className="text-text-secondary mb-6">
-                        {filter === 'all' ? "You haven't listed any items yet. Start selling to connect with buyers in your area!"
-                            : `You don't have any ${filter} listings at the moment.`
-                        }
-                    </p>
-                    {filter === 'all' && (
-                        <button
-                            onClick={() => router.push('/create-listing')}
-                            className="bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary-700 transition-colors duration-200"
+                            
+                            <div className="p-4 flex-1 flex flex-col">
+                                <p className="text-[10px] font-bold text-primary uppercase mb-1">{product.category}</p>
+                                <h3 className="font-bold text-text-primary text-base line-clamp-1 mb-2">{product.name}</h3>
+                                
+                                <div className="flex items-baseline gap-2 mb-4">
+                                    <span className="text-lg font-black text-text-primary">₦{product.final_price.toLocaleString()}</span>
+                                    {product.original_price > product.final_price && (
+                                        <span className="text-xs text-text-tertiary line-through">₦{product.original_price.toLocaleString()}</span>
+                                    )}
+                                </div>
+
+                                <div className="mt-auto pt-4 border-t border-dashed flex items-center justify-between">
+                                    <div className="flex items-center gap-3 text-text-secondary">
+                                        <span className="flex items-center gap-1 text-xs"><Icon name="Package" size={12}/> {product.quantity}</span>
+                                        {/* <span className="flex items-center gap-1 text-xs"><Icon name="Star" size={12}/> 0</span> */}
+                                    </div>
+                                   
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                /* Catalogs Grid */
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {catalogs.map((catalog) => (
+                        <div 
+                            key={catalog.id} 
+                            onClick={() => handleCatalogClick(catalog)}
+                            className="cursor-pointer group relative bg-black rounded-2xl overflow-hidden h-48 flex items-end p-6"
                         >
-                            List Your First Item
-                        </button>
-                    )}
+                            {/* Decorative background overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-10" />
+                            <div className="absolute inset-0 bg-primary/10 group-hover:bg-primary/20 transition-colors" />
+                            
+                            <div className="relative z-20 w-full">
+                                <div className="flex justify-between items-end">
+                                    <div>
+                                        <h3 className="text-white font-bold text-xl mb-1">{catalog.name}</h3>
+                                        <p className="text-white/70 text-xs font-medium uppercase tracking-widest">
+                                            {catalog.product_count || 0} Products
+                                        </p>
+                                    </div>
+                                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white group-hover:bg-primary group-hover:scale-110 transition-all">
+                                        <Icon name="ArrowRight" size={20} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Empty State */}
+            {((viewMode === 'products' && displayedProducts.length === 0) || (viewMode === 'catalogs' && catalogs.length === 0)) && (
+                <div className="text-center py-20 bg-gray-50 rounded-3xl border-2 border-dashed">
+                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                        <Icon name="Inbox" size={24} className="text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-text-primary">No items found</h3>
+                    <p className="text-text-secondary text-sm max-w-xs mx-auto mt-2">
+                        You haven't added anything here yet. Start by creating a new product or catalog.
+                    </p>
                 </div>
             )}
         </div>
     );
-};
+}
 
 export default MyListings;

@@ -94,15 +94,6 @@ interface SelectOption {
 
 const MAX_IMAGES = 10;
 
-// const uploadImageToServer = async (file: File): Promise<{ url: string }> => {
-//   // kept your same vendorService upload usage; vendorService.uploadImage should return { urls: [string] } or similar
-//   const response = await vendorService.uploadImage(file);
-//   if (!response.urls || response.urls.length === 0) {
-//     throw new Error("API did not return an image URL.");
-//   }
-//   return { url: response.urls[0] };
-// };
-
 const initialFormData: ProductFormData = {
   name: "",
   description: "",
@@ -139,20 +130,15 @@ const AddProductWizard: React.FC<AddProductWizardProps> = ({
   editingProduct = null,
   // loading = false,
 }) => {
-  const [currentStep, setCurrentStep] = useState<WizardStep>("details");
+  const [currentStep, setCurrentStep] = useState<WizardStep>("photos");
   const [formData, setFormData] =
     useState<ProductFormData>(initialFormData);
   const [dragActive, setDragActive] = useState<boolean>(false);
   const [uploadErrors, setUploadErrors] = useState<string[]>([]);
   const [saveAsDraft, setSaveAsDraft] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
-  const categoryOptions: SelectOption[] = [
-    { value: "electronics", label: "Electronics" },
-    { value: "clothing", label: "Clothing" },
-    { value: "home", label: "Home & Garden" },
-    { value: "beauty", label: "Beauty" },
-    { value: "sports", label: "Sports" },
-  ];
+  const [categoryOptions, setCategoryOptions] = useState<SelectOption[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState<boolean>(false);
 
   const statusOptions: SelectOption[] = [
     { value: "active", label: "Active" },
@@ -164,6 +150,37 @@ const AddProductWizard: React.FC<AddProductWizardProps> = ({
     { value: "visible", label: "Visible" },
     { value: "hidden", label: "Hidden" },
   ];
+
+  /* Fetch categories on component mount */
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setCategoriesLoading(true);
+        const response = await productService.getCategories();
+        if (response && response.categories && Array.isArray(response.categories)) {
+          const options = response.categories.map((cat: any) => ({
+            value: cat.name.toLowerCase().replace(/\s+/g, "-"),
+            label: cat.name,
+          }));
+          setCategoryOptions(options);
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        // Fallback to default categories if API fails
+        setCategoryOptions([
+          { value: "electronics", label: "Electronics" },
+          { value: "clothing", label: "Clothing" },
+          { value: "home", label: "Home & Garden" },
+          { value: "beauty", label: "Beauty" },
+          { value: "sports", label: "Sports" },
+        ]);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   /* When modal opens — prefill if editing or reset */
   useEffect(() => {
@@ -220,7 +237,7 @@ const AddProductWizard: React.FC<AddProductWizardProps> = ({
       } else {
         setFormData(initialFormData);
       }
-      setCurrentStep("details");
+      setCurrentStep("photos");
       setUploadErrors([]);
     }
   }, [isOpen, editingProduct]);
@@ -250,61 +267,38 @@ const AddProductWizard: React.FC<AddProductWizardProps> = ({
 
   /* ---------- Image upload / drag & drop ---------- */
 
-  // const handleImageUpload = (files: FileList | null) => {
-  //   if (!files) return;
-  //   setUploadErrors([]);
-  //   const incoming = Array.from(files).slice(0, MAX_IMAGES - formData.images.length);
+  const handleImageUpload = (files: FileList | null) => {
+    if (!files) return;
+    setUploadErrors([]);
+    const incoming = Array.from(files).slice(0, MAX_IMAGES - formData.images.length);
 
-  //   incoming.forEach((file) => {
-  //     const tempId = Date.now() + Math.random();
-  //     const tempImage: ManagedImage = {
-  //       id: tempId,
-  //       file,
-  //       url: URL.createObjectURL(file),
-  //       alt: file.name,
-  //       isUploading: true,
-  //       isUploaded: false,
-  //     };
+    incoming.forEach((file) => {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setUploadErrors((prev) => [...prev, `${file.name} is not a valid image file.`]);
+        return;
+      }
 
-  //     setFormData((prev) => ({ ...prev, images: [...prev.images, tempImage] }));
+      const tempId = Date.now() + Math.random();
+      const tempImage: ManagedImage = {
+        id: tempId,
+        file, // Keep the file for submission
+        url: URL.createObjectURL(file), // Preview URL
+        alt: file.name,
+        isUploading: false, // No longer uploading individually
+        isUploaded: false,
+      };
 
-  //     uploadImageToServer(file)
-  //       .then((result) => {
-  //         setFormData((prev) => ({
-  //           ...prev,
-  //           images: prev.images.map((img) =>
-  //             img.id === tempId
-  //               ? {
-  //                   ...img,
-  //                   url: result.url,
-  //                   isUploaded: true,
-  //                   isUploading: false,
-  //                   file: undefined,
-  //                 }
-  //               : img
-  //           ),
-  //         }));
-  //       })
-  //       .catch((error: any) => {
-  //         console.error("Image upload failed:", error);
-  //         setFormData((prev) => ({
-  //           ...prev,
-  //           images: prev.images.filter((img) => img.id !== tempId),
-  //         }));
-  //         setUploadErrors((prev) => [
-  //           ...prev,
-  //           `Failed to upload ${file.name}: ${error.message || "Upload error"}`,
-  //         ]);
-  //       });
-  //   });
+      setFormData((prev) => ({ ...prev, images: [...prev.images, tempImage] }));
+    });
 
-  //   if (incoming.length === 0 && formData.images.length >= MAX_IMAGES) {
-  //     setUploadErrors((prev) => [
-  //       ...prev,
-  //       `Maximum of ${MAX_IMAGES} images allowed.`,
-  //     ]);
-  //   }
-  // };
+    if (incoming.length === 0 && formData.images.length >= MAX_IMAGES) {
+      setUploadErrors((prev) => [
+        ...prev,
+        `Maximum of ${MAX_IMAGES} images allowed.`,
+      ]);
+    }
+  };
 
   const removeImage = (imageId: number) => {
     setFormData((prev) => ({
@@ -320,15 +314,15 @@ const AddProductWizard: React.FC<AddProductWizardProps> = ({
     else if (e.type === "dragleave") setDragActive(false);
   };
 
-  // const handleDrop = (e: DragEvent<HTMLDivElement>) => {
-  //   e.preventDefault();
-  //   e.stopPropagation();
-  //   setDragActive(false);
-  //   if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-  //     handleImageUpload(e.dataTransfer.files);
-  //     e.dataTransfer.clearData();
-  //   }
-  // };
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleImageUpload(e.dataTransfer.files);
+      e.dataTransfer.clearData();
+    }
+  };
 
   /* ---------- Step helpers ---------- */
 
@@ -354,52 +348,97 @@ const AddProductWizard: React.FC<AddProductWizardProps> = ({
 
   /* ---------- Submit / Save ---------- */
 
-  const hasUploadingImages = formData.images.some((img) => img.isUploading);
+  const hasUploadingImages = false; // No longer uploading images individually
 
 const processSubmission = async (isPublished: boolean) => {
-  if (hasUploadingImages) {
-    toast.error("Please wait for images to finish uploading");
+  if (loading) return;
+  
+  // Validate required fields
+  if (!formData.name || !formData.category || !formData.price) {
+    toast.error("Missing required fields", {
+      description: "Please fill in name, category, and price before publishing.",
+      duration: 4000,
+    });
     return;
   }
-  if (loading) return;
 
   setLoading(true);
   try {
-    // This object must strictly follow the AddProductRequest interface
-    const payload = {
-      name: formData.name,              // Matches 'product_name'
-      description: formData.description, // Likely match for 'product_description'
-      category: formData.category,              // Matches 'category'
-      price: Number(formData.price),    // Matches 'product_price'
-      compare_at_price: formData.comparePrice ? Number(formData.comparePrice) : undefined,
-      cost_per_item: formData.cost ? Number(formData.cost) : undefined,
-      sku: formData.sku,
-      barcode: formData.barcode,
-      quantity: Number(formData.stock) || 0,
-      low_stock_threshold: Number(formData.lowStockThreshold) || 0,
-      weight: Number(formData.weight) || 0,
-      dimensions: JSON.stringify(formData.dimensions), // APIs often want dimensions as a string or specific object
-      seo_title: formData.seoTitle,
-      seo_description: formData.seoDescription,
-      status: isPublished ? "active" : "draft", // Matches 'status'
-      images: formData.images.map((img) => img.url),
-      is_published: isPublished,
-    };
+    // Create FormData object for multipart/form-data submission
+    const formDataPayload = new FormData();
+    
+    // Add text fields
+    formDataPayload.append("name", formData.name);
+    formDataPayload.append("description", formData.description);
+    formDataPayload.append("category", formData.category);
+    formDataPayload.append("price", String(Number(formData.price)));
+    
+    if (formData.comparePrice) {
+      formDataPayload.append("compare_at_price", String(Number(formData.comparePrice)));
+    }
+    if (formData.cost) {
+      formDataPayload.append("cost_per_item", String(Number(formData.cost)));
+    }
+    
+    formDataPayload.append("sku", formData.sku);
+    formDataPayload.append("barcode", formData.barcode);
+    formDataPayload.append("quantity", String(Number(formData.stock) || 0));
+    formDataPayload.append("low_stock_threshold", String(Number(formData.lowStockThreshold) || 0));
+    formDataPayload.append("weight", String(Number(formData.weight) || 0));
+    formDataPayload.append("dimensions", JSON.stringify(formData.dimensions));
+    formDataPayload.append("seo_title", formData.seoTitle);
+    formDataPayload.append("seo_description", formData.seoDescription);
+    formDataPayload.append("status", isPublished ? "active" : "draft");
+    formDataPayload.append("is_published", String(isPublished));
+    formDataPayload.append("location", formData.location || "");
+    formDataPayload.append("availableFrom", formData.availableFrom || "");
+    formDataPayload.append("availableTo", formData.availableTo || "");
+    
+    // Add image files directly (not URLs)
+    formData.images.forEach((img) => {
+      if (img.file) {
+        // Append actual File objects
+        formDataPayload.append(`images`, img.file);
+      }
+    });
+    
+    // Add tags as array
+    formData.tags.forEach((tag, index) => {
+      formDataPayload.append(`tags[${index}]`, tag);
+    });
 
     let response;
     if (editingProduct) {
-      // For EditProductRequest, ensure keys match similarly
-      response = await productService.editProduct(editingProduct.id, payload as any);
+      // For editing, use patch endpoint
+      response = await productService.editProduct(editingProduct.id, formDataPayload as any);
     } else {
-      response = await productService.addProduct(payload as any);
+      // For new products, use addProduct with FormData
+      response = await productService.addProduct(formDataPayload);
     }
 
-    toast.success(editingProduct ? "Product updated!" : "Product created!");
-    onSave(response.data);
-    onClose();
+    toast.success(editingProduct 
+      ? "✓ Product updated successfully!" 
+      : "✓ Product published successfully!", 
+      {
+        description: editingProduct 
+          ? "Your product changes have been saved."
+          : "Your product is now live in the marketplace!",
+        duration: 4000,
+      }
+    );
+    onSave(response.data || response);
+    
+    // Give the toast time to display before closing modal
+    setTimeout(() => {
+      onClose();
+    }, 1500);
   } catch (error: any) {
-    const errorMsg = error.response?.data?.message || "Failed to save product.";
-    toast.error(errorMsg);
+    console.error("Submission error:", error);
+    const errorMsg = error.response?.data?.message || error.message || "Failed to save product.";
+    toast.error(errorMsg, {
+      description: "Please check your input and try again.",
+      duration: 5000,
+    });
   } finally {
     setLoading(false);
   }
@@ -411,7 +450,7 @@ const processSubmission = async (isPublished: boolean) => {
      =========================== */
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 bg-black/50">
+    <div className="fixed inset-0 z-50 md:ml-28 flex items-start md:items-center justify-center p-4 bg-black/50">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -421,24 +460,35 @@ const processSubmission = async (isPublished: boolean) => {
         aria-modal="true"
       >
         {/* Header Action Buttons */}
-        <div className="flex justify-between items-center p-4">
-<button
-  type="button"
-  onClick={() => processSubmission(false)} // Save as Draft
-  className="text-xs px-3 py-2 rounded-md border border-border hover:bg-muted"
-  disabled={loading || hasUploadingImages}
->
-  {loading ? "Processing..." : "Save draft"}
-</button>
+        <div className="flex justify-between items-center p-4 border-b border-border">
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 -ml-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition"
+            aria-label="Close modal"
+          >
+            <Icon name="X" size={20} />
+          </button>
 
-<button
-  type="button"
-  onClick={() => processSubmission(true)} // Publish
-  className="text-sm px-3 py-1 rounded-md bg-primary text-white hover:opacity-95"
-  disabled={loading || hasUploadingImages}
->
-  Publish
-</button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => processSubmission(false)} // Save as Draft
+              className="text-xs px-3 py-2 rounded-md border border-border hover:bg-muted"
+              disabled={loading || hasUploadingImages}
+            >
+              {loading ? "Processing..." : "Save draft"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => processSubmission(true)} // Publish
+              className="text-sm px-3 py-1 rounded-md bg-primary text-white hover:opacity-95"
+              disabled={loading || hasUploadingImages}
+            >
+              Publish
+            </button>
+          </div>
         </div>
 
 
@@ -473,7 +523,7 @@ const processSubmission = async (isPublished: boolean) => {
           <div className="flex-1 overflow-y-auto p-6">
             <AnimatePresence mode="wait">
               {/* PHOTOS */}
-              {/* {currentStep === "photos" && (
+              {currentStep === "photos" && (
                 <motion.div
                   key="photos"
                   initial={{ opacity: 0, x: 20 }}
@@ -524,7 +574,7 @@ const processSubmission = async (isPublished: boolean) => {
                           accept="image/*"
                           id="wizard-image-input"
                           className="hidden"
-                          // onChange={(e) => handleImageUpload(e.target.files)}
+                          onChange={(e) => handleImageUpload(e.target.files)}
                         />
                         <Button
                           type="button"
@@ -585,7 +635,7 @@ const processSubmission = async (isPublished: boolean) => {
                     )}
                   </div>
                 </motion.div>
-              )} */}
+              )}
 
               {/* DETAILS */}
               {currentStep === "details" && (
@@ -627,14 +677,27 @@ const processSubmission = async (isPublished: boolean) => {
                       />
                     </div>
 
-                    <Select
-                      label="Category"
-                      options={categoryOptions}
-                      value={formData.category}
-                      onChange={(value) => handleSelectChange("category", value as string)}
-                      placeholder="Select category"
-                      required
-                    />
+                    <div>
+                      <label className="block mb-2 text-sm font-medium text-foreground">
+                        Category
+                      </label>
+                      {categoriesLoading ? (
+                        <div className="w-full px-3 py-2 border rounded-lg border-border bg-background flex items-center gap-2 text-muted-foreground">
+                          <Icon name="Loader2" size={16} className="animate-spin" />
+                          Loading categories...
+                        </div>
+                      ) : (
+                        <Select
+                          options={categoryOptions}
+                          value={formData.category}
+                          onChange={(value: any) => handleSelectChange("category", value)}
+                          placeholder="Select a category..."
+                        />
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Choose from available product categories
+                      </p>
+                    </div>
                   </div>
                 </motion.div>
               )}

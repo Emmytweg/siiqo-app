@@ -11,7 +11,7 @@ export interface Product {
   images?: ProductImage[];
   category: string;
   sku: string;
-  price: number;
+  final_price: number;
   comparePrice?: number;
   cost?: number;
   stock: number;

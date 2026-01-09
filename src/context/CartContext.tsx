@@ -11,7 +11,7 @@ const CartTotalsContext = createContext<
 >({ totalItems: 0, totalPrice: 0 });
 const CartActionsContext = createContext<Pick<
   ReturnType<typeof useCartManagement>,
-  "fetchCart" | "addToCart" | "updateCartItem" | "deleteCartItem" | "clearCart"
+  "fetchCart" | "addToCart" | "updateCartItem" | "deleteCartItem" | "clearCart" | "checkout" | "uploadPaymentProof"
 > | null>(null);
 const CartNotificationsContext = createContext<
   Pick<
@@ -37,6 +37,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
             updateCartItem: cart.updateCartItem,
             deleteCartItem: cart.deleteCartItem,
             clearCart: cart.clearCart,
+            checkout: cart.checkout,
+            uploadPaymentProof: cart.uploadPaymentProof,
           }}
         >
           <CartNotificationsContext.Provider

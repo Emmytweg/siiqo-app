@@ -31,8 +31,8 @@ apiClient.interceptors.request.use(
 /**
  * USER & PROFILE ENDPOINTS
  */
-export const switchMode = (mode: "vendor" | "shopper") => {
-  return apiClient.post("/auth/switch-mode", { active_view: mode });
+export const switchMode = (mode: "vendor" | "buyer") => {
+  return apiClient.post("/auth/switch-mode", { target_view: mode });
 }
 export const getUserProfile = () => {
   return apiClient.get("/user/profile");
@@ -162,13 +162,6 @@ export const updateVendorSettings = (data: any) => {
   return apiClient.patch("/vendor/update-settings", data, { headers });
 };
 
-export const uploadFile = (formData: FormData) => {
-  return apiClient.post("/vendor/upload-file", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
-};
 
 /**
  * MARKETPLACE & CART ENDPOINTS
@@ -204,6 +197,9 @@ export const togglegFavorite = (product_id: number | string) => {
 }
 export const fetchFavoriteItems = () => {
   return apiClient.get("/buyers/favorites");
+}
+export const getPublicCatalogs = () => {
+  return apiClient.get("/marketplace/catalogs");
 }
 /**
  * AUTHENTICATION ENDPOINTS

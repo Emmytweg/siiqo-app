@@ -11,11 +11,13 @@ const MainContentWrapper: React.FC<MainContentWrapperProps> = ({
   children,
 }) => {
   const pathname = usePathname();
-  const [sidebarWidth, setSidebarWidth] = useState("256px");
+  const [sidebarWidth, setSidebarWidth] = useState("   px");
 
-  // Check if we're on a vendor page to apply sidebar padding
+  // Apply sidebar padding only on vendor dashboard areas (exclude public vendor pages)
   const isVendorPage =
-    pathname.startsWith("/vendor") && !pathname.startsWith("/auth/login");
+    pathname.startsWith("/vendor") &&
+    // !pathname.startsWith("/vendor-public-view") &&
+    !pathname.startsWith("/auth/login");
 
   useEffect(() => {
     if (!isVendorPage) return;

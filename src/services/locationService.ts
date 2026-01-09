@@ -9,7 +9,9 @@ export const locationService = {
     return data;
   },
   detectLocation: async () => {
-    const response = await fetch("https://ipapi.co/json/");
+    const response = await fetch("https://ipapi.co/json/", {
+      cache: "no-store",
+    });
     const data = await response.json();
     return data;
   },
