@@ -179,7 +179,7 @@ useEffect(() => {
               <h1 className="text-2xl font-bold text-text-primary">Storefront Manager</h1>
               <p className="text-text-muted">Manage your business: <strong>{storefrontData?.businessName}</strong></p>
             </div>
-            <div className="flex items-center mt-4 space-x-3 lg:mt-0">
+            {/* <div className="flex items-center mt-4 space-x-3 lg:mt-0">
               <Button variant="outline" onClick={() => setActiveTab("public")}>
                 <Icon name="Eye" size={16} className="mr-2" />
                 Live Preview
@@ -198,7 +198,7 @@ useEffect(() => {
     storefrontData?.isPublished ? "Unpublish Store" : "Publish Live Store"
   )}
 </Button>
-            </div>
+            </div> */}
           </div>
 
           {/* Tab Navigation */}

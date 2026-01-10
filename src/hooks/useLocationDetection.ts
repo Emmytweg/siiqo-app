@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 
 export const useLocationDetection = () => {
-    const [location, setLocation] = useState({ country: "", state: "", latitude: null, longitude: null });
+    const [location, setLocation] = useState({ country: "", state: "", latitude: "", longitude: "" });
     const [loading, setLoading] = useState(false);
     const [detected, setDetected] = useState(false);
 

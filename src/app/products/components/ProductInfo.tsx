@@ -4,10 +4,10 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, AlertCircle } from 'lucide-react';
 import Icon from '@/components/ui/AppIcon';
-import { useToast } from "@/hooks/use-toast"; // Assuming you have a toast hook for feedback
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/AuthContext';
 import api from '@/services/api';
-import { switchMode } from '@/services/api';
+
 interface Product {
     title: string;
     price: number;
@@ -25,10 +25,9 @@ interface Product {
 
 interface ProductInfoProps {
     productData: Product;
-    productId: number; // Product ID for API calls
+    productId: number;
     isWishlisted: boolean;
     onWishlistToggle: () => void;
-    // onShare is now handled internally or passed as a callback
     showFullDescription: boolean;
     onToggleDescription: () => void;
     isMobile?: boolean;
@@ -49,21 +48,19 @@ const ProductInfo = ({
     const [showBuyerModal, setShowBuyerModal] = useState(false);
     const [isLoadingWishlist, setIsLoadingWishlist] = useState(false);
 
-    // Check if user is in buyer mode
-    const isBuyerMode = isLoggedIn && switchMode("buyer")
+    const canManageFavorites = isLoggedIn;
+
     const formatTimeAgo = (date: Date): string => {
         const now = new Date();
         const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-
         if (diffInHours < 1) return 'Just now';
         if (diffInHours < 24) return `${diffInHours}h ago`;
         const diffInDays = Math.floor(diffInHours / 24);
         return `${diffInDays}d ago`;
     };
 
-    // --- WISHLIST TOGGLE WITH API CALL ---
     const handleWishlistToggle = async () => {
-        if (!isBuyerMode) {
+        if (!canManageFavorites) {
             setShowBuyerModal(true);
             return;
         }
@@ -71,7 +68,6 @@ const ProductInfo = ({
         setIsLoadingWishlist(true);
         try {
             const response = await api.post(`/buyers/favourites/${productId}`);
-            
             if (response.data.status === 'success') {
                 onWishlistToggle();
                 toast({
@@ -93,7 +89,6 @@ const ProductInfo = ({
         }
     };
 
-    // --- BUYER MODE MODAL ---
     const BuyerModeModal = () => (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 md:p-8 animate-in zoom-in duration-300">
@@ -115,33 +110,19 @@ const ProductInfo = ({
                         </h2>
 
                         <p className="text-gray-600 text-sm leading-relaxed mb-6">
-                            {isLoggedIn
-                                ? "You need to switch to buyer mode to add items to your favourites."
-                                : "Please log in as a buyer to add items to your favourites."}
+                            Please log in to manage your favorites.
                         </p>
 
                         <div className="space-y-3">
-                            {isLoggedIn ? (
-                                <button
-                                    onClick={() => {
-                                        setShowBuyerModal(false);
-                                        alert("Please use the mode switcher in the header to switch to buyer mode");
-                                    }}
-                                    className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-                                >
-                                    Switch to Buyer Mode
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={() => {
-                                        setShowBuyerModal(false);
-                                        router.push("/auth/login");
-                                    }}
-                                    className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-                                >
-                                    Log In
-                                </button>
-                            )}
+                            <button
+                                onClick={() => {
+                                    setShowBuyerModal(false);
+                                    router.push("/auth/login");
+                                }}
+                                className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                            >
+                                Log In
+                            </button>
 
                             <button
                                 onClick={() => setShowBuyerModal(false)}
@@ -158,15 +139,8 @@ const ProductInfo = ({
 
     // --- CUSTOM SHARE LOGIC ---
     const handleShare = async () => {
-        // 1. Format the name and distance (location)
-        // Replaces spaces with hyphens and makes lowercase for a clean URL feel
-        const formattedName = product.title.toLowerCase().trim().replace(/\s+/g, '-');
-        const locationTag = `${product.distance}-miles-away`;
-        
-        // 2. Construct the specific string: name+location
         const shareUrl = window.location.href;
         
-        // 3. Copy to clipboard
         try {
             await navigator.clipboard.writeText(shareUrl);
             toast({
@@ -256,7 +230,7 @@ const ProductInfo = ({
           </div>
         </div>
 
-        {/* ... Rest of your existing JSX (Status, Condition, Description, Specs) ... */}
+        {/* Status */}
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
@@ -264,14 +238,6 @@ const ProductInfo = ({
               {product.availability}
             </span>
           </div>
-          {/* <div className="flex items-center space-x-2 text-sm text-text-secondary">
-            <Icon name="Eye" size={16} />
-            <span>{product.views} views</span>
-          </div> */}
-          {/* <div className="flex items-center space-x-2 text-sm text-text-secondary">
-            <Icon name="Users" size={16} />
-            <span>{product.watchers} watching</span>
-          </div> */}
         </div>
 
         <div className="flex items-center justify-between py-4 border-t border-b border-border">

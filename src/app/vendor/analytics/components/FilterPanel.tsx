@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from '@/components/ui/new/Button';
 import Select from '@/components/ui/new/NewSelect';
 import Icon, { LucideIconName } from '@/components/AppIcon';
+import { productService } from '@/services/productService';
 
 // --- START OF TYPESCRIPT CONVERSION ---
 
@@ -20,6 +21,8 @@ interface FilterPanelProps {
 
 const FilterPanel: React.FC<FilterPanelProps> = ({ onFiltersChange }) => {
     const [isExpanded, setIsExpanded] = useState<boolean>(false);
+    const [categoryOptions, setCategoryOptions] = useState<Array<{value: string, label: string}>>([{ value: 'all', label: 'All Categories' }]);
+    const [loadingCategories, setLoadingCategories] = useState<boolean>(true);
     const [filters, setFilters] = useState<Filters>({
         category: 'all',
         customerType: 'all',
@@ -27,33 +30,38 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onFiltersChange }) => {
         priceRange: 'all'
     });
 
-    const categoryOptions = [
-        { value: 'all', label: 'All Categories' },
-        { value: 'coffee', label: 'Coffee & Beverages' },
-        { value: 'food', label: 'Food Items' },
-        { value: 'pastries', label: 'Pastries & Desserts' },
-        { value: 'merchandise', label: 'Merchandise' }
-    ];
+    // Fetch categories from API
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                setLoadingCategories(true);
+                const response = await productService.getCategories();
+                if (response && response.categories && Array.isArray(response.categories)) {
+                    const options = [
+                        { value: 'all', label: 'All Categories' },
+                        ...response.categories.map((cat: any) => ({
+                            value: cat.name.toLowerCase(),
+                            label: cat.name,
+                        }))
+                    ];
+                    setCategoryOptions(options);
+                }
+            } catch (error) {
+                console.error('Error fetching categories:', error);
+            } finally {
+                setLoadingCategories(false);
+            }
+        };
 
-    const customerTypeOptions = [
-        { value: 'all', label: 'All Customers' },
-        { value: 'new', label: 'New Customers' },
-        { value: 'returning', label: 'Returning Customers' },
-        { value: 'vip', label: 'VIP Customers' }
-    ];
-
-    const promotionOptions = [
-        { value: 'all', label: 'All Products' },
-        { value: 'promoted', label: 'On Promotion' },
-        { value: 'regular', label: 'Regular Price' }
-    ];
+        fetchCategories();
+    }, []);
 
     const priceRangeOptions = [
         { value: 'all', label: 'All Prices' },
-        { value: 'under10', label: 'Under $10' },
-        { value: '10to25', label: '$10 - $25' },
-        { value: '25to50', label: '$25 - $50' },
-        { value: 'over50', label: 'Over $50' }
+        { value: 'under1000', label: 'Under ₦1,000' },
+        { value: '1000to5000', label: '₦1,000 - ₦5,000' },
+        { value: '5000to10000', label: '₦5,000 - ₦10,000' },
+        { value: 'over10000', label: 'Over ₦10,000' }
     ];
 
     const handleFilterChange = (key: keyof Filters, value: string): void => {
@@ -122,21 +130,21 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onFiltersChange }) => {
                         className="w-full"
                     />
 
-                    <Select
+                    {/* <Select
                         label="Customer Type"
                         options={customerTypeOptions}
                         value={filters.customerType}
                         onChange={(value: string) => handleFilterChange('customerType', value)}
                         className="w-full"
-                    />
+                    /> */}
 
-                    <Select
+                    {/* <Select
                         label="Promotion Status"
                         options={promotionOptions}
                         value={filters.promotionStatus}
                         onChange={(value: string) => handleFilterChange('promotionStatus', value)}
                         className="w-full"
-                    />
+                    /> */}
 
                     <Select
                         label="Price Range"

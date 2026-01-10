@@ -164,8 +164,8 @@ const BusinessStorefrontView: React.FC<Props> = ({ storefrontData, products: ini
 
   const handleShareStore = async () => {
     try {
-      const url = window.location.href;
-      await navigator.clipboard.writeText(url);
+      const url = `${window.location.host}/storefront-details/${business.storefront_link}`;
+            await navigator.clipboard.writeText(url);
       toast.success("URL copied to clipboard!");
     } catch (err) {
       toast.error("Failed to copy URL");

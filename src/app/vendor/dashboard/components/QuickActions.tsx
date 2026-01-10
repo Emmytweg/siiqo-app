@@ -92,7 +92,7 @@ const QuickActions: React.FC = () => {
         <Button
           variant="outline"
           className="w-full justify-start"
-          onClick={() => router.push('../profile')}
+          onClick={() => router.push('/vendor/profile')}
         >
           <Icon name="User" size={16} className="mr-2" />
           Edit Profile
@@ -101,7 +101,7 @@ const QuickActions: React.FC = () => {
         <Button
           variant="outline"
           className="w-full justify-start"
-          onClick={() => router.push('../settings')}
+          onClick={() => router.push('/vendor/settings')}
         >
           <Icon name="Settings" size={16} className="mr-2" />
           Settings

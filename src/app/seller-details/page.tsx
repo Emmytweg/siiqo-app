@@ -11,7 +11,7 @@ import { switchMode } from "@/services/api";
 import { useAuth } from "@/context/AuthContext";
 // Sub-components
 import MyListings from "../user-profile/components/MyListings";
-import PurchaseHistory from "../user-profile/components/PurchaseHistory";
+import VendorOrders from "../vendor/profile/components/VendorOrders";
 import Settings from "../user-profile/components/Settings";
 
 interface Tab {
@@ -155,7 +155,7 @@ const VendorProfile = () => {
 
   const tabs: Tab[] = [
     { id: "listings", label: "My Listings", icon: "Package" },
-    { id: "orders", label: "My Purchases", icon: "ShoppingBag" },
+    { id: "orders", label: "My Orders", icon: "ShoppingBag" },
     { id: "settings", label: "Settings", icon: "Settings" },
   ];
 
@@ -163,11 +163,7 @@ const VendorProfile = () => {
     if (!profileData) return null;
     switch (activeTab) {
       case "listings": return <MyListings />;
-      case "orders": 
-        return <PurchaseHistory 
-          onViewDetails={(id) => router.push(`/product/${id}`)} 
-          onWriteReview={(p) => router.push(`/product/${p.id}/review`)} 
-        />;
+      case "orders": return <VendorOrders />;
       case "settings": return <Settings userProfile={profileData} />;
       default: return <MyListings />;
     }
@@ -276,12 +272,12 @@ const VendorProfile = () => {
               </>
             ) : (
               <>
-                <button 
+                {/* <button 
                   onClick={() => setIsEditing(true)}
                   className="px-6 py-2.5 rounded-xl font-bold border border-border hover:bg-muted transition-all flex items-center gap-2"
                 >
                   <Icon name="Edit3" size={16} /> Edit Profile
-                </button>
+                </button> */}
                 <button 
                   onClick={() => router.push("/vendor/products/")}
                   className="px-6 py-2.5 rounded-xl font-bold text-white shadow-lg transition-transform active:scale-95"

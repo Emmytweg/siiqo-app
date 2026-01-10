@@ -140,7 +140,7 @@ export const StorefrontCard = ({ stores }: { stores: Storefront }) => {
       <div className="relative h-48 overflow-hidden bg-gray-50">
         <img
           src={
-            stores.logo ||
+            stores.banner ||
             getFallbackImage(stores.business_name)
           }
           alt={stores.business_name}
@@ -205,15 +205,27 @@ export const StorefrontCard = ({ stores }: { stores: Storefront }) => {
           <div className="flex items-center gap-3">
             <div className="relative">
               <div className="flex items-center justify-center w-8 h-8 text-xs font-bold text-white bg-gradient-to-br from-[#0E2848] to-[#0E2848]/60 rounded-full shadow-sm">
-                {stores.vendor?.firstname?.charAt(0) || "V"}
+                {/* {stores.vendor?.firstname?.charAt(0) || "V"} */}
+                    <img
+          src={
+            stores.logo ||
+            getFallbackImage(stores.business_name)
+          }
+          alt={stores.business_name}
+          className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = getFallbackImage(
+              stores.business_name
+            );
+          }}
+        />
               </div>
               {/* <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></div> */}
             </div>
             <div className="flex flex-col">
               <span className="text-xs font-medium text-gray-900">
-                {stores.vendor?.firstname} {stores.vendor?.lastname}
+                {stores.business_name} 
               </span>
-              <span className="text-[10px] text-gray-500">Store Owner</span>
             </div>
           </div>
 

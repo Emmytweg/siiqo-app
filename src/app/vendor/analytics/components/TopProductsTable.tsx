@@ -8,13 +8,20 @@ import Image from '@/components/ui/alt/AppImageAlt';
 // --- TYPES ---
 interface ProductData {
     id: number | string;
-    image: string;
+    image?: string;
+    images?: string[];
     name: string;
-    category: string;
-    revenue: number;
-    unitsSold: number;
-    rating: number;
-    stock: number;
+    category?: string;
+    revenue?: number;
+    unitsSold?: number;
+    rating?: number;
+    stock?: number;
+    quantity?: number;
+    final_price?: number;
+    price?: number;
+    sku?: string;
+    status?: string;
+    orders_count?: number;
 }
 
 interface TopProductsTableProps {
@@ -34,9 +41,31 @@ const TopProductsTable: React.FC<TopProductsTableProps> = ({ data = [], isLoadin
         if (!Array.isArray(data)) return [];
         
         return [...data].sort((a, b) => {
-            // Default to 0 if the field is missing/undefined in the API response
-            const aValue = a[sortField] ?? 0;
-            const bValue = b[sortField] ?? 0;
+            // Handle different field names for sorting
+            let aValue = 0;
+            let bValue = 0;
+            
+            switch (sortField) {
+                case 'revenue':
+                    aValue = a.final_price || a.price || a.revenue || 0;
+                    bValue = b.final_price || b.price || b.revenue || 0;
+                    break;
+                case 'unitsSold':
+                    aValue = a.unitsSold || a.orders_count || 0;
+                    bValue = b.unitsSold || b.orders_count || 0;
+                    break;
+                case 'stock':
+                    aValue = a.quantity || a.stock || 0;
+                    bValue = b.quantity || b.stock || 0;
+                    break;
+                case 'rating':
+                    aValue = a.rating || 0;
+                    bValue = b.rating || 0;
+                    break;
+                default:
+                    aValue = 0;
+                    bValue = 0;
+            }
 
             if (sortDirection === 'asc') {
                 return aValue > bValue ? 1 : -1;
@@ -60,24 +89,50 @@ const TopProductsTable: React.FC<TopProductsTableProps> = ({ data = [], isLoadin
     };
 
     const exportToCSV = (): void => {
-        const headers = ['Product', 'Revenue', 'Units Sold', 'Avg Rating', 'Stock'];
+        if (!sortedData || sortedData.length === 0) {
+            alert('No data to export');
+            return;
+        }
+
+        // Headers for CSV
+        const headers = ['Product Name', 'Category', 'Price', 'Stock', 'SKU', 'Status'];
+        
+        // Map data to CSV rows - handle both API response formats
         const csvData = [
             headers.join(','),
-            ...sortedData.map(item => [
-                `"${item.name || 'Unknown'}"`,
-                item.revenue ?? 0,
-                item.unitsSold ?? 0,
-                item.rating ?? 0,
-                item.stock ?? 0
-            ].join(','))
+            ...sortedData.map((item: ProductData) => {
+                // Escape quotes in product names
+                const productName = `"${(item.name || 'Unknown').replace(/"/g, '""')}"`;
+                const category = item.category || 'Uncategorized';
+                const price = item.final_price || item.price || 0;
+                const stock = item.quantity || item.stock || 0;
+                const sku = item.sku || 'N/A';
+                const status = item.status || 'active';
+                
+                return [
+                    productName,
+                    category,
+                    price,
+                    stock,
+                    sku,
+                    status
+                ].join(',');
+            })
         ].join('\n');
 
-        const blob = new Blob([csvData], { type: 'text/csv' });
+        // Create and download CSV file
+        const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'top-products.csv';
-        a.click();
+        const link = document.createElement('a');
+        link.href = url;
+        
+        // Generate filename with current date
+        const dateStr = new Date().toISOString().split('T')[0];
+        link.download = `top-products-${dateStr}.csv`;
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
     };
 
@@ -152,7 +207,7 @@ const TopProductsTable: React.FC<TopProductsTableProps> = ({ data = [], isLoadin
                                         <div className="flex items-center space-x-4">
                                             <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 border border-slate-100 flex-shrink-0">
                                                 <Image
-                                                    src={product.image || '/placeholder-product.png'}
+                                                    src={product.images?.[0] || product.image || '/placeholder-product.png'}
                                                     alt={product.name}
                                                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                                                 />
@@ -165,27 +220,27 @@ const TopProductsTable: React.FC<TopProductsTableProps> = ({ data = [], isLoadin
                                     </td>
                                     <td className="py-4 px-6">
                                         <span className="font-black text-slate-900">
-                                            ₦{(product.revenue ?? 0).toLocaleString()}
+                                            ₦{((product.final_price || product.price || product.revenue) ?? 0).toLocaleString()}
                                         </span>
                                     </td>
                                     <td className="py-4 px-6">
-                                        <span className="font-bold text-slate-600">{product.unitsSold ?? 0}</span>
+                                        <span className="font-bold text-slate-600">{product.unitsSold || product.orders_count || 0}</span>
                                     </td>
                                     <td className="py-4 px-6">
                                         <div className="flex items-center space-x-1">
                                             <Icon name="Star" size={14} className="text-amber-400 fill-current" />
-                                            <span className="font-bold text-slate-700">{product.rating ?? '0.0'}</span>
+                                            <span className="font-bold text-slate-700">{product.rating || '0.0'}</span>
                                         </div>
                                     </td>
                                     <td className="py-4 px-6">
                                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                                            (product.stock ?? 0) > 20
+                                            ((product.quantity || product.stock) ?? 0) > 20
                                                 ? 'bg-emerald-50 text-emerald-600'
-                                                : (product.stock ?? 0) > 5
+                                                : ((product.quantity || product.stock) ?? 0) > 5
                                                     ? 'bg-amber-50 text-amber-600' 
                                                     : 'bg-rose-50 text-rose-600'
                                         }`}>
-                                            {(product.stock ?? 0) > 0 ? `${product.stock} In Stock` : 'Out of Stock'}
+                                            {((product.quantity || product.stock) ?? 0) > 0 ? `${(product.quantity || product.stock)} In Stock` : 'Out of Stock'}
                                         </span>
                                     </td>
                                 </tr>

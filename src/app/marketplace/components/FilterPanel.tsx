@@ -1,10 +1,13 @@
 "use client";
 
-import React, { useState, ChangeEvent } from "react";
+import React, { useState, useEffect, ChangeEvent } from "react";
 import Icon from "@/components/AppIcon";
 import Button from "@/components/ui/new/Button";
 import Input from "@/components/ui/new/Input";
 import { Checkbox } from "@/components/ui/new/Checkbox";
+import { productService } from "@/services/productService";
+import api from "@/lib/api_client";
+import { useAuth } from "@/context/AuthContext";
 
 // Types
 interface PriceRange {
@@ -16,6 +19,18 @@ interface AvailabilityFilters {
   inStock: boolean;
   onSale: boolean;
   freeShipping: boolean;
+}
+
+interface Category {
+  id: number;
+  name: string;
+  count?: number;
+}
+
+interface Vendor {
+  id: string;
+  name: string;
+  count: number;
 }
 
 export interface Filters {
@@ -71,6 +86,10 @@ const FilterSection: React.FC<FilterSectionProps & { isMobile?: boolean }> = ({ 
 // Filter Panel
 const FilterPanel: React.FC<FilterPanelProps> = ({ isMobile = false, isOpen = false, filters, onFiltersChange, onClose }) => {
   const [localFilters, setLocalFilters] = useState<Filters>(filters);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [loadingVendors, setLoadingVendors] = useState(true);
   const [expandedSections, setExpandedSections] = useState<ExpandedSections>({
     categories: true,
     price: true,
@@ -79,17 +98,87 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isMobile = false, isOpen = fa
     availability: true,
   });
 
-  // Categories & Vendors sample data
-  const categories = [
-    { id: "electronics", name: "Electronics", count: 245 },
-    { id: "clothing", name: "Clothing & Fashion", count: 189 },
-    { id: "home", name: "Home & Garden", count: 156 },
-  ];
+  const { isLoggedIn } = useAuth();
 
-  const vendors = [
-    { id: "techstore", name: "TechStore Pro", count: 45 },
-    { id: "fashionhub", name: "Fashion Hub", count: 38 },
-  ];
+  // Fetch categories from API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoadingCategories(true);
+        const data = await productService.getCategories();
+
+        // Backend returns: { categories: [...], status: 'success' }
+        const list = data?.categories ?? data?.data ?? data ?? [];
+
+        if (Array.isArray(list)) {
+          const formattedCategories = list.map((cat: any, index: number) => ({
+            id: cat.id ?? index,
+            name: cat.name,
+            count: cat.count ?? 0,
+          }));
+          setCategories(formattedCategories);
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  // Fetch vendors from search API
+  useEffect(() => {
+    const fetchVendors = async () => {
+      try {
+        setLoadingVendors(true);
+        const searchParams = new URLSearchParams();
+        if (localFilters.categories.length > 0 && isLoggedIn) {
+          searchParams.append("category", localFilters.categories.join(","));
+        }
+        if (localFilters.priceRange.min) {
+          searchParams.append("minPrice", localFilters.priceRange.min);
+        }
+        if (localFilters.priceRange.max) {
+          searchParams.append("maxPrice", localFilters.priceRange.max);
+        }
+
+        const resp = await api.get("/marketplace/search", {
+          params: {
+            category: localFilters.categories.length > 0 && isLoggedIn ? localFilters.categories.join(",") : undefined,
+            minPrice: localFilters.priceRange.min || undefined,
+            maxPrice: localFilters.priceRange.max || undefined,
+          },
+        });
+        const data = resp.data;
+
+        if (data && (data.status === "success" || data.success) && data.data?.nearby_products) {
+          // Extract unique vendors from products
+          const vendorMap = new Map<string, number>();
+          data.data.nearby_products.forEach((product: any) => {
+            if (product.vendor_name) {
+              vendorMap.set(product.vendor_name, (vendorMap.get(product.vendor_name) || 0) + 1);
+            }
+          });
+
+          const uniqueVendors: Vendor[] = Array.from(vendorMap).map(([name, count]) => ({
+            id: name.toLowerCase().replace(/\s+/g, "-"),
+            name,
+            count,
+          }));
+
+          setVendors(uniqueVendors);
+        }
+      } catch (error) {
+        console.error("Error fetching vendors:", error);
+      } finally {
+        setLoadingVendors(false);
+      }
+    };
+
+    fetchVendors();
+  }, [localFilters.categories, localFilters.priceRange]);
 
   const toggleSection = (section: keyof ExpandedSections) => {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
@@ -103,10 +192,10 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isMobile = false, isOpen = fa
     onFiltersChange({ ...localFilters, categories: updated });
   };
 
-  const handleVendorChange = (vendorId: string, checked: boolean) => {
+  const handleVendorChange = (vendorName: string, checked: boolean) => {
     const updated = checked
-      ? [...localFilters.vendors, vendorId]
-      : localFilters.vendors.filter((id) => id !== vendorId);
+      ? [...localFilters.vendors, vendorName]
+      : localFilters.vendors.filter((name) => name !== vendorName);
     setLocalFilters({ ...localFilters, vendors: updated });
     onFiltersChange({ ...localFilters, vendors: updated });
   };
@@ -117,11 +206,11 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isMobile = false, isOpen = fa
     onFiltersChange({ ...localFilters, priceRange: updated });
   };
 
-  const handleRatingChange = (rating: number) => {
-    const updated = localFilters.minRating === rating ? 0 : rating;
-    setLocalFilters({ ...localFilters, minRating: updated });
-    onFiltersChange({ ...localFilters, minRating: updated });
-  };
+  // const handleRatingChange = (rating: number) => {
+  //   const updated = localFilters.minRating === rating ? 0 : rating;
+  //   setLocalFilters({ ...localFilters, minRating: updated });
+  //   onFiltersChange({ ...localFilters, minRating: updated });
+  // };
 
   const handleAvailabilityChange = (field: keyof AvailabilityFilters, checked: boolean) => {
     const updated = { ...localFilters.availability, [field]: checked };
@@ -162,16 +251,24 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isMobile = false, isOpen = fa
 
       {/* Categories */}
       <FilterSection title="Categories" sectionKey="categories" expandedSections={expandedSections} toggleSection={toggleSection} isMobile={isMobile}>
-        <div className={`md:flex items-center justify-start gap-4 ${isMobile ? 'space-y-1.5' : 'space-y-2'}`}>
-          {categories.map((c) => (
-            <Checkbox
-              key={c.id}
-              label={c.name}
-              checked={localFilters.categories.includes(c.id)}
-              onChange={(e) => handleCategoryChange(c.id, e.target.checked)}
-            />
-          ))}
-        </div>
+        {loadingCategories ? (
+          <p className="text-sm text-muted-foreground">Loading categories...</p>
+        ) : (
+          <div className={`md:flex items-center justify-start gap-4 ${isMobile ? 'space-y-1.5' : 'space-y-2'}`}>
+            {categories.map((c) => (
+              <Checkbox
+                key={c.id}
+                label={`${c.name} ${c.count ? `(${c.count})` : ""}`}
+                checked={localFilters.categories.includes(c.id.toString())}
+                onChange={(e) => handleCategoryChange(c.id.toString(), e.target.checked)}
+                disabled={!isLoggedIn}
+              />
+            ))}
+            {!isLoggedIn && (
+              <p className="text-sm text-muted-foreground mt-2">Log in to enable category filters.</p>
+            )}
+          </div>
+        )}
       </FilterSection>
 
       {/* Price */}
@@ -193,21 +290,27 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isMobile = false, isOpen = fa
       </FilterSection>
 
       {/* Vendors */}
-	<FilterSection title="Vendors" sectionKey="vendors" expandedSections={expandedSections} toggleSection={toggleSection} isMobile={isMobile}>
-	  <div className={`flex justify-between items-center ${isMobile ? 'space-y-1.5' : 'space-y-2'}`}>
-		{vendors.map((v) => (
-		<div key={v.id} className="flex items-center self-center ">
-		  <Checkbox
-			label={v.name}
-			checked={localFilters.vendors.includes(v.id)}
-			onChange={(e) => handleVendorChange(v.id, e.target.checked)}
-		  />
-		</div>
-		))}
-	  </div>
-	</FilterSection>
+      <FilterSection title="Vendors" sectionKey="vendors" expandedSections={expandedSections} toggleSection={toggleSection} isMobile={isMobile}>
+        {loadingVendors ? (
+          <p className="text-sm text-muted-foreground">Loading vendors...</p>
+        ) : vendors.length > 0 ? (
+          <div className={`space-y-2`}>
+            {vendors.map((v) => (
+              <div key={v.id} className="flex items-center">
+                <Checkbox
+                  label={`${v.name} (${v.count})`}
+                  checked={localFilters.vendors.includes(v.name)}
+                  onChange={(e) => handleVendorChange(v.name, e.target.checked)}
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No vendors available</p>
+        )}
+      </FilterSection>
 {/* Availability */}
-      <FilterSection title="Availability" sectionKey="availability" expandedSections={expandedSections} toggleSection={toggleSection} isMobile={isMobile}>
+      {/* <FilterSection title="Availability" sectionKey="availability" expandedSections={expandedSections} toggleSection={toggleSection} isMobile={isMobile}>
         <div className={`flex justify-between items-center ${isMobile ? 'space-y-1.5' : 'space-y-2'}`}>
           {["inStock", "onSale", "freeShipping"].map((key) => (
             <Checkbox
@@ -218,9 +321,9 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isMobile = false, isOpen = fa
             />
           ))}
         </div>
-      </FilterSection>
+      </FilterSection> */}
       {/* Rating */}
-	<FilterSection title="Customer Rating" sectionKey="rating" expandedSections={expandedSections} toggleSection={toggleSection} isMobile={isMobile}>
+	{/* <FilterSection title="Customer Rating" sectionKey="rating" expandedSections={expandedSections} toggleSection={toggleSection} isMobile={isMobile}>
 	  <div className={`flex items-center pb-18 ${isMobile ? 'space-x-1' : 'space-x-2'}`}>
 		{Array.from({ length: 5 }, (_, i) => {
 		const starValue = i + 1;
@@ -243,7 +346,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isMobile = false, isOpen = fa
 		);
 		})}
 	  </div>
-	</FilterSection>
+	</FilterSection> */}
 
       
 

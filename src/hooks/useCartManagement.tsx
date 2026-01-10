@@ -1,19 +1,18 @@
 import { useState, useCallback, useMemo } from "react";
-import api from "@/lib/api_client";
-import api_endpoints from "./api_endpoints";
+import { cartService } from "@/services/cartService";
 import type { CartItem, AppNotification } from "@/types/cart";
 import { useAuth } from "@/context/AuthContext";
 
 export const useCartManagement = () => {
-  const { user } = useAuth();
+  const { user, isLoggedIn } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPrice, setTotalPrice] = useState(0);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
-  // Check if user is in buyer mode
-  const isBuyerMode = user?.active_view === "buyer" || user?.target_view === "buyer";
+  // User must be logged in to use cart
+  const isBuyerMode = isLoggedIn;
 
   // --- callbacks ---
   const addNotification = useCallback(
@@ -30,14 +29,13 @@ export const useCartManagement = () => {
 
   const fetchCart = useCallback(async () => {
     if (!isBuyerMode) {
-      addNotification("error", "Switch to buyer mode to view your cart");
+      addNotification("error", "Please log in to view your cart");
       return;
     }
 
     try {
       setIsLoading(true);
-      const response = await api.get(api_endpoints.FETCH_CART_ITEMS);
-      const data = response.data || response;
+      const data = await cartService.fetchCartItems();
 
       const mappedItems: CartItem[] = (data.cart_items || []).map(
         (item: any) => ({
@@ -78,20 +76,17 @@ export const useCartManagement = () => {
   const addToCart = useCallback(
     async (productId: number, quantity = 1) => {
       if (!isBuyerMode) {
-        addNotification("error", "Switch to buyer mode to add items to cart");
+        addNotification("error", "Please log in to add items to cart");
         return;
       }
 
       try {
         setIsLoading(true);
-        await api.post(api_endpoints.ADD_TO_CART_ITEMS, {
-          product_id: productId,
-          quantity,
-        });
+        await cartService.addToCart(productId, quantity);
         addNotification("success", "Item added to cart!");
         await fetchCart();
-      } catch {
-        addNotification("error", "Failed to add item to cart");
+      } catch (error: any) {
+        addNotification("error", error.message || "Failed to add item to cart");
       } finally {
         setIsLoading(false);
       }
@@ -102,20 +97,18 @@ export const useCartManagement = () => {
   const updateCartItem = useCallback(
     async (productId: number, quantity: number) => {
       if (!isBuyerMode) {
-        addNotification("error", "Switch to buyer mode to update cart");
+        addNotification("error", "Please log in to update cart");
         return;
       }
 
       if (quantity < 1) return deleteCartItem(productId);
       try {
         setIsLoading(true);
-        await api.put(`${api_endpoints.UPDATE_CART_ITEMS}/${productId}`, {
-          quantity,
-        });
+        await cartService.updateCartItem(productId, quantity);
         addNotification("success", "Cart updated successfully!");
         await fetchCart();
-      } catch {
-        addNotification("error", "Failed to update cart item");
+      } catch (error: any) {
+        addNotification("error", error.message || "Failed to update cart item");
       } finally {
         setIsLoading(false);
       }
@@ -126,17 +119,17 @@ export const useCartManagement = () => {
   const deleteCartItem = useCallback(
     async (productId: number) => {
       if (!isBuyerMode) {
-        addNotification("error", "Switch to buyer mode to remove items");
+        addNotification("error", "Please log in to remove items");
         return;
       }
 
       try {
         setIsLoading(true);
-        await api.delete(`${api_endpoints.DELETE_CART_ITEMS}/${productId}`);
+        await cartService.deleteCartItem(productId);
         addNotification("success", "Item removed from cart");
         await fetchCart();
-      } catch {
-        addNotification("error", "Failed to remove item");
+      } catch (error: any) {
+        addNotification("error", error.message || "Failed to remove item");
       } finally {
         setIsLoading(false);
       }
@@ -146,20 +139,20 @@ export const useCartManagement = () => {
 
   const clearCart = useCallback(async () => {
     if (!isBuyerMode) {
-      addNotification("error", "Switch to buyer mode to clear cart");
+      addNotification("error", "Please log in to clear cart");
       return;
     }
 
     if (!window.confirm("Clear your entire cart?")) return;
     try {
       setIsLoading(true);
-      await api.post(api_endpoints.CLEAR_CART_ITEMS);
+      await cartService.clearCart();
       addNotification("success", "Cart cleared!");
       setCartItems([]);
       setTotalItems(0);
       setTotalPrice(0);
-    } catch {
-      addNotification("error", "Failed to clear cart");
+    } catch (error: any) {
+      addNotification("error", error.message || "Failed to clear cart");
     } finally {
       setIsLoading(false);
     }
@@ -168,19 +161,19 @@ export const useCartManagement = () => {
   const checkout = useCallback(
     async (paymentMethod: "whatsapp" | "pod" = "whatsapp") => {
       if (!isBuyerMode) {
-        addNotification("error", "Switch to buyer mode to checkout");
+        addNotification("error", "Please log in to checkout");
         return;
       }
 
       try {
         setIsLoading(true);
-        const response = await api.post(api_endpoints.CHECKOUT, {
+        const response = await cartService.checkout({
           payment_method: paymentMethod,
         });
         addNotification("success", "Order created successfully!");
-        return response.data || response;
-      } catch {
-        addNotification("error", "Failed to create order");
+        return response;
+      } catch (error: any) {
+        addNotification("error", error.message || "Failed to create order");
         throw new Error("Checkout failed");
       } finally {
         setIsLoading(false);
@@ -192,20 +185,20 @@ export const useCartManagement = () => {
   const uploadPaymentProof = useCallback(
     async (orderId: number, proofUrl: string) => {
       if (!isBuyerMode) {
-        addNotification("error", "Switch to buyer mode to upload payment proof");
+        addNotification("error", "Please log in to upload payment proof");
         return;
       }
 
       try {
         setIsLoading(true);
-        const response = await api.post(api_endpoints.UPLOAD_PAYMENT_PROOF, {
+        const response = await cartService.checkout({
           order_id: orderId,
           proof: proofUrl,
         });
         addNotification("success", "Payment proof submitted successfully!");
-        return response.data || response;
-      } catch {
-        addNotification("error", "Failed to upload payment proof");
+        return response;
+      } catch (error: any) {
+        addNotification("error", error.message || "Failed to upload payment proof");
         throw new Error("Upload failed");
       } finally {
         setIsLoading(false);

@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect } from "react";
 import { useCartManagement } from "@/hooks/useCartManagement";
+import { useAuth } from "./AuthContext";
 
 const CartItemsContext = createContext<
   ReturnType<typeof useCartManagement>["cartItems"]
@@ -24,6 +25,14 @@ const CartLoadingContext = createContext<boolean>(false);
 
 export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const cart = useCartManagement();
+  const { isLoggedIn } = useAuth();
+
+  // Fetch cart when user logs in
+  useEffect(() => {
+    if (isLoggedIn) {
+      cart.fetchCart();
+    }
+  }, [isLoggedIn]);
 
   return (
     <CartItemsContext.Provider value={cart.cartItems}>

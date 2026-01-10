@@ -17,6 +17,7 @@ import Select from "@/components/ui/new/NewSelect";
 import { vendorService } from "@/services/vendorService";
 import { toast } from "sonner";
 import { productService } from "@/services/productService";
+import { useLocationDetection } from "@/hooks/useLocationDetection";
 /* ===========================
    Types
    =========================== */
@@ -139,6 +140,27 @@ const AddProductWizard: React.FC<AddProductWizardProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [categoryOptions, setCategoryOptions] = useState<SelectOption[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState<boolean>(false);
+
+  // Location detection hook
+  const {
+    location: autoDetectedLocation,
+    loading: isLocationLoading,
+    refresh: detectLocation,
+  } = useLocationDetection();
+
+  // Handle auto-detect location
+  const handleAutoDetectLocation = async () => {
+    try {
+      await detectLocation();
+      if (autoDetectedLocation.state && autoDetectedLocation.country) {
+        const locationString = `${autoDetectedLocation.state}, ${autoDetectedLocation.country}`;
+        setFormData((prev) => ({ ...prev, location: locationString }));
+        toast.success("Location detected successfully!");
+      }
+    } catch (error) {
+      toast.error("Failed to detect location. Please enter manually.");
+    }
+  };
 
   const statusOptions: SelectOption[] = [
     { value: "active", label: "Active" },
@@ -418,7 +440,7 @@ const processSubmission = async (isPublished: boolean) => {
 
     toast.success(editingProduct 
       ? "✓ Product updated successfully!" 
-      : "✓ Product published successfully!", 
+      : "✓ Product added successfully!", 
       {
         description: editingProduct 
           ? "Your product changes have been saved."
@@ -428,10 +450,18 @@ const processSubmission = async (isPublished: boolean) => {
     );
     onSave(response.data || response);
     
-    // Give the toast time to display before closing modal
-    setTimeout(() => {
-      onClose();
-    }, 1500);
+    // Close modal and refresh page for new products
+    if (!editingProduct) {
+      setTimeout(() => {
+        onClose();
+        window.location.reload();
+      }, 1500);
+    } else {
+      // For edits, just close without refresh
+      setTimeout(() => {
+        onClose();
+      }, 1500);
+    }
   } catch (error: any) {
     console.error("Submission error:", error);
     const errorMsg = error.response?.data?.message || error.message || "Failed to save product.";
@@ -887,20 +917,55 @@ const processSubmission = async (isPublished: boolean) => {
                 >
                   <div className="space-y-4">
                     <h4 className="text-base font-semibold">Location</h4>
-                    <Input
-                      label="Location (optional)"
-                      name="location"
-                      value={formData.location || ""}
-                      onChange={handleInputChange}
-                      placeholder="City, State, or Address"
-                    />
+                    
+                    {/* Auto-detect location button */}
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        <Input
+                          label="Location (optional)"
+                          name="location"
+                          value={formData.location || ""}
+                          onChange={handleInputChange}
+                          placeholder="City, State, or Address"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleAutoDetectLocation}
+                        disabled={isLocationLoading}
+                        className="mb-0.5"
+                      >
+                        {isLocationLoading ? (
+                          <>
+                            <Icon name="Loader2" size={16} className="animate-spin mr-2" />
+                            Detecting...
+                          </>
+                        ) : (
+                          <>
+                            <Icon name="MapPin" size={16} className="mr-2" />
+                            Auto-Detect
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    
+                    {autoDetectedLocation.latitude && autoDetectedLocation.longitude && (
+                      <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-xs text-green-800">
+                          <span className="font-semibold">Coordinates detected:</span> {autoDetectedLocation.latitude}, {autoDetectedLocation.longitude}
+                        </p>
+                      </div>
+                    )}
+                    
                     <p className="text-sm text-muted-foreground">
                       If you want buyers to pick up locally or show location in
-                      the listing, enter it here.
+                      the listing, enter it here or use auto-detect.
                     </p>
                   </div>
                 </motion.div>
               )}
+            
 
               {/* AVAILABILITY */}
               {currentStep === "availability" && (

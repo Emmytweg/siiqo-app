@@ -23,7 +23,12 @@ const BusinessAnalytics: React.FC = () => {
     // API Data States
     const [metrics, setMetrics] = useState<any[]>([]);
     const [topProducts, setTopProducts] = useState<any[]>([]);
+    const [allProducts, setAllProducts] = useState<any[]>([]); // Store all products
     const [chartData, setChartData] = useState<any[]>([]);
+    const [activeFilters, setActiveFilters] = useState<any>({
+        category: 'all',
+        priceRange: 'all'
+    });
     
     const [dateRange, setDateRange] = useState({
         startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
@@ -81,9 +86,12 @@ const BusinessAnalytics: React.FC = () => {
 
             // 3. Fetch Top Products (Derived from your products API)
             const prodRes = await getMyProducts();
-            // Sorting mock logic since backend might not have a 'top' endpoint yet
-            const sortedProducts = (prodRes.data.data || prodRes.data).slice(0, 5);
-            setTopProducts(sortedProducts);
+            const allProductsData = prodRes.data.data || prodRes.data || [];
+            setAllProducts(allProductsData);
+            
+            // Apply filters to products
+            const filteredProducts = applyFilters(allProductsData, activeFilters);
+            setTopProducts(filteredProducts.slice(0, 10));
 
             // 4. Chart Data (Note: Use revRes.data.daily_breakdown if available in your API)
             setChartData(revRes.data.breakdown || []);
@@ -94,7 +102,48 @@ const BusinessAnalytics: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [dateRange]);
+    }, [dateRange, activeFilters]);
+
+    // Apply filters to products
+    const applyFilters = (products: any[], filters: any) => {
+        let filtered = [...products];
+
+        // Category filter
+        if (filters.category !== 'all') {
+            filtered = filtered.filter(p => 
+                p.category?.toLowerCase() === filters.category.toLowerCase()
+            );
+        }
+
+        // Price range filter
+        if (filters.priceRange !== 'all') {
+            filtered = filtered.filter(p => {
+                const price = p.final_price || p.price || 0;
+                switch (filters.priceRange) {
+                    case 'under1000':
+                        return price < 1000;
+                    case '1000to5000':
+                        return price >= 1000 && price <= 5000;
+                    case '5000to10000':
+                        return price >= 5000 && price <= 10000;
+                    case 'over10000':
+                        return price > 10000;
+                    default:
+                        return true;
+                }
+            });
+        }
+
+        return filtered;
+    };
+
+    // Handle filter changes
+    const handleFiltersChange = (filters: any) => {
+        setActiveFilters(filters);
+        // Apply filters to current products immediately
+        const filteredProducts = applyFilters(allProducts, filters);
+        setTopProducts(filteredProducts.slice(0, 10));
+    };
 
     useEffect(() => {
         fetchAnalyticsData();
@@ -102,9 +151,70 @@ const BusinessAnalytics: React.FC = () => {
 
     const handleExportReport = async () => {
         setIsExporting(true);
-        // Trigger report logic or redirect to a PDF generation endpoint
-        toast.info("Generating live report...");
-        setTimeout(() => setIsExporting(false), 2000);
+        try {
+            // Generate comprehensive CSV report with all analytics data
+            const startStr = dateRange.startDate.toISOString().split('T')[0];
+            const endStr = dateRange.endDate.toISOString().split('T')[0];
+            
+            // Create comprehensive report
+            const reportLines: string[] = [];
+            
+            // Add header
+            reportLines.push('Siiqo Business Analytics Report');
+            reportLines.push(`Period: ${startStr} to ${endStr}`);
+            reportLines.push(`Generated: ${new Date().toLocaleString()}`);
+            reportLines.push('');
+            
+            // Add Summary Metrics
+            reportLines.push('SUMMARY METRICS');
+            reportLines.push('Metric,Value,Status');
+            metrics.forEach(metric => {
+                reportLines.push(`"${metric.title}","${metric.value}","${metric.change}"`);
+            });
+            reportLines.push('');
+            
+            // Add Top Products
+            reportLines.push('TOP PRODUCTS');
+            reportLines.push('Product Name,Category,Price,Stock,SKU,Status');
+            topProducts.forEach(product => {
+                const name = `"${(product.name || 'Unknown').replace(/"/g, '""')}"`;
+                const category = product.category || 'Uncategorized';
+                const price = product.final_price || product.price || 0;
+                const stock = product.quantity || product.stock || 0;
+                const sku = product.sku || 'N/A';
+                const status = product.status || 'active';
+                reportLines.push(`${name},${category},${price},${stock},${sku},${status}`);
+            });
+            reportLines.push('');
+            
+            // Add Daily Revenue Breakdown if available
+            if (chartData && chartData.length > 0) {
+                reportLines.push('DAILY REVENUE BREAKDOWN');
+                reportLines.push('Date,Revenue,Orders');
+                chartData.forEach((day: any) => {
+                    reportLines.push(`${day.date || day.day},${day.revenue || 0},${day.orders || day.orders_count || 0}`);
+                });
+            }
+            
+            // Create and download the report
+            const csvContent = reportLines.join('\\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `analytics-report-${startStr}-to-${endStr}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            
+            toast.success('Report exported successfully!');
+        } catch (error) {
+            toast.error('Failed to export report');
+            console.error(error);
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     return (
@@ -123,11 +233,11 @@ const BusinessAnalytics: React.FC = () => {
                             variant="outline"
                             onClick={handleExportReport}
                             loading={isExporting}
-                            iconName="FileText"
+                            iconName="Download"
                         >
-                            Export PDF
+                            Export Report (CSV)
                         </Button>
-                        <NotificationCenter userContext="business" />
+                        {/* <NotificationCenter userContext="business" /> */}
                     </div>
                 </div>
 
@@ -146,7 +256,7 @@ const BusinessAnalytics: React.FC = () => {
                         ))}
                     </div>
 
-                    <FilterPanel onFiltersChange={() => {}} />
+                    <FilterPanel onFiltersChange={handleFiltersChange} />
 
                     {/* Main Analytics Content */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -169,7 +279,7 @@ const BusinessAnalytics: React.FC = () => {
                     <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
                         <div className="p-6 border-b border-slate-50 flex justify-between items-center">
                             <h3 className="font-bold text-lg">Top Performing Products</h3>
-                            <button className="text-sm font-bold text-blue-600">View Catalog</button>
+                            {/* <button className="text-sm font-bold text-blue-600">View Catalog</button> */}
                         </div>
                         <TopProductsTable data={topProducts} isLoading={loading} />
                     </div>

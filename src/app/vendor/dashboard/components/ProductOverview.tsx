@@ -108,7 +108,7 @@ const ProductOverview: React.FC<ProductOverviewProps> = ({ products: propProduct
 					                        																						<Button
 					                        																							variant="primary"
 					                        																							size="sm"
-					                        																							onClick={() => router.push('/create-listing')}
+					                        																							onClick={() => router.push('/vendor/products')}
 					                        																						>
 					                        																							<span>
 					                        																								<Icon name="Plus" size={16} className="mr-2" />

@@ -22,7 +22,7 @@ export const vendorService = {
    */
   getVendorOrders: async (): Promise<ApiOrdersResponse> => {
     // Matches your api.ts: /vendor/orders
-    const response = await api.get("/vendor/orders");
+    const response = await api.get("/vendor-orders/orders");
     return response.data;
   },
 

@@ -3,11 +3,14 @@ import React, { useState, useEffect } from "react";
 import Icon from "@/components/ui/AppIcon";
 import Image from "@/components/ui/AppImage";
 import SavedItems from "./components/SavedItems";
-import Settings from "./components/Settings";
+// import Settings from "./components/Settings";
+import Settings from "../vendor/settings/page";
 import { useRouter } from "next/navigation";
 import { userService } from "@/services/userService";
 import { useAuth } from "@/context/AuthContext";
 import { switchMode } from "@/services/api";
+import { vendorService } from "@/services/vendorService";
+import { toast } from "@/hooks/use-toast";
 
 const UserProfile = () => {
   const [activeTab, setActiveTab] = useState<string>("history");
@@ -20,6 +23,7 @@ const UserProfile = () => {
   const [editData, setEditData] = useState({
     name: "",
     email: "",
+    phone: "",
     address: "",
     bio: ""
   });
@@ -48,6 +52,7 @@ const UserProfile = () => {
         setEditData({
           name: profileData.personal_info?.fullname || profileData.store_settings?.business_name || "User",
           email: profileData.personal_info?.email || "",
+          phone: profileData.personal_info?.phone || "",
           address: profileData.store_settings?.address || "No address set",
           bio: profileData.store_settings?.description || "Community Member"
         });
@@ -64,11 +69,54 @@ const UserProfile = () => {
   const handleSaveProfile = async () => {
     try {
       setLoading(true);
-      // Mocking update logic
-      setIsEditing(false);
-      alert("Profile changes saved locally!");
-    } catch (error) {
-      alert("Failed to update profile.");
+      
+      const formData = new FormData();
+      
+      // Add personal info fields
+      if (editData.name) formData.append("personal_info[fullname]", editData.name);
+      if (editData.email) formData.append("personal_info[email]", editData.email);
+      if (editData.phone) formData.append("personal_info[phone]", editData.phone);
+      
+      // Add store settings fields
+      if (editData.address) formData.append("store_settings[address]", editData.address);
+      if (editData.bio) formData.append("store_settings[description]", editData.bio);
+      
+      const response = await vendorService.updateVendorSettings(formData);
+      
+      if (response?.status === "success" || response?.data) {
+        // Update local user state with new data
+        setUser((prev: any) => ({
+          ...prev,
+          personal_info: {
+            ...prev.personal_info,
+            fullname: editData.name,
+            email: editData.email,
+            phone: editData.phone,
+          },
+          store_settings: {
+            ...prev.store_settings,
+            address: editData.address,
+            description: editData.bio,
+          }
+        }));
+        
+        setIsEditing(false);
+        toast({ title: "Success", description: "Profile updated successfully!" });
+        
+        // Refresh profile from server
+        if (refreshUserProfile) {
+          await refreshUserProfile();
+        }
+      } else {
+        toast({ title: "Error", description: "Failed to update profile", variant: "destructive" });
+      }
+    } catch (error: any) {
+      console.error("Profile update error:", error);
+      toast({ 
+        title: "Error", 
+        description: error?.response?.data?.message || "Failed to update profile.", 
+        variant: "destructive" 
+      });
     } finally {
       setLoading(false);
     }
@@ -180,12 +228,24 @@ const UserProfile = () => {
                 className="text-center bg-transparent border-b border-primary outline-none"
                 value={editData.name}
                 onChange={e => setEditData({...editData, name: e.target.value})}
+                placeholder="Full Name"
               />
             ) : (
               editData.name
             )}
           </h1>
-          <p className="text-sm text-gray-500 mt-1">{personal_info?.email}</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {isEditing ? (
+              <input 
+                className="text-center bg-transparent border-b border-primary outline-none text-sm"
+                value={editData.email}
+                onChange={e => setEditData({...editData, email: e.target.value})}
+                placeholder="Email Address"
+              />
+            ) : (
+              editData.email
+            )}
+          </p>
           
           <div className="flex items-center justify-center gap-4 mt-6">
             <button 
@@ -194,9 +254,21 @@ const UserProfile = () => {
             >
               {isEditing ? "SAVE CHANGES" : "EDIT PROFILE"}
             </button>
-            {/* <button onClick={logout} className="px-6 py-2 border border-red-200 text-red-500 rounded-full text-sm font-bold hover:bg-red-50">
-              LOGOUT
-            </button> */}
+            {store_settings?.initialized ? (
+              <button 
+                onClick={() => router.push('/vendor/dashboard')} 
+                className="px-6 py-2 border border-blue-200 text-blue-600 rounded-full text-sm font-bold hover:bg-blue-50 transition-all"
+              >
+                GO TO DASHBOARD
+              </button>
+            ) : (
+              <button 
+                onClick={() => router.push('/auth/vendor-onboarding')} 
+                className="px-6 py-2 border border-green-200 text-green-600 rounded-full text-sm font-bold hover:bg-green-50 transition-all"
+              >
+                BECOME A VENDOR
+              </button>
+            )}
           </div>
         </div>
 
@@ -224,13 +296,31 @@ const UserProfile = () => {
                   <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center">
                     <Icon name="MapPin" size={14} className="text-primary" />
                   </div>
-                  <span className="text-xs font-bold">{store_settings?.address || "Lagos, Nigeria"}</span>
+                  {isEditing ? (
+                    <input 
+                      className="flex-1 text-xs font-bold bg-transparent border-b border-primary outline-none"
+                      value={editData.address}
+                      onChange={e => setEditData({...editData, address: e.target.value})}
+                      placeholder="Address"
+                    />
+                  ) : (
+                    <span className="text-xs font-bold">{editData.address}</span>
+                  )}
                 </div>
                 <div className="flex items-center gap-3 text-gray-600">
                    <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center">
                     <Icon name="Phone" size={14} className="text-primary" />
                   </div>
-                  <span className="text-xs font-bold">{personal_info?.phone || "Not provided"}</span>
+                  {isEditing ? (
+                    <input 
+                      className="flex-1 text-xs font-bold bg-transparent border-b border-primary outline-none"
+                      value={editData.phone}
+                      onChange={e => setEditData({...editData, phone: e.target.value})}
+                      placeholder="Phone Number"
+                    />
+                  ) : (
+                    <span className="text-xs font-bold">{editData.phone || "Not provided"}</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -262,7 +352,7 @@ const UserProfile = () => {
                 </div>
                 <div className="p-8">
                   {activeTab === "saved" && <SavedItems />}
-                  {activeTab === "settings" && <Settings userProfile={user} />}
+                  {activeTab === "settings" && <Settings />}
                   {activeTab === "history" && (
                       <div className="flex flex-col items-center justify-center py-20 text-center">
                           <Icon name="History" size={48} className="text-gray-200 mb-4" />

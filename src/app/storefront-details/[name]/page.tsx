@@ -278,8 +278,29 @@ const StorefrontDetailsPage = () => {
             {/* Contact Card */}
             <div className="p-6 border rounded-2xl bg-white shadow-sm">
               <h3 className="text-xs font-black uppercase tracking-widest mb-4">
-                Get in Touch
+                Business Hours
               </h3>
+              <div className="space-y-2">
+                {store.hours && Object.keys(store.hours).length > 0 ? (
+                  Object.entries(store.hours).map(([day, hours]: [string, any]) => (
+                    <div key={day} className="flex justify-between text-xs p-2 bg-gray-50 rounded">
+                      <span className="font-semibold text-gray-700">{day}</span>
+                      <span className="text-gray-600">
+                        {hours.start && hours.end 
+                          ? `${hours.start} - ${hours.end}`
+                          : hours.start
+                            ? `From ${hours.start}`
+                            : 'Closed'
+                        }
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-gray-400 text-center py-3">
+                    Business hours not available
+                  </p>
+                )}
+              </div>
               <div className="space-y-3">
                 {store.whatsapp_link ? (
                   <a

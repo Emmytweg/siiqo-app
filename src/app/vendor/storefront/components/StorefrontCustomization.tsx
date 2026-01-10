@@ -4,12 +4,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { 
   Camera, Clock, Building, Globe, CheckCircle2, 
   Palette, Layout, Phone, Instagram, 
-  Facebook, Trash2, Plus, ChevronLeft
+  Facebook, Trash2, Plus, ChevronLeft, MapPin, CheckCircle
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { vendorService } from "@/services/vendorService"; // Ensure this has updateSettings and uploadImage
 import switchMode from "@/services/api";
+import { useLocationDetection } from "@/hooks/useLocationDetection";
 interface Props {
   initialData: any;
   onSuccess: () => void;
@@ -20,6 +21,13 @@ const StorefrontCustomization = ({ initialData, onSuccess }: Props) => {
   const coverInputRef = useRef<HTMLInputElement>(null);
   const profileInputRef = useRef<HTMLInputElement>(null);
 
+  // Use the existing location detection hook
+  const {
+    location: autoDetectedLocation,
+    loading: isLocationLoading,
+    refresh: detectLocation,
+  } = useLocationDetection();
+
   // Sync state with API structure
   const [settings, setSettings] = useState({
     business_name: initialData?.store_settings?.business_name || "",
@@ -29,6 +37,8 @@ const StorefrontCustomization = ({ initialData, onSuccess }: Props) => {
     website: initialData?.store_settings?.website || "",
     storefront_link: initialData?.store_settings?.storefront_link || "",
     cac_reg: initialData?.store_settings?.cac_reg || "",
+    latitude: initialData?.store_settings?.latitude || "",
+    longitude: initialData?.store_settings?.longitude || "",
     template_options: {
       primary_color: initialData?.store_settings?.template_options?.primary_color || "#000000",
       secondary_color: initialData?.store_settings?.template_options?.secondary_color || "#ffffff",
@@ -40,10 +50,63 @@ const StorefrontCustomization = ({ initialData, onSuccess }: Props) => {
     working_hours: initialData?.store_settings?.working_hours || {},
     is_published: initialData?.store_settings?.is_published || false
   });
+  
+  // Keep a ref of the original settings to compare changes
+  const originalSettingsRef = React.useRef<any>(null);
+
+  useEffect(() => {
+    // Initialize original settings once from initialData
+    originalSettingsRef.current = {
+      business_name: initialData?.store_settings?.business_name || "",
+      description: initialData?.store_settings?.description || "",
+      address: initialData?.store_settings?.address || "",
+      phone: initialData?.personal_info?.phone || "",
+      website: initialData?.store_settings?.website || "",
+      storefront_link: initialData?.store_settings?.storefront_link || "",
+      cac_reg: initialData?.store_settings?.cac_reg || "",
+      latitude: initialData?.store_settings?.latitude || "",
+      longitude: initialData?.store_settings?.longitude || "",
+      template_options: initialData?.store_settings?.template_options || {},
+      banner_url: initialData?.store_settings?.banner_url || null,
+      logo_url: initialData?.store_settings?.logo_url || null,
+      social_links: initialData?.store_settings?.social_links || {},
+      working_hours: initialData?.store_settings?.working_hours || {},
+      is_published: initialData?.store_settings?.is_published || false,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const updateSetting = (key: string, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
+
+  // Handle location detection
+  const handleDetectLocation = async () => {
+    try {
+      await detectLocation();
+      if (autoDetectedLocation.latitude && autoDetectedLocation.longitude) {
+        updateSetting("latitude", autoDetectedLocation.latitude.toString());
+        updateSetting("longitude", autoDetectedLocation.longitude.toString());
+        toast({ title: "Location detected successfully" });
+      }
+    } catch (error) {
+      toast({ 
+        title: "Location Error", 
+        description: "Failed to detect location. Please try again or enter manually.", 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  // Update location when auto-detected
+  useEffect(() => {
+    if (autoDetectedLocation.latitude && autoDetectedLocation.longitude) {
+      if (!settings.latitude || !settings.longitude) {
+        updateSetting("latitude", autoDetectedLocation.latitude.toString());
+        updateSetting("longitude", autoDetectedLocation.longitude.toString());
+      }
+    }
+  }, [autoDetectedLocation]);
 
   // Handle Image Uploads to API
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: "banner_url" | "logo_url") => {
@@ -80,29 +143,63 @@ const StorefrontCustomization = ({ initialData, onSuccess }: Props) => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Create FormData from settings
+      // Create FormData with only changed fields
+      const original = originalSettingsRef.current || {};
       const formData = new FormData();
-      formData.append("business_name", settings.business_name);
-      formData.append("description", settings.description);
-      formData.append("address", settings.address);
-            formData.append("phone", settings.phone);
-      formData.append("website", settings.website);
-      formData.append("storefront_link", settings.storefront_link);
-      formData.append("cac_reg", settings.cac_reg);
-      formData.append("template_options", JSON.stringify(settings.template_options));
-      formData.append("social_links", JSON.stringify(settings.social_links));
-      formData.append("working_hours", JSON.stringify(settings.working_hours));
-      formData.append("is_published", String(settings.is_published));
-      
-      // Only append image URLs if they exist (don't resend already uploaded images as files)
-      if (settings.banner_url && typeof settings.banner_url === "string") {
-        formData.append("banner_url", settings.banner_url);
-      }
+
+      const appendIfChanged = (key: string, value: any) => {
+        const orig = original[key];
+        // For objects, compare JSON
+        if (typeof value === "object" && value !== null) {
+          const a = JSON.stringify(value || {});
+          const b = JSON.stringify(orig || {});
+          if (a !== b) {
+            formData.append(key, a);
+            return true;
+          }
+          return false;
+        }
+
+        // For primitives (including empty strings), compare as strings
+        if (String(value ?? "") !== String(orig ?? "")) {
+          formData.append(key, value ?? "");
+          return true;
+        }
+        return false;
+      };
+
+      // Track whether any field changed
+      let changed = false;
+
+      changed = appendIfChanged("business_name", settings.business_name) || changed;
+      changed = appendIfChanged("description", settings.description) || changed;
+      changed = appendIfChanged("address", settings.address) || changed;
+      changed = appendIfChanged("phone", settings.phone) || changed;
+      changed = appendIfChanged("website", settings.website) || changed;
+      changed = appendIfChanged("storefront_link", settings.storefront_link) || changed;
+      changed = appendIfChanged("cac_reg", settings.cac_reg) || changed;
+      changed = appendIfChanged("latitude", settings.latitude) || changed;
+      changed = appendIfChanged("longitude", settings.longitude) || changed;
+      // Nested objects: send as JSON strings if changed
+      changed = appendIfChanged("template_options", settings.template_options) || changed;
+      // Banner/logo handled via separate upload; but allow updating url strings
       if (settings.logo_url && typeof settings.logo_url === "string") {
-        formData.append("logo_url", settings.logo_url);
+        changed = appendIfChanged("logo_url", settings.logo_url) || changed;
+      }
+      if (settings.banner_url && typeof settings.banner_url === "string") {
+        changed = appendIfChanged("banner_url", settings.banner_url) || changed;
+      }
+      changed = appendIfChanged("social_links", settings.social_links) || changed;
+      changed = appendIfChanged("working_hours", settings.working_hours) || changed;
+      changed = appendIfChanged("is_published", settings.is_published) || changed;
+
+      if (!changed) {
+        toast({ title: "No changes", description: "Nothing to save." });
+        setIsSaving(false);
+        return;
       }
 
-      // Call update-settings API with FormData
+      // Call update-settings API with FormData containing only changed keys
       const response = await vendorService.updateVendorSettings(formData);
       
       if (response?.status === "success") {
@@ -250,6 +347,70 @@ useEffect(() => {
               className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm min-h-[100px] outline-none"
             />
           </div>
+        </div>
+
+        {/* LOCATION COORDINATES */}
+        <div className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <MapPin size={14} /> Location Coordinates
+          </label>
+          
+          {/* Location Status */}
+          {settings.latitude && settings.longitude && (
+            <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-2xl">
+              <CheckCircle size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-bold text-green-900">Location Detected</p>
+                <p className="text-xs text-green-700 mt-1">Your coordinates are set and will be saved.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Fetch Location Button */}
+          <button
+            onClick={handleDetectLocation}
+            disabled={isLocationLoading}
+            className="w-full p-4 bg-blue-50 border-2 border-blue-300 hover:bg-blue-100 text-blue-700 rounded-2xl text-sm font-bold uppercase tracking-widest transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isLocationLoading ? (
+              <>
+                <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full" />
+                Detecting Location...
+              </>
+            ) : (
+              <>
+                <MapPin size={16} />
+                Auto-Detect Location
+              </>
+            )}
+          </button>
+
+          {/* Latitude & Longitude Inputs */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase ml-2">Latitude</span>
+              <input 
+                type="number"
+                step="0.000001"
+                value={settings.latitude}
+                onChange={(e) => updateSetting('latitude', e.target.value)}
+                placeholder="e.g., 6.524379"
+                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold outline-none focus:ring-2 ring-blue-500"
+              />
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase ml-2">Longitude</span>
+              <input 
+                type="number"
+                step="0.000001"
+                value={settings.longitude}
+                onChange={(e) => updateSetting('longitude', e.target.value)}
+                placeholder="e.g., 3.379206"
+                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold outline-none focus:ring-2 ring-blue-500"
+              />
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-500 font-medium">Click "Auto-Detect Location" to fetch coordinates from your device, or enter them manually.</p>
         </div>
 
         {/* COLORS */}

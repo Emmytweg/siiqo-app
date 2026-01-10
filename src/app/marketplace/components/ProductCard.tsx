@@ -46,7 +46,24 @@ const ProductCard = ({
      ---------------------------------------------------------- */
   const productId = product?.id ?? id ?? null;
 
-  const isStorefront = product.isProduct === false;
+  const isStorefront =
+    product?.isProduct === false ||
+    product?.isStorefront === true ||
+    product?.type === "store" ||
+    Boolean(product?.storeSlug) ||
+    Boolean(product?.store_slug) ||
+    (product?.vendor?.business_name && !product?.product_name);
+
+  const getStoreSlug = () => {
+    const candidate =
+      product.slug || product.storeSlug || product.store_slug || product.vendor?.slug || product.storeName || product.vendor?.business_name || product.seller;
+    if (!candidate) return null;
+    return String(candidate)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "");
+  };
+  const storeSlug = getStoreSlug();
 
   /* ----------------------------------------------------------
      SAFE CART STATE ACCESS
@@ -99,7 +116,13 @@ const router = useRouter();
       className="z-0  overflow-hidden transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-lg"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={() => router.push(`/products/${productId}`)}
+      onClick={() => {
+        if (isStorefront) {
+          if (storeSlug) router.push(`/storefront-details/${encodeURIComponent(storeSlug)}`);
+        } else {
+          router.push(`/products/${productId}`);
+        }
+      }}
 
     >
       {/* ---------------- IMAGE AREA ---------------- */}
@@ -123,9 +146,10 @@ const router = useRouter();
         {/* Wishlist Button */}
         {productId && (
           <button
-            onClick={() =>
-              onAddToWishlist(productId, !product.isWishlisted)
-            }
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddToWishlist(productId, !product.isWishlisted);
+            }}
             className={`absolute z-20 top-3 right-3 p-2 rounded-full transition-all duration-200 ${
               product.isWishlisted
                 ? "bg-white text-red-500"
@@ -143,7 +167,14 @@ const router = useRouter();
         {/* Quick View Overlay */}
         {isHovered && (
           <button
-            onClick={() => onQuickView(product)}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isStorefront) {
+                if (storeSlug) router.push(`/storefront-details/${encodeURIComponent(storeSlug)}`);
+              } else {
+                onQuickView(product);
+              }
+            }}
             className="absolute inset-0 z-10 flex items-center justify-center font-medium text-white transition-opacity duration-200 opacity-0 bg-black/40 hover:opacity-100"
           >
             Quick View
@@ -271,7 +302,14 @@ const router = useRouter();
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onQuickView(product)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (storeSlug) {
+                    router.push(`/storefront-details/${encodeURIComponent(storeSlug)}`);
+                  } else {
+                    onQuickView(product);
+                  }
+                }}
                 className="flex items-center justify-center px-3 py-1.5 text-sm space-x-2"
               >
                 <span className="text-sm font-semibold text-[#1B3F61]">

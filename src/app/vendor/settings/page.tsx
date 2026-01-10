@@ -174,6 +174,29 @@ const Settings = () => {
     }
   };
 
+  // Auto-sync address in real-time when autoLocation is enabled
+  useEffect(() => {
+    if (settings.location.autoLocation && autoDetectedLocation) {
+      const addressString = typeof autoDetectedLocation === 'string' 
+        ? autoDetectedLocation 
+        : `${autoDetectedLocation.state}, ${autoDetectedLocation.country}`;
+      setSettings((prev) => ({
+        ...prev,
+        location: {
+          ...prev.location,
+          homeAddress: addressString,
+        },
+      }));
+    }
+  }, [autoDetectedLocation, settings.location.autoLocation]);
+
+  // Kick off detection when toggled on
+  useEffect(() => {
+    if (settings.location.autoLocation) {
+      getCurrentLocation();
+    }
+  }, [settings.location.autoLocation]);
+
   const handleManualLocationUpdate = async () => {
     setManualLocationLoading(true);
 
@@ -328,6 +351,14 @@ const Settings = () => {
         <p className="text-xs text-gray-500 mt-2">
           This address is used to calculate shipping and show local products.
         </p>
+        {settings.location.autoLocation && (
+          <div className="mt-2 flex items-center gap-2 text-xs text-blue-700">
+            {isAutoLocationLoading && (
+              <span className="inline-block w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            )}
+            <span>{isAutoLocationLoading ? "Auto-updating from device location..." : "Auto-updating from device location"}</span>
+          </div>
+        )}
       </div>
 
       <div className="pt-4 border-t border-gray-100">
@@ -655,12 +686,12 @@ const Settings = () => {
           </div>
 
           {/* Delete Account Section */}
-          <div className="pt-6 mt-6 border-t border-gray-100">
+          {/* <div className="pt-6 mt-6 border-t border-gray-100">
             <button className="flex items-center text-red-600 text-sm font-medium hover:text-red-700 transition-colors">
               <Trash2 size={16} className="mr-2" />
               Delete Account
             </button>
-          </div>
+          </div> */}
         </>
       ) : (
         <div className="text-center py-12 px-4 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">

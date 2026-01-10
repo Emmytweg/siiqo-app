@@ -303,8 +303,11 @@ const LandingPage: React.FC<{ onRefresh?: () => Promise<void> }> = ({ onRefresh 
                   animate="visible"
                   className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
                 >
-                  {paginatedStorefronts.map((store) => (
-                    <motion.div key={store.id} variants={itemVariants}>
+                  {paginatedStorefronts.map((store, idx) => (
+                    <motion.div
+                      key={store?.id ?? store?.slug ?? store?.business_name ?? idx}
+                      variants={itemVariants}
+                    >
                       <StorefrontCard stores={store} />
                     </motion.div>
                   ))}

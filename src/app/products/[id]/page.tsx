@@ -1,23 +1,31 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { useRouter,useParams } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Icon from "@/components/ui/AppIcon";
 import ProductInfo from "../components/ProductInfo";
 import SellerCard from "../components/SellerCard";
 import ImageGallery from "../components/ImageGallery";
 import ActionBar from "../components/ActionBar";
 import LocationMap from "../components/LocationMap";
+import { useCartActions, useCartItems } from "@/context/CartContext";
+import { toast } from "sonner";
 
 
 export default function ProductDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const productId = params?.id as string;
+  const { addToCart } = useCartActions();
+  const cartItems = useCartItems();
 
   const [productData, setProductData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isWishlisted, setIsWishlisted] = useState(false);
+
+  // Calculate cart quantity for this product
+  const cartQuantity = cartItems.find((item) => item.product_id === Number(productId))?.quantity || 0;
 
   useEffect(() => {
     if (!productId) {
@@ -112,6 +120,34 @@ console.log("Product Data:", productData);
     phoneNumber: productData.whatsapp_chat || "",
   };
 
+  const handleAddToCart = async () => {
+    try {
+      await addToCart(Number(productId), 1);
+      toast.success("Product added to cart!", {
+        description: `${productData.name} has been added to your cart.`,
+      });
+    } catch (error: any) {
+      toast.error("Failed to add to cart", {
+        description: error.message || "Please try again.",
+      });
+    }
+  };
+
+  const handleBuyNow = async () => {
+    try {
+      await addToCart(Number(productId), 1);
+      toast.success("Proceeding to checkout...");
+      // Navigate to checkout after a brief delay
+      setTimeout(() => {
+        router.push("/CartSystem/checkout");
+      }, 500);
+    } catch (error: any) {
+      toast.error("Failed to proceed to checkout", {
+        description: error.message || "Please try again.",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="mx-auto max-w-7xl px-4 py-6">
@@ -151,9 +187,9 @@ console.log("Product Data:", productData);
 
       <ActionBar
         product={mappedProduct}
-        cartQuantity={0}
-        onAddToCart={() => alert("Added to cart")}
-        onBuyNow={() => alert("Proceeding to checkout")}
+        cartQuantity={cartQuantity}
+        onAddToCart={handleAddToCart}
+        onBuyNow={handleBuyNow}
         onWishlistToggle={() => setIsWishlisted(!isWishlisted)}
         isWishlisted={isWishlisted}
       />

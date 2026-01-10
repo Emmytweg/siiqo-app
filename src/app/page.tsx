@@ -77,7 +77,7 @@ export default function ProductFinder() {
                   Nearby Deals
                 </h2>
                 <button
-                  onClick={() => router.push("/search-results?category=deals")}
+                  onClick={() => router.push("/marketplace")}
                   className="text-sm font-medium transition-colors duration-200 text-primary hover:text-primary-700"
                 >
                   View All
@@ -92,7 +92,7 @@ export default function ProductFinder() {
                   Recently Viewed
                 </h2>
                 <button
-                  onClick={() => router.push("/user-profile?tab=history")}
+                  onClick={() => router.push("/marketplace")}
                   className="text-sm font-medium transition-colors duration-200 text-primary hover:text-primary-700"
                 >
                   View All

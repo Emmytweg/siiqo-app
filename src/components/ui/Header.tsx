@@ -5,11 +5,14 @@ import { useRouter, usePathname } from "next/navigation";
 import Icon from "./AppIcon";
 import Link from "next/link";
 import { ShoppingCart, Store, X, LayoutDashboard, LogOut, User, ArrowLeft, Check, AlertCircle } from "lucide-react";
-import JumiaCartSystem from "@/app/CartSystem/page";
+import CartDrawer from "@/components/CartDrawer";
 import { useAuth } from "@/context/AuthContext";
+import { useCartTotals } from "@/context/CartContext";
+import { cartService } from "@/services/cartService";
 import Skeleton from "../skeleton";
 import Button from "../Button";
 import { switchMode } from "@/services/api";
+import { toast } from "sonner";
 
 type OptionType = "buyer" | "vendor" | null;
 type ToastType = "success" | "error" | "loading";
@@ -50,6 +53,7 @@ const Header: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname() || "/";
   const { logout, user, isLoggedIn, isLoading } = useAuth();
+  const { totalItems } = useCartTotals();
 
   // --- Derived State ---
   const userData = (user as any)?.data;
@@ -60,7 +64,7 @@ const Header: React.FC = () => {
     "/vendor/dashboard",
     "/map-view",
     "/search-results",
-    "/product-detail",
+    "/products",
     "/user-profile",
     "/create-listing",
     "/vendor",
@@ -70,7 +74,7 @@ const Header: React.FC = () => {
 
   const isSearchPage = pathname.startsWith("/search") || pathname.startsWith("/search-results");
   const isAppPage = !isSearchPage && appPages.some((page) => pathname.startsWith(page));
-  const showBackButton = pathname === "/product-detail" || pathname === "/create-listing";
+  const showBackButton = pathname === "/create-listing";
 
   const modalOptions: ModalOption[] = [
     {
@@ -183,7 +187,6 @@ const Header: React.FC = () => {
   const handleCartOpen = () => {
     setIsCartOpen(true);
     setIsOpen(false);
-    addToast("Cart opened", "success");
   };
 
   // --- Effects ---
@@ -245,32 +248,32 @@ const Header: React.FC = () => {
   );
 
   // --- Sub-Renders ---
-  const renderVendorButton = () => {
-    if (isRegisteredVendor) {
-      return (
-        <button 
-          onClick={handleVendorAccess} 
-          disabled={isSwitching}
-          className="flex items-center w-full gap-2 p-3 text-sm font-medium text-left hover:bg-surface-secondary rounded-md transition-colors disabled:opacity-50"
-        >
-          <LayoutDashboard size={16} /> 
-          {isSwitching ? "Switching..." : "Go to Dashboard"}
-        </button>
-      );
-    }
-    return (
-      <button 
-        onClick={() => { 
-          addToast("Redirecting to vendor onboarding...", "loading");
-          router.push("/auth/vendor-onboarding"); 
-          setIsOpen(false); 
-        }} 
-        className="flex items-center w-full gap-2 p-3 text-sm font-medium text-left hover:bg-surface-secondary rounded-md transition-colors"
-      >
-        <Store size={16} /> Become a Vendor
-      </button>
-    );
-  };
+  // const renderVendorButton = () => {
+  //   if (isRegisteredVendor) {
+  //     return (
+  //       <button 
+  //         onClick={handleVendorAccess} 
+  //         disabled={isSwitching}
+  //         className="flex items-center w-full gap-2 p-3 text-sm font-medium text-left hover:bg-surface-secondary rounded-md transition-colors disabled:opacity-50"
+  //       >
+  //         <LayoutDashboard size={16} /> 
+  //         {isSwitching ? "Switching..." : "Go to Dashboard"}
+  //       </button>
+  //     );
+  //   }
+  //   return (
+  //     <button 
+  //       onClick={() => { 
+  //         addToast("Redirecting to vendor onboarding...", "loading");
+  //         router.push("/auth/vendor-onboarding"); 
+  //         setIsOpen(false); 
+  //       }} 
+  //       className="flex items-center w-full gap-2 p-3 text-sm font-medium text-left hover:bg-surface-secondary rounded-md transition-colors"
+  //     >
+  //       <Store size={16} /> Become a Vendor
+  //     </button>
+  //   );
+  // };
 
   const GetStartedModal = () => {
     if (!isModalOpen) return null;
@@ -376,7 +379,11 @@ const Header: React.FC = () => {
                 <span className="hidden text-sm text-gray-600 lg:block">Welcome, {userData?.personal_info?.fullname || user?.fullname}</span>
                 <button onClick={handleCartOpen} className="relative p-2 transition-colors rounded-lg hover:bg-surface-secondary">
                   <ShoppingCart size={20} className="text-text-primary" />
-                  <div className="absolute w-2 h-2 bg-red-500 rounded-full -top-1 -right-1 border-1 border-surface" />
+                  {totalItems > 0 && (
+                    <span className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                      {totalItems > 99 ? "99+" : totalItems}
+                    </span>
+                  )}
                 </button>
                 
                 <div className="relative" ref={desktopRef}>
@@ -388,7 +395,7 @@ const Header: React.FC = () => {
                       <button onClick={() => { router.push("/user-profile"); setIsOpen(false); }} className={`w-full text-left p-3 hover:bg-surface-secondary flex items-center gap-2 text-sm font-medium rounded-md ${pathname === '/user-profile' ? 'hidden' : 'flex'}`}>
                        <User size={16} /> { pathname === '/user-profile' ? "" : `My Profile `}
                       </button>
-                      {renderVendorButton()}
+                      {/* {renderVendorButton()} */}
                       <button onClick={handleLogout} className="w-full text-left p-3 text-white bg-red-600 hover:bg-red-700 flex items-center gap-2 text-sm font-medium rounded-md">
                         <LogOut size={16} /> Logout
                       </button>
@@ -411,10 +418,15 @@ const Header: React.FC = () => {
                 {isOpen && (
                   <div className="absolute right-0 z-10 flex flex-col gap-2 p-4 mt-2 bg-white border rounded-lg shadow-xl w-60 border-surface-border">
                     <span className="pb-2 text-sm font-bold border-b">Hi, {userData?.personal_info?.fullname || user?.fullname || "User"}</span>
-                    <button onClick={handleCartOpen} className="flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-gray-800 rounded-lg">
+                    <button onClick={handleCartOpen} className="relative flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-gray-800 rounded-lg">
                       <ShoppingCart size={16} className="mr-2" /> Cart
+                      {totalItems > 0 && (
+                        <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                          {totalItems > 99 ? "99+" : totalItems}
+                        </span>
+                      )}
                     </button>
-                    {renderVendorButton()}
+                    {/* {renderVendorButton()} */}
                     <button onClick={handleLogout} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg text-left">
                       <LogOut size={16} className="inline mr-2" /> Logout
                     </button>
@@ -428,19 +440,7 @@ const Header: React.FC = () => {
         </div>
 
         {/* Cart Drawer */}
-        {isCartOpen && (
-          <div className="fixed inset-0 z-[300]">
-            <div className="fixed inset-0 bg-black/50" onClick={() => setIsCartOpen(false)} />
-            <div className="fixed top-0 right-0 h-full bg-white shadow-lg w-full sm:w-96 animate-in slide-in-from-right duration-300">
-              <div className="p-4 h-full overflow-y-auto">
-                <button onClick={() => setIsCartOpen(false)} className="float-right p-2 rounded hover:bg-gray-100">
-                  <X className="w-5 h-5" />
-                </button>
-                <JumiaCartSystem />
-              </div>
-            </div>
-          </div>
-        )}
+        <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
 
         <GetStartedModal />
       </header>

@@ -34,7 +34,7 @@ export default function JumiaCartSystem() {
     useCartActions();
   const { notifications, removeNotification } = useCartNotifications();
   const isLoading = useCartLoading();
-  const { user } = useAuth();
+    const { user, isLoggedIn } = useAuth();
 
   const { isCartOpen, currentStep, setCurrentStep, closeCart, openCart } = useCartModal();
 
@@ -58,16 +58,15 @@ export default function JumiaCartSystem() {
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   // Check if user is in buyer mode
-  const isBuyerMode =  switchMode("buyer");
+    const isBuyerMode = isLoggedIn && switchMode("buyer")
 
-  useEffect(() => {
+
     const loadCart = async () => {
       if (await isBuyerMode) {
         fetchCart();
       }
     };
     loadCart();
-  }, [fetchCart, isBuyerMode]);
 
   const handleCheckout = () => {
     if (!isBuyerMode) {

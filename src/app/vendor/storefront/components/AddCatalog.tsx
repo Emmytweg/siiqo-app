@@ -102,13 +102,28 @@ const AddCatalog = () => {
     );
   };
 
-  const handleSelectCatalog = (catalog: Catalog) => {
+  const handleSelectCatalog = async (catalog: Catalog) => {
     setSelectedCatalogId(catalog.id);
     setMode('existing');
     setCatalogName(catalog.name || "");
     setDescription(catalog.description || "");
     setCatalogImage(null);
     setCatalogImagePreview(catalog.image || null);
+    
+    // Fetch existing products in this catalog so we can append to them
+    try {
+      const res = await productService.getCatalogs();
+      if (res.status === "success" && res.catalogs) {
+        const selectedCat = res.catalogs.find((cat: any) => cat.id === catalog.id);
+        if (selectedCat && selectedCat.products) {
+          // Pre-select products already in this catalog
+          const existingProductIds = selectedCat.products.map((p: any) => p.id);
+          setSelectedProductIds(existingProductIds);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load catalog products:", error);
+    }
   };
 
   // 2. Submit Catalog
@@ -197,13 +212,13 @@ const AddCatalog = () => {
             <p className="text-[11px] opacity-80 uppercase tracking-wider font-bold">Storefront Catalog</p>
           </div>
         </div>
-        <button 
+        {/* <button 
           onClick={handleCreateCatalog}
           disabled={loading}
           className="text-sm font-bold uppercase tracking-tight hover:bg-white/10 px-3 py-1 rounded"
         >
           {loading ? "Saving..." : "Done"}
-        </button>
+        </button> */}
       </div>
 
       <div className="max-w-xl mx-auto p-4 space-y-4">

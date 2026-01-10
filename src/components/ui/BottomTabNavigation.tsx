@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Icon, { LucideIconName } from "./AppIcon";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "@/hooks/use-toast";
 
 interface NavigationItem {
   label: string;
@@ -22,6 +24,9 @@ const CreateMenu: React.FC<CreateMenuProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   const router = useRouter();
+  const { isLoggedIn, user } = useAuth();
+  const userData = (user as any)?.data;
+  const isRegisteredVendor = userData?.store_settings?.initialized === true || user?.role === "vendor";
 
   const createOptions = [
     {
@@ -29,14 +34,14 @@ const CreateMenu: React.FC<CreateMenuProps> = ({ isOpen, onClose }) => {
       description: "Set up your business presence",
       icon: "Store" as LucideIconName,
       color: "bg-blue-100 text-blue-600",
-      // link: "/vendor/dashboard",
+      link: "/vendor/storefront",
     },
     {
       label: "List Product",
       description: "Add a new product to sell",
       icon: "Package" as LucideIconName,
       color: "bg-green-100 text-green-600",
-      link: "/marketplace",
+      link: "/vendor/products",
     },
     // {
     //     label: 'Offer Service',
@@ -72,7 +77,44 @@ const CreateMenu: React.FC<CreateMenuProps> = ({ isOpen, onClose }) => {
             <button
               key={index}
               className="flex items-center space-x-4 w-full p-3 hover:bg-surface-secondary rounded-xl transition-colors"
-              onClick={() => router.push(`${option.link}`)}
+              onClick={() => {
+                // Conditional routing for vendor actions
+                if (option.link === "/vendor/storefront") {
+                  if (!isLoggedIn) {
+                    router.push("/auth/login");
+                    return;
+                  }
+                  if (!isRegisteredVendor) {
+                    toast({
+                      title: "Vendor Onboarding Required",
+                      description: "Complete vendor onboarding to set up your storefront.",
+                    });
+                    router.push("/auth/vendor-onboarding");
+                    return;
+                  }
+                  router.push(option.link);
+                  return;
+                }
+
+                if (option.link === "/vendor/products") {
+                  if (!isLoggedIn) {
+                    router.push("/auth/login");
+                    return;
+                  }
+                  if (!isRegisteredVendor) {
+                    toast({
+                      title: "Vendor Account Required",
+                      description: "Fill out vendor onboarding to list products.",
+                    });
+                    router.push("/auth/vendor-onboarding");
+                    return;
+                  }
+                  router.push(option.link);
+                  return;
+                }
+
+                router.push(`${option.link}`);
+              }}
             >
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center ${option.color}`}

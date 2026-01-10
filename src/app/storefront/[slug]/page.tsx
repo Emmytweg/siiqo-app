@@ -463,8 +463,10 @@ const VendorDetails = () => {
       url: typeof window !== 'undefined' ? window.location.href : '',
     };
     try {
-      if (navigator.share) await navigator.share(shareData);
-      else {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        addNotification("success", "Link shared successfully!");
+      } else {
         await navigator.clipboard.writeText(shareData.url);
         addNotification("success", "Link copied to clipboard!");
       }
