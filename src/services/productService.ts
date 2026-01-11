@@ -80,7 +80,12 @@ getPublicCatalogs: async () => {
     const formData = new FormData();
     formData.append("name", catalogData.name);
     formData.append("description", catalogData.description || "");
-    formData.append("product_ids", JSON.stringify(catalogData.product_ids));
+    
+    // Send product_ids as comma-separated text string (as form-data text field)
+    if (catalogData.product_ids.length > 0) {
+      formData.append("product_ids", catalogData.product_ids.join(","));
+    }
+
     if (catalogData.image) {
       formData.append("image", catalogData.image);
     }
@@ -98,8 +103,8 @@ getPublicCatalogs: async () => {
     const formData = new FormData();
     if (catalogData.name !== undefined) formData.append("name", catalogData.name);
     if (catalogData.description !== undefined) formData.append("description", catalogData.description);
-    if (catalogData.product_ids) {
-      formData.append("product_ids", JSON.stringify(catalogData.product_ids));
+    if (catalogData.product_ids && catalogData.product_ids.length > 0) {
+      formData.append("product_ids", catalogData.product_ids.join(","));
     }
     if (catalogData.image) {
       formData.append("image", catalogData.image);

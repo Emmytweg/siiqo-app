@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import Skeleton from "@/components/skeleton";
 import NearbyDealCard, { DealData } from "./ui/NearbyDealsProdCard";
+import { useLocation } from "@/context/LocationContext";
 
 interface NearbyDealsProps {
   onRefresh: () => Promise<void>;
@@ -18,14 +19,55 @@ const NearbyDeals: React.FC<NearbyDealsProps> = ({ onRefresh }) => {
   const [products, setProducts] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const { coords } = useLocation();
 
   const fetchProducts = async () => {
     setIsLoading(true);
     try {
       setError(null);
-      const response = await fetch("https://server.siiqo.com/api/marketplace/search");
-      const data = await response.json();
-      setProducts(data.data.nearby_products);
+      const nearUrl = new URL("https://server.siiqo.com/api/marketplace/search");
+      if (coords?.lat && coords?.lng) {
+        nearUrl.searchParams.set("lat", String(coords.lat));
+        nearUrl.searchParams.set("lng", String(coords.lng));
+      }
+      const allUrl = new URL("https://server.siiqo.com/api/marketplace/search");
+
+      console.log('[NearbyDeals] Fetching near:', nearUrl.toString(), '| Coords:', coords);
+      console.log('[NearbyDeals] Fetching all:', allUrl.toString());
+
+      const [nearRes, allRes] = await Promise.all([
+        fetch(nearUrl.toString()),
+        fetch(allUrl.toString())
+      ]);
+      const nearJson = await nearRes.json();
+      const allJson = await allRes.json();
+      console.log('[NearbyDeals] Near Response:', nearJson);
+      console.log('[NearbyDeals] All Response:', allJson);
+
+      const nearProducts = nearJson?.data?.nearby_products || [];
+      const allProducts = allJson?.data?.products || allJson?.data?.nearby_products || [];
+
+      const dedupById = (arr: any[]) => {
+        const seen = new Set();
+        const out: any[] = [];
+        for (const it of arr) {
+          const id = it?.id;
+          if (id == null) continue;
+          if (!seen.has(id)) {
+            seen.add(id);
+            out.push(it);
+          }
+        }
+        return out;
+      };
+
+      const merged = dedupById([...nearProducts, ...allProducts]);
+      merged.sort((a, b) => {
+        const da = typeof a.distance_km === 'number' ? a.distance_km : Infinity;
+        const db = typeof b.distance_km === 'number' ? b.distance_km : Infinity;
+        return da - db;
+      });
+      setProducts(merged);
       setCurrentPage(1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch products");
@@ -36,7 +78,7 @@ const NearbyDeals: React.FC<NearbyDealsProps> = ({ onRefresh }) => {
 
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [coords]);
 
   const generateDealData = (product: any): DealData => {
     const seed = typeof product.id === 'string' ? parseInt(product.id, 10) || 123 : product.id;

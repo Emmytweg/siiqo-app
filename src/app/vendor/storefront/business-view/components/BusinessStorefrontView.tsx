@@ -415,12 +415,18 @@ const BusinessStorefrontView: React.FC<Props> = ({ storefrontData, products: ini
                   <span className="font-bold">{availableCatalogs.length}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 flex items-center gap-2">
-                    <Star size={16} className="text-yellow-500" />
-                    Rating
-                  </span>
-                  <span className="font-bold">N/A</span>
-                </div>
+                                   <span className="text-sm text-gray-600 flex items-center gap-2">
+                                     <Star size={16} className="text-yellow-500" />
+                                     Rating
+                                   </span>
+                                   <span className="font-bold flex items-center gap-1">
+                                     5.0{" "}
+                                     <Star
+                                       size={14}
+                                       className="text-yellow-500 fill-yellow-500"
+                                     />
+                                   </span>
+                                 </div>
               </div>
             </div>
           </aside>

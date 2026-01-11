@@ -9,7 +9,7 @@ import ActionBar from "../components/ActionBar";
 import LocationMap from "../components/LocationMap";
 import { useCartActions, useCartItems } from "@/context/CartContext";
 import { toast } from "sonner";
-
+import { switchMode } from "@/services/api";
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -26,6 +26,11 @@ export default function ProductDetailPage() {
 
   // Calculate cart quantity for this product
   const cartQuantity = cartItems.find((item) => item.product_id === Number(productId))?.quantity || 0;
+
+  // Switch to buyer mode
+  useEffect(() => {
+    switchMode("buyer");
+  }, []);
 
   useEffect(() => {
     if (!productId) {
@@ -94,7 +99,7 @@ console.log("Product Data:", productData);
     id: Number(productId),
     title: productData.name,
     price: productData.price,
-    rating: 4.5,
+    rating: 5.0,
     reviewCount: 0,
     distance: 0,
     availability: productData.quantity > 0 ? "In Stock" : "Out of Stock",
@@ -112,7 +117,7 @@ console.log("Product Data:", productData);
   const mappedSeller = {
     name: productData.vendor_name || "Vendor",
     avatar: "",
-    rating: 4.8,
+    rating: 5.0,
     reviewCount: 24,
     responseTime: "Usually responds within 1 hour",
     memberSince: "2023",
@@ -185,14 +190,20 @@ console.log("Product Data:", productData);
         </div>
       </div>
 
-      <ActionBar
-        product={mappedProduct}
-        cartQuantity={cartQuantity}
-        onAddToCart={handleAddToCart}
-        onBuyNow={handleBuyNow}
-        onWishlistToggle={() => setIsWishlisted(!isWishlisted)}
-        isWishlisted={isWishlisted}
-      />
+      {/* Coming Soon: ActionBar
+        <ActionBar
+          product={mappedProduct}
+          cartQuantity={cartQuantity}
+          // onAddToCart={handleAddToCart}
+          // onBuyNow={handleBuyNow}
+          onWishlistToggle={() => setIsWishlisted(!isWishlisted)}
+          isWishlisted={isWishlisted}
+        />
+      */}
+      
+      <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-background to-background/80 backdrop-blur-sm border-t border-gray-200 p-4 text-center">
+        <p className="text-sm font-semibold text-gray-500">Coming Soon: Enhanced Cart & Checkout</p>
+      </div>
     </div>
   );
 }

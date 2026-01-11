@@ -192,7 +192,7 @@ const ProductInfo = ({
                 <span className="font-medium text-text-primary">
                   {product.rating}
                 </span>
-                <span>({product.reviewCount} reviews)</span>
+                {/* <span>({product.reviewCount} reviews)</span> */}
               </div>
               <div className="flex items-center space-x-1">
                 <Icon name="MapPin" size={16} className="text-primary" />

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { X, AlertCircle } from 'lucide-react';
 import Icon from '@/components/ui/AppIcon';
 import { useAuth } from '@/context/AuthContext';
-import { cartService } from '@/services/cartService';
+import { useCartActions } from '@/context/CartContext';
 import { toast } from 'sonner';
 
 interface Product {
@@ -29,6 +29,7 @@ const ActionBar = ({
 }: ActionBarProps) => {
     const router = useRouter();
     const { isLoggedIn } = useAuth();
+    const { addToCart } = useCartActions();
     const [showBuyerModal, setShowBuyerModal] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -47,7 +48,7 @@ const ActionBar = ({
 
         try {
             setIsLoading(true);
-            await cartService.addToCart(product.id, 1);
+            await addToCart(product.id, 1);
             toast.success("Item added to cart!");
         } catch (error: any) {
             toast.error(error.message || "Failed to add to cart");
@@ -69,7 +70,7 @@ const ActionBar = ({
 
         try {
             setIsLoading(true);
-            await cartService.addToCart(product.id, 1);
+            await addToCart(product.id, 1);
             toast.success("Item added to cart! Proceeding to checkout...");
             setTimeout(() => {
                 router.push("/CartSystem/checkout");

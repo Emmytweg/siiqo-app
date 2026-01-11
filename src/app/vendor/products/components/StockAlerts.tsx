@@ -15,7 +15,7 @@ export interface StockAlertsProps {
 }
 
 const StockAlerts: React.FC<StockAlertsProps> = ({ onClose }) => {
-	const lowStockProducts: Product[] = [
+	const lowStockProducts: any[] = [
 		{
 			id: 1,
 			name: "iPhone 15 Pro Max",
@@ -57,7 +57,7 @@ const StockAlerts: React.FC<StockAlertsProps> = ({ onClose }) => {
 		}
 	];
 
-	const outOfStockProducts: Product[] = [
+	const outOfStockProducts: any[] = [
 		{
 			id: 4,
 			name: "Samsung Galaxy S24 Ultra",

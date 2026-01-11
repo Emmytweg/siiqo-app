@@ -183,9 +183,9 @@ const fetchOrders = async () => {
             >
               <RefreshCcw size={18} className={`text-slate-600 ${loading ? 'animate-spin' : ''}`} />
             </button>
-            <button className="flex items-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
+            {/* <button className="flex items-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
               <Plus size={18} /> Create Manual Order
-            </button>
+            </button> */}
           </div>
         </div>
 

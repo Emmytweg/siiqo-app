@@ -6,6 +6,7 @@ import Icon from "@/components/ui/AppIcon";
 import ProductCard from "./components/ProductCard";
 import SearchSuggestions from "./components/SearchSuggestions";
 import FilterPanel from "./components/FilterPanel";
+import { useLocation } from "@/context/LocationContext";
 
 const MarketplaceBrowse = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -16,6 +17,7 @@ const MarketplaceBrowse = () => {
   const [products, setProducts] = useState<any[]>([]);
   const [storefronts, setStorefronts] = useState<any[]>([]);
   const [hasError, setHasError] = useState(false);
+  const { coords } = useLocation();
 
   const [activeFilters, setActiveFilters] = useState<any>({
     categories: [],
@@ -25,57 +27,33 @@ const MarketplaceBrowse = () => {
     availability: { inStock: false, onSale: false, freeShipping: false }
   });
 
-  // Pagination state (client-side paging of fetched results)
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 9; // 3 cols x 3 rows by default
+  const itemsPerPage = 9;
 
-  // Reset page when filters/search change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, activeFilters, searchMode]);
-
-  const totalItemsCount = useMemo(() => {
-    let curr = searchMode === "product" ? [...products] : [...storefronts];
-
-    if (activeFilters.priceRange?.max) {
-      curr = curr.filter((p) => p.price <= parseFloat(activeFilters.priceRange.max));
-    }
-
-    if (searchQuery) {
-      curr = curr.filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()));
-    }
-
-    return curr.length;
-  }, [products, storefronts, activeFilters, searchMode, searchQuery]);
-
-  const totalPages = Math.max(1, Math.ceil(totalItemsCount / itemsPerPage));
-
-  useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages);
-  }, [totalPages, currentPage]);
 
   const searchParams = useSearchParams();
   const router = useRouter();
   const categoriesList = ["Popular Categories", "Featured Storefront", "Shop by Distance"];
 
-  // Mapping logic updated for your specific API response keys
+  /**
+   * ✅ TRANSFORM LOGIC 
+   * Maps API keys to ProductCard expectations
+   */
   const transformApiProduct = useCallback((item: any) => {
     return {
+      ...item,
       id: item.id,
       name: item.name,
       price: item.price,
-      originalPrice: Math.round(item.price * 1.2), 
-      image: item.image , // Fallback for null images
-      seller: item.vendor_name || "Unknown Seller",
-      rating: (Math.random() * (5 - 4) + 4).toFixed(1), // Mocked as not in API
-      reviewCount: Math.floor(Math.random() * 50),
-      distance: item.distance_km ? `${item.distance_km} km` : "Nearby",
-      condition: "New",
-      category: "General",
-      isVerified: true,
-      availability: "In Stock",
-      location: "Local Area",
-      postedDate: new Date().toISOString().split("T")[0],
+      originalPrice: item.original_price, 
+      image: item.image,
+      seller: item.vendor_name,
+      rating: item.rating || (Math.random() * (5 - 4) + 4).toFixed(1),
+      reviewCount: item.reviewCount || Math.floor(Math.random() * 50),
+      distance: item.distance_km ? `${parseFloat(item.distance_km).toFixed(1)} km` : null,
       isProduct: true,
       crypto_price: item.crypto_price
     };
@@ -83,41 +61,61 @@ const MarketplaceBrowse = () => {
 
   const transformApiStorefront = useCallback((store: any) => {
     return {
-      id: store.id,
-      name: store.business_name || store.name || "Store",
-      image: store.logo ,
-      price: 0,
-      seller: store.vendor_name || store.business_name,
+      ...store,
+      id: store.slug, // Storefronts often use slug as unique ID
+      name: store.business_name,
+      image: store.logo,
+      banner: store.banner,
+      seller: store.business_name,
       rating: 4.5,
-      reviewCount: 10,
-      distance: store.distance_km ? `${store.distance_km} km` : "0.5 km",
-      category: "Storefront",
-      isVerified: true,
-      availability: "Open Now",
-      location: store.city || "Online",
+      reviewCount: 12,
+      distance: store.distance_km ? `${parseFloat(store.distance_km).toFixed(1)} km` : null,
       isProduct: false,
+      isStorefront: true,
+      store_slug: store.slug
     };
   }, []);
 
+  /**
+   * ✅ UPDATED FETCH DATA
+   * Logic: Try Nearby -> If empty -> Get All
+   */
   const fetchData = async () => {
     setIsLoading(true);
     setHasError(false);
 
     try {
-      // Using the specific URL provided
-      const response = await fetch("https://server.siiqo.com/api/marketplace/search");
-      const result = await response.json();
+      const baseUrl = "https://server.siiqo.com/api/marketplace/search";
+      const query = searchParams.get("q") || "";
+      
+      const url = new URL(baseUrl);
+      if (coords?.lat && coords?.lng) {
+        url.searchParams.set("lat", String(coords.lat));
+        url.searchParams.set("lng", String(coords.lng));
+      }
+      if (query) url.searchParams.set("q", query);
 
-      if (result.status === "success" && result.data) {
-        const p = (result.data.nearby_products || []).map(transformApiProduct);
-        const s = (result.data.nearby_stores || []).map(transformApiStorefront);
+      const response = await fetch(url.toString());
+      const json = await response.json();
 
-        setProducts(p);
-        setStorefronts(s);
-        
+      if (json.status === "success") {
+        let p = json.data?.nearby_products || [];
+        let s = json.data?.nearby_stores || [];
+
+        // FALLBACK: If nearby is empty, check if the API returned a global list 
+        // or re-fetch without coordinates to show "all"
         if (p.length === 0 && s.length === 0) {
-            // Optional: handle empty state
+          const globalUrl = new URL(baseUrl);
+          if (query) globalUrl.searchParams.set("q", query);
+          const globalRes = await fetch(globalUrl.toString());
+          const globalJson = await globalRes.json();
+          
+          p = globalJson.data?.nearby_products || []; 
+          s = globalJson.data?.nearby_stores || [];
         }
+
+        setProducts(p.map(transformApiProduct));
+        setStorefronts(s.map(transformApiStorefront));
       } else {
         setHasError(true);
       }
@@ -133,33 +131,38 @@ const MarketplaceBrowse = () => {
     const q = searchParams.get("q");
     if (q) setSearchQuery(q);
     fetchData();
-  }, [searchParams]);
+  }, [searchParams, coords]);
 
   const displayItems = useMemo(() => {
     let current = searchMode === "product" ? [...products] : [...storefronts];
 
-    // Local filter application
     if (activeFilters.priceRange?.max) {
       current = current.filter((p) => p.price <= parseFloat(activeFilters.priceRange.max));
     }
     
-    // Simple local search filter for the UI
     if (searchQuery) {
-        current = current.filter(item => 
-            item.name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+      current = current.filter(item => 
+        (item.name || "").toLowerCase().includes(searchQuery.toLowerCase())
+      );
     }
 
-    // Pagination slice
     const start = (currentPage - 1) * itemsPerPage;
     return current.slice(start, start + itemsPerPage);
   }, [products, storefronts, activeFilters, searchMode, searchQuery, currentPage]);
+
+  const totalItemsCount = useMemo(() => {
+    let curr = searchMode === "product" ? [...products] : [...storefronts];
+    if (activeFilters.priceRange?.max) curr = curr.filter((p) => p.price <= parseFloat(activeFilters.priceRange.max));
+    if (searchQuery) curr = curr.filter(item => (item.name || "").toLowerCase().includes(searchQuery.toLowerCase()));
+    return curr.length;
+  }, [products, storefronts, activeFilters, searchMode, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(totalItemsCount / itemsPerPage));
 
   const handleSearchSubmit = (query: string) => {
     const params = new URLSearchParams(searchParams.toString());
     if (query) params.set("q", query);
     else params.delete("q");
-    
     router.push(`/marketplace?${params.toString()}`);
     setShowSuggestions(false);
   };
@@ -167,9 +170,8 @@ const MarketplaceBrowse = () => {
   return (
     <div className="relative w-full min-h-screen bg-slate-100 font-sans flex flex-col overflow-hidden">
       
-      {/* LEFT PANEL - Glass UI Logic maintained */}
+      {/* LEFT PANEL */}
       <div className="hidden md:flex md:fixed md:left-0 md:top-16 md:w-2/5 md:h-screen md:z-0 bg-white/60 backdrop-blur-xl border-r border-white/40 flex-col items-start p-6 overflow-y-auto">
-        
         <div className="w-[90%] mb-4">
           <div className="relative mb-4">
             <input
@@ -181,9 +183,9 @@ const MarketplaceBrowse = () => {
                 setShowSuggestions(e.target.value.length > 0);
               }}
               onKeyDown={(e) => e.key === "Enter" && handleSearchSubmit(searchQuery)}
-              className="w-full placeholder-slate-400 py-3 pl-10 pr-10 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
+              className="w-full placeholder-slate-400 py-3 pl-10 pr-10 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-300 shadow-sm"
             />
-            <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             
             {showSuggestions && (
               <SearchSuggestions 
@@ -199,18 +201,18 @@ const MarketplaceBrowse = () => {
 
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <span className={`text-xs font-bold cursor-pointer ${searchMode === 'storefront' ? 'text-gray-900' : 'text-gray-400'}`} onClick={() => setSearchMode('storefront')}>Storefront</span>
-              <div onClick={() => setSearchMode(searchMode === "product" ? "storefront" : "product")} className={`w-12 h-6 rounded-full cursor-pointer p-1 transition-all ${searchMode === "product" ? "bg-blue-500" : "bg-gray-300"}`}>
+              <span className={`text-xs font-bold cursor-pointer transition-colors ${searchMode === 'storefront' ? 'text-gray-900' : 'text-gray-400'}`} onClick={() => setSearchMode('storefront')}>Stores</span>
+              <div onClick={() => setSearchMode(searchMode === "storefront" ? "product" : "storefront")} className={`w-12 h-6 rounded-full cursor-pointer p-1 transition-all ${searchMode === "product" ? "bg-blue-600" : "bg-gray-300"}`}>
                 <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-all ${searchMode === "product" ? "translate-x-6" : "translate-x-0"}`} />
               </div>
-              <span className={`text-xs font-bold cursor-pointer ${searchMode === 'product' ? 'text-gray-900' : 'text-gray-400'}`} onClick={() => setSearchMode('product')}>Product</span>
+              <span className={`text-xs font-bold cursor-pointer transition-colors ${searchMode === 'product' ? 'text-gray-900' : 'text-gray-400'}`} onClick={() => setSearchMode('product')}>Products</span>
             </div>
           </div>
         </div>
 
         <div className="flex gap-2 items-center overflow-x-auto scrollbar-hide py-4 md:py-5 mb-4 w-full">
           {categoriesList.map((category) => (
-            <button key={category} className="whitespace-nowrap px-3 py-2 rounded-full bg-white/50 border border-white/60 text-sm font-medium text-slate-600 shadow-sm hover:bg-white/90 transition-all active:scale-95 flex-shrink-0">
+            <button key={category} className="whitespace-nowrap px-4 py-2 rounded-full bg-white border border-gray-200 text-sm font-medium text-slate-600 shadow-sm hover:bg-gray-50 transition-all active:scale-95 flex-shrink-0">
               {category}
             </button>
           ))}
@@ -245,63 +247,65 @@ const MarketplaceBrowse = () => {
       </div>
 
       {/* RIGHT PRODUCT RESULTS */}
-      <div className="w-full md:ml-[40%] md:w-3/5 p-4 overflow-y-auto flex-1 mt-40 mb-20">
+      <div className="w-full md:ml-[40%] md:w-3/5 p-4 overflow-y-auto flex-1 mt-10 md:mt-20 mb-20">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-            <p className="text-gray-500 font-medium">Loading nearby items...</p>
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+            <p className="text-gray-500 text-sm font-medium tracking-wide">Finding items near you...</p>
           </div>
         ) : hasError ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+          <div className="flex flex-col items-center justify-center py-20 text-center px-6 bg-white rounded-xl shadow-sm m-4">
             <Icon name="AlertCircle" size={40} className="text-red-500 mb-4" />
-            <h3 className="text-lg font-semibold text-slate-900">Issue loading marketplace</h3>
-            <button onClick={fetchData} className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-full active:scale-95 transition-transform">Try Again</button>
+            <h3 className="text-lg font-semibold text-slate-900">Unable to load marketplace</h3>
+            <p className="text-sm text-slate-500 mb-6">Check your connection and try again.</p>
+            <button onClick={fetchData} className="px-8 py-2.5 bg-blue-600 text-white font-semibold rounded-full hover:bg-blue-700 transition-colors shadow-md">Try Again</button>
           </div>
         ) : (
           <>
-            <div className="grid justify-center grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
+            <div className="grid justify-center grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 pb-4">
               {displayItems.map((item) => (
                 <ProductCard
-                  key={`${item.isProduct ? 'p' : 's'}-${item.id}`}
+                  key={`${item.isProduct ? 'p' : 's'}-${item.id || item.slug}`}
                   product={item}
-                  onAddToCart={() => {}}
-                  onQuickView={() => {}}
-                  onAddToWishlist={() => {}}
+                  onAddToCart={() => console.log("Added to cart", item)}
+                  onQuickView={() => console.log("Quick view", item)}
+                  onAddToWishlist={(id, state) => console.log("Wishlist", id, state)}
                   cartQuantities={{}}
                   isAddingToCart={{}}
                 />
               ))}
               {displayItems.length === 0 && (
-                  <div className="col-span-full py-20 text-center text-slate-400">
-                      No items found matching your search.
+                  <div className="col-span-full py-20 text-center flex flex-col items-center">
+                      <Icon name="SearchX" size={48} className="text-slate-300 mb-4" />
+                      <p className="text-slate-500 font-medium">No {searchMode === 'product' ? 'products' : 'stores'} found.</p>
+                      <button onClick={() => {setSearchQuery(""); fetchData();}} className="text-blue-600 text-sm font-bold mt-2 hover:underline">Clear all filters</button>
                   </div>
               )}
             </div>
 
-            {/* Pagination (desktop right bottom) */}
+            {/* Pagination */}
             {totalItemsCount > itemsPerPage && (
-              <>
-                <div className="hidden md:flex items-center gap-2 fixed bottom-6 right-6 z-30">
-                  <button onClick={() => setCurrentPage(p => Math.max(1, p-1))} className="px-3 py-2 rounded-full bg-white border border-gray-200 shadow-sm hover:bg-gray-50">
-                    Prev
-                  </button>
+              <div className="flex items-center justify-center gap-4 mt-12 mb-8">
+                <button 
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => Math.max(1, p-1))} 
+                  className="p-2 rounded-full bg-white border border-gray-200 shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Icon name="ChevronLeft" size={20} />
+                </button>
 
-                  <div className="bg-white border px-3 py-1 rounded-md text-sm shadow-sm">
-                    Page {currentPage} / {totalPages}
-                  </div>
-
-                  <button onClick={() => setCurrentPage(p => Math.min(totalPages, p+1))} className="px-3 py-2 rounded-full bg-white border border-gray-200 shadow-sm hover:bg-gray-50">
-                    Next
-                  </button>
+                <div className="text-sm font-semibold text-slate-600">
+                  Page <span className="text-blue-600">{currentPage}</span> of {totalPages}
                 </div>
 
-                {/* Mobile pagination bottom */}
-                <div className="md:hidden mt-4 flex items-center justify-center gap-3">
-                  <button onClick={() => setCurrentPage(p => Math.max(1, p-1))} className="px-3 py-2 rounded-full border">Prev</button>
-                  <span className="text-sm text-gray-500">Page {currentPage}/{totalPages}</span>
-                  <button onClick={() => setCurrentPage(p => Math.min(totalPages, p+1))} className="px-3 py-2 rounded-full border">Next</button>
-                </div>
-              </>
+                <button 
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p+1))} 
+                  className="p-2 rounded-full bg-white border border-gray-200 shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Icon name="ChevronRight" size={20} />
+                </button>
+              </div>
             )}
           </>
         )}
@@ -319,7 +323,7 @@ const MarketplaceBrowse = () => {
 };
 
 const MarketPlaceBrowsePage = () => (
-  <Suspense fallback={<div className="h-screen flex items-center justify-center">Loading...</div>}>
+  <Suspense fallback={<div className="h-screen flex items-center justify-center text-slate-500">Loading marketplace...</div>}>
     <MarketplaceBrowse />
   </Suspense>
 );

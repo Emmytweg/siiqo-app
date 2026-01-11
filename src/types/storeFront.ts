@@ -25,7 +25,7 @@ export interface Storefront {
     id: number;
     business_name: string;
     description: string;
-    logo: string | null;
+    logo?: string | null;
     address: string;
     established_at?: string;
     banner: string | null;

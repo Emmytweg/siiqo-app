@@ -15,6 +15,7 @@ import Skeleton from "@/components/skeleton";
 import { Storefront } from "@/types/storeFront";
 import { storefrontService } from "@/services/storefrontService";
 import { fetchGlobalSearch, getStorefrontDetails, fetchActiveStorefronts } from "@/services/api";
+import { useLocation } from "@/context/LocationContext";
 
 
 /**
@@ -27,6 +28,7 @@ import { fetchGlobalSearch, getStorefrontDetails, fetchActiveStorefronts } from 
  */
 export const StorefrontList = ({ onRefresh }: { onRefresh?: () => Promise<void> }) => {
   const router = useRouter();
+  const { coords } = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [stores, setStores] = useState<Storefront[]>([]);
   const [error, setError] = useState(false);
@@ -35,19 +37,46 @@ export const StorefrontList = ({ onRefresh }: { onRefresh?: () => Promise<void> 
     setIsLoading(true);
     setError(false);
     try {
-      const response = await fetchActiveStorefronts();
-      
-      /**
-       * FIX: Accessing the 'storefronts' key specifically
-       * Your API returns: { count: X, status: "success", storefronts: [...] }
-       */
-      if (response.data?.status === "success" || response.data?.storefronts) {
-        // Handle cases where response might be the raw axios object or just the data
-        const data = response.data?.storefronts || [];
-        setStores(data);
-      } else {
-        throw new Error("Failed to fetch stores");
+      const nearUrl = new URL("https://server.siiqo.com/api/marketplace/search");
+      if (coords?.lat && coords?.lng) {
+        nearUrl.searchParams.set("lat", String(coords.lat));
+        nearUrl.searchParams.set("lng", String(coords.lng));
       }
+      const allUrl = new URL("https://server.siiqo.com/api/marketplace/search");
+
+      const [nearRes, allRes] = await Promise.all([
+        fetch(nearUrl.toString()),
+        fetch(allUrl.toString()),
+      ]);
+
+      const nearJson = await nearRes.json();
+      const allJson = await allRes.json();
+
+      const nearStores = nearJson?.data?.nearby_stores || [];
+      const allStores = allJson?.data?.storefronts || allJson?.data?.nearby_stores || [];
+
+      const dedupById = (arr: any[]) => {
+        const seen = new Set();
+        const out: any[] = [];
+        for (const it of arr) {
+          const key = it?.id ?? it?.slug ?? it?.business_name;
+          if (!key) continue; // skip completely unidentified entries
+          if (!seen.has(key)) {
+            seen.add(key);
+            out.push(it);
+          }
+        }
+        return out;
+      };
+
+      const merged = dedupById([...nearStores, ...allStores]);
+      merged.sort((a, b) => {
+        const da = typeof a.distance_km === "number" ? a.distance_km : Infinity;
+        const db = typeof b.distance_km === "number" ? b.distance_km : Infinity;
+        return da - db;
+      });
+
+      setStores(merged);
     } catch (err) {
       console.error("Failed to fetch live storefronts", err);
       setError(true);
@@ -58,7 +87,7 @@ export const StorefrontList = ({ onRefresh }: { onRefresh?: () => Promise<void> 
 
   useEffect(() => {
     fetchStores();
-  }, []);
+  }, [coords]);
 
   const handleRefresh = async () => {
     await fetchStores();

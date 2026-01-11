@@ -3,36 +3,50 @@ import api from "@/lib/api_client";
 // Local helper to ensure auth header is present for cart calls
 const authHeaders = () => {
   if (typeof window === "undefined") return {};
+
+  // 1. Try to get token from all possible storage locations
   const token =
     sessionStorage.getItem("RSToken") ||
     localStorage.getItem("RSToken") ||
     document.cookie
-      .split(";")
-      .map((c) => c.trim())
-      .find((c) => c.startsWith("RSToken"))
+      .split("; ")
+      .find((row) => row.startsWith("RSToken="))
       ?.split("=")[1];
 
-  return token ? { Authorization: `Bearer ${decodeURIComponent(token)}` } : {};
+  // 2. Critical Fix: Ensure token exists and is not a "null"/"undefined" string
+  if (!token || token === "undefined" || token === "null") {
+    console.error("Cart Service: No valid RSToken found in storage or cookies");
+    return {};
+  }
+
+  // 3. Clean and return the header
+  const cleanToken = decodeURIComponent(token).replace(/^"|"$/g, ''); // Remove quotes if present
+  return { 
+    Authorization: `Bearer ${cleanToken}`,
+    "Content-Type": "application/json" 
+  };
 };
 
 export const cartService = {
-  // Matches your api.ts: apiClient.post("/cart/add", data)
   addToCart: async (productId: number, quantity: number) => {
+    const headers = authHeaders();
+    if (!headers.Authorization) throw new Error("Please log in to add items to cart");
+
     const response = await api.post(
       "/cart/add",
       { product_id: productId, quantity },
-      { headers: authHeaders() }
+      { headers }
     );
     return response.data;
   },
 
-  // Matches your api.ts: apiClient.get("/cart")
   fetchCartItems: async () => {
-    const response = await api.get("/cart", { headers: authHeaders() });
+    const headers = authHeaders();
+    // Providing headers directly to ensure the Authorization key is present
+    const response = await api.get("/cart", { headers });
     return response.data;
   },
 
-  // Matches your api.ts: apiClient.patch(`/cart/update/${itemId}`, data)
   updateCartItem: async (itemId: number | string, quantity: number) => {
     const response = await api.patch(
       `/cart/update/${itemId}`,
@@ -42,7 +56,6 @@ export const cartService = {
     return response.data;
   },
 
-  // Delete cart item by ID
   deleteCartItem: async (itemId: number | string) => {
     const response = await api.delete(`/cart/delete/${itemId}`, {
       headers: authHeaders(),
@@ -50,7 +63,6 @@ export const cartService = {
     return response.data;
   },
 
-  // Matches your api.ts: apiClient.delete("/cart/clear")
   clearCart: async () => {
     const response = await api.delete("/cart/clear", {
       headers: authHeaders(),
@@ -58,7 +70,6 @@ export const cartService = {
     return response.data;
   },
 
-  // Matches your api.ts: apiClient.post("/buyer-orders/checkout", data)
   checkout: async (checkoutData: any) => {
     const response = await api.post("/buyer-orders/checkout", checkoutData, {
       headers: authHeaders(),

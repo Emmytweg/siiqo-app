@@ -7,10 +7,11 @@ import Image from "@/components/ui/AppImage";
 import Button from "@/components/Button";
 import { X, Phone, MessageSquare } from "lucide-react";
 import apiClient from "@/services/api";
+import { toast } from "@/hooks/use-toast";
 
 interface Seller {
   name: string;
-  avatar?: string;
+  banner_url?: string;
   rating: number;
   reviewCount: number;
   responseTime: string;
@@ -29,24 +30,29 @@ interface SellerCardProps {
 const SellerCard = ({
   seller,
   isMobile = false,
-  onNavigateToVendorProfile = () => {}
+  onNavigateToVendorProfile = () => {},
 }: SellerCardProps) => {
   const [showContactModal, setShowContactModal] = useState(false);
   const router = useRouter();
 
   // Handle Initial for Avatar Fallback
   const sellerInitial = seller.name ? seller.name.charAt(0).toUpperCase() : "?";
-  const hasAvatar = seller.avatar && seller.avatar.trim() !== "" && !seller.avatar.includes("placeholder");
+  const hasAvatar =
+    seller.banner_url &&
+    seller.banner_url.trim() !== "" &&
+    !seller.banner_url.includes("placeholder");
 
   const handleWhatsApp = () => {
     if (!seller.phoneNumber) {
       alert("WhatsApp contact not available for this seller.");
       return;
     }
-    const message = encodeURIComponent(`Hello ${seller.name}, I'm interested in your product on siiqo.`);
+    const message = encodeURIComponent(
+      `Hello ${seller.name}, I'm interested in your product on siiqo.`
+    );
     // Remove non-digits for the URL
-    const cleanNumber = seller.phoneNumber.replace(/\D/g, '');
-    window.open(`https://wa.me/${cleanNumber}?text=${message}`, '_blank');
+    const cleanNumber = seller.phoneNumber.replace(/\D/g, "");
+    window.open(`https://wa.me/${cleanNumber}?text=${message}`, "_blank");
     setShowContactModal(false);
   };
 
@@ -62,9 +68,10 @@ const SellerCard = ({
   const navigateToSeller = async () => {
     try {
       // Read token explicitly and include Authorization header
-      const token = typeof window !== "undefined"
-        ? sessionStorage.getItem("RSToken") || localStorage.getItem("RSToken")
-        : null;
+      const token =
+        typeof window !== "undefined"
+          ? sessionStorage.getItem("RSToken") || localStorage.getItem("RSToken")
+          : null;
 
       if (!token) {
         // If not authenticated, try the provided seller.slug
@@ -72,7 +79,11 @@ const SellerCard = ({
           router.push(`/vendor-public-view/${seller.slug}`);
           return;
         }
-        alert("Please log in to retrieve your storefront.");
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to retrieve your storefront.",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -84,8 +95,11 @@ const SellerCard = ({
       const finalSlug = slugFromSettings || seller.slug;
 
       if (!finalSlug) {
-        alert("Store slug not available.");
-        return;
+        toast({
+          title: "Authentication Required",
+          description: "Storefront not found.",
+          variant: "destructive",
+        });
       }
 
       router.push(`/vendor-public-view/${finalSlug}`);
@@ -120,7 +134,7 @@ const SellerCard = ({
           <div className="relative w-16 h-16 overflow-hidden rounded-full bg-gray-100 flex items-center justify-center border-2 border-white shadow-sm">
             {hasAvatar ? (
               <Image
-                src={seller.avatar!}
+                src={seller.banner_url}
                 alt={seller.name}
                 fill
                 className="object-cover"
@@ -140,15 +154,25 @@ const SellerCard = ({
           </h4>
           <div className="flex items-center mb-2 space-x-2">
             <div className="flex items-center space-x-1">
-              <Icon name="Star" size={14} className="text-orange-500 fill-current" />
-              <span className="text-sm font-medium text-text-primary">{seller.rating || "5.0"}</span>
+              <Icon
+                name="Star"
+                size={14}
+                className="text-orange-500 fill-current"
+              />
+              <span className="text-sm font-medium text-text-primary">
+                {seller.rating || "5.0"}
+              </span>
             </div>
-            <span className="text-xs text-text-secondary">({seller.reviewCount || 0} reviews)</span>
+            {/* <span className="text-xs text-text-secondary">
+              ({seller.reviewCount || 0} reviews)
+            </span> */}
           </div>
           <div className="flex flex-col gap-1">
             <div className="flex items-center space-x-2">
               <Icon name="Clock" size={12} className="text-gray-400" />
-              <span className="text-xs text-text-secondary">{seller.responseTime}</span>
+              <span className="text-xs text-text-secondary">
+                {seller.responseTime}
+              </span>
             </div>
           </div>
         </div>
@@ -167,8 +191,8 @@ const SellerCard = ({
 
       {/* Secondary Action */}
       <div className="flex items-center justify-center pt-4 mt-4 border-t border-gray-50">
-        <button 
-          onClick={navigateToSeller} 
+        <button
+          onClick={navigateToSeller}
           className="flex items-center gap-2 text-[#E0921C] font-semibold hover:opacity-80 transition-opacity"
         >
           <Icon name="User" size={16} />
@@ -181,14 +205,19 @@ const SellerCard = ({
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="w-full max-w-sm overflow-hidden bg-white rounded-3xl shadow-2xl scale-in-center">
             <div className="flex items-center justify-between p-5 border-b border-gray-50">
-              <h3 className="text-lg font-bold text-slate-900">Contact {seller.name}</h3>
-              <button onClick={() => setShowContactModal(false)} className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+              <h3 className="text-lg font-bold text-slate-900">
+                Contact {seller.name}
+              </h3>
+              <button
+                onClick={() => setShowContactModal(false)}
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+              >
                 <X size={20} className="text-slate-500" />
               </button>
             </div>
-            
+
             <div className="p-6 space-y-4">
-              <button 
+              <button
                 onClick={handleWhatsApp}
                 className="flex items-center justify-center w-full gap-3 p-4 text-white transition-transform active:scale-95 bg-[#25D366] rounded-2xl font-bold shadow-md hover:bg-[#20ba5a]"
               >
@@ -196,7 +225,7 @@ const SellerCard = ({
                 Message on WhatsApp
               </button>
 
-              <button 
+              <button
                 onClick={handleCall}
                 className="flex items-center justify-center w-full gap-3 p-4 text-white transition-transform active:scale-95 bg-[#212830] rounded-2xl font-bold shadow-md hover:opacity-90"
               >
@@ -204,8 +233,8 @@ const SellerCard = ({
                 Call Seller
               </button>
             </div>
-            
-            <button 
+
+            <button
               onClick={() => setShowContactModal(false)}
               className="w-full py-5 text-sm font-bold text-gray-400 hover:text-red-500 transition-colors border-t border-gray-50"
             >

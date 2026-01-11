@@ -86,7 +86,7 @@ export default function ProductFinder() {
               <NearbyDeals onRefresh={handlePullToRefresh} />
             </section>
 
-            <section className="mb-8">
+            {/* <section className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold font-heading text-text-primary">
                   Recently Viewed
@@ -99,7 +99,7 @@ export default function ProductFinder() {
                 </button>
               </div>
               <RecentlyViewed />
-            </section>
+            </section> */}
 {/* 
             <section className="mb-8">
               <PopularInArea />

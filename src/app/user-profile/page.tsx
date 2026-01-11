@@ -13,7 +13,7 @@ import { vendorService } from "@/services/vendorService";
 import { toast } from "@/hooks/use-toast";
 
 const UserProfile = () => {
-  const [activeTab, setActiveTab] = useState<string>("history");
+  const [activeTab, setActiveTab] = useState<string>("saved");
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const { logout, refreshUserProfile } = useAuth();
@@ -248,12 +248,12 @@ const UserProfile = () => {
           </p>
           
           <div className="flex items-center justify-center gap-4 mt-6">
-            <button 
+            {/* <button 
               onClick={() => isEditing ? handleSaveProfile() : setIsEditing(true)}
               className="px-6 py-2 bg-primary text-white rounded-full text-sm font-bold shadow-md hover:bg-primary/90 transition-all"
             >
               {isEditing ? "SAVE CHANGES" : "EDIT PROFILE"}
-            </button>
+            </button> */}
             {store_settings?.initialized ? (
               <button 
                 onClick={() => router.push('/vendor/dashboard')} 
@@ -340,7 +340,7 @@ const UserProfile = () => {
           <main className="md:col-span-8">
              <div className="mb-20 border rounded-3xl bg-white shadow-sm overflow-hidden min-h-[500px]">
                 <div className="flex border-b bg-gray-50/50">
-                  {['history', 'saved', 'settings'].map((tab) => (
+                  {['saved', 'settings'].map((tab) => (
                     <button 
                       key={tab} 
                       onClick={() => setActiveTab(tab)}
@@ -353,12 +353,12 @@ const UserProfile = () => {
                 <div className="p-8">
                   {activeTab === "saved" && <SavedItems />}
                   {activeTab === "settings" && <Settings />}
-                  {activeTab === "history" && (
+                  {/* {activeTab === "history" && (
                       <div className="flex flex-col items-center justify-center py-20 text-center">
                           <Icon name="History" size={48} className="text-gray-200 mb-4" />
                           <p className="text-gray-400 font-medium italic">No recent activity to show.</p>
                       </div>
-                  )}
+                  )} */}
                 </div>
              </div>
           </main>

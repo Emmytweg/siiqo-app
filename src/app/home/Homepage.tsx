@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import LandingPage from "./LandingPage";
 import NearbyDealCard, { DealData } from "./ui/NearbyDealsProdCard";
 import { Product } from "@/types/products";
+import { useLocation } from "@/context/LocationContext";
 
 const CATEGORIES = ["All Items", "Smartphones", "Electronics", "Fashion"];
 const ITEMS_PER_PAGE = 4;
@@ -248,14 +249,50 @@ const Homepage: React.FC = () => {
 
   const [products, setProducts] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(2);
+  const { coords } = useLocation();
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch("https://server.siiqo.com/api/marketplace/search");
-      const result = await response.json();
-      if (result.status === "success") {
-        setProducts(result.data.nearby_products);
+      const nearUrl = new URL("https://server.siiqo.com/api/marketplace/search");
+      if (coords?.lat && coords?.lng) {
+        nearUrl.searchParams.set("lat", String(coords.lat));
+        nearUrl.searchParams.set("lng", String(coords.lng));
       }
+      const allUrl = new URL("https://server.siiqo.com/api/marketplace/search");
+      console.log('[Homepage] Fetch near:', nearUrl.toString(), '| Coords:', coords);
+      console.log('[Homepage] Fetch all:', allUrl.toString());
+      const [nearRes, allRes] = await Promise.all([
+        fetch(nearUrl.toString()),
+        fetch(allUrl.toString())
+      ]);
+      const nearJson = await nearRes.json();
+      const allJson = await allRes.json();
+      console.log('[Homepage] Near Response:', nearJson);
+      console.log('[Homepage] All Response:', allJson);
+      const nearProducts = nearJson?.data?.nearby_products || [];
+      const nearStores = nearJson?.data?.nearby_stores || [];
+      const allProducts = allJson?.data?.products || allJson?.data?.nearby_products || [];
+      const allStores = allJson?.data?.stores || allJson?.data?.nearby_stores || [];
+      const dedupById = (arr: any[]) => {
+        const seen = new Set();
+        const out: any[] = [];
+        for (const it of arr) {
+          const id = it?.id;
+          if (id == null) continue;
+          if (!seen.has(id)) {
+            seen.add(id);
+            out.push(it);
+          }
+        }
+        return out;
+      };
+      const merged = dedupById([...nearProducts, ...allProducts]);
+      merged.sort((a, b) => {
+        const da = typeof a.distance_km === 'number' ? a.distance_km : Infinity;
+        const db = typeof b.distance_km === 'number' ? b.distance_km : Infinity;
+        return da - db;
+      });
+      setProducts(merged);
     } catch (err) {
       console.error("Failed to fetch products");
     }
@@ -263,7 +300,7 @@ const Homepage: React.FC = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [coords]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

@@ -465,7 +465,7 @@ useEffect(() => {
         </div>
 
         {/* PUBLISH STATUS */}
-        <div className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
+        {/* <div className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
             <CheckCircle2 size={14} /> Storefront Status
           </label>
@@ -489,7 +489,7 @@ useEffect(() => {
               />
             </button>
           </div>
-        </div>
+        </div> */}
 
         {/* WORKING HOURS */}
         <div className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">

@@ -9,6 +9,7 @@ import { CartProvider } from "@/context/CartContext";
 import MainContentWrapper from "./home/MainContentWrapper";
 import { CartModalProvider } from "@/context/cartModalContext";
 import ToastProvider from "@/context/ToastProvider";
+import { LocationProvider } from "@/context/LocationContext";
 
 export const metadata: Metadata = {
   title: "Siiqo",
@@ -30,13 +31,15 @@ export default function RootLayout({
         <AuthProvider>
           <CartProvider>
             <CartModalProvider>
-              <ErrorBoundary>
-                <ConditionalHeader />
-                <ToastProvider/>
-                <MainContentWrapper>{children}</MainContentWrapper>
-                <ConditionalBottomNav />
-                <ScrollToTop />
-              </ErrorBoundary>
+              <LocationProvider>
+                <ErrorBoundary>
+                  <ConditionalHeader />
+                  <ToastProvider/>
+                  <MainContentWrapper>{children}</MainContentWrapper>
+                  <ConditionalBottomNav />
+                  <ScrollToTop />
+                </ErrorBoundary>
+              </LocationProvider>
             </CartModalProvider>
           </CartProvider>
         </AuthProvider>

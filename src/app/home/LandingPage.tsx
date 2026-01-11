@@ -9,6 +9,7 @@ import {
   StorefrontSkeleton,
 } from "@/app/home/ui/StoreFrontCard";
 import { useRouter } from "next/navigation";
+import { useLocation } from "@/context/LocationContext";
 
 // Animation Variants
 const containerVariants: Variants = {
@@ -43,37 +44,76 @@ const LandingPage: React.FC<{ onRefresh?: () => Promise<void> }> = ({ onRefresh 
   const [currentPage, setCurrentPage] = useState<number>(1);
   
   const router = useRouter();
+  const { coords } = useLocation();
 
-  const loadData = async (query: string = "") => {
-    setIsLoading(true);
-    setError(null);
-    setCurrentPage(1);
-    try {
-      let url = "https://server.siiqo.com/api/marketplace/search";
-      
-      // Add search query parameter if provided
-      if (query.trim()) {
-        url += `?q=${encodeURIComponent(query.trim())}`;
-      }
-      
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Failed to fetch data from server");
-      
-      const result = await response.json();
-      const apiStores = result.data?.nearby_stores || [];
-      setStorefronts(apiStores);
-      
-    } catch (err: any) {
-      setError(err.message);
-      setStorefronts([]); 
-    } finally {
-      setIsLoading(false);
+const loadData = async (query: string = "") => {
+  setIsLoading(true);
+  setError(null);
+  setCurrentPage(1);
+  try {
+    const nearUrl = new URL("https://server.siiqo.com/api/marketplace/search");
+    if (query.trim()) nearUrl.searchParams.set("q", query.trim());
+    if (coords?.lat && coords?.lng) {
+      nearUrl.searchParams.set("lat", String(coords.lat));
+      nearUrl.searchParams.set("lng", String(coords.lng));
     }
-  };
+
+    const allUrl = new URL("https://server.siiqo.com/api/marketplace/search");
+    if (query.trim()) allUrl.searchParams.set("q", query.trim());
+
+    const [nearRes, allRes] = await Promise.all([
+      fetch(nearUrl.toString()),
+      fetch(allUrl.toString())
+    ]);
+    
+    if (!nearRes.ok || !allRes.ok) throw new Error("Failed to fetch data from server");
+
+    const nearJson = await nearRes.json();
+    const allJson = await allRes.json();
+
+    // The API structure you provided shows stores are in data.nearby_stores
+    const nearStores = nearJson?.data?.nearby_stores || [];
+    const allStores = allJson?.data?.storefronts || allJson?.data?.nearby_stores || [];
+
+    const dedupBySlugOrName = (arr: any[]) => {
+      const seen = new Set();
+      const out: any[] = [];
+      for (const it of arr) {
+        // FIX: Use slug or business_name as a fallback ID
+        const key = it?.id || it?.slug || it?.business_name;
+        
+        if (!key) continue; 
+        
+        if (!seen.has(key)) {
+          seen.add(key);
+          out.push(it);
+        }
+      }
+      return out;
+    };
+
+    const merged = dedupBySlugOrName([...nearStores, ...allStores]);
+    
+    merged.sort((a, b) => {
+      const da = typeof a.distance_km === 'number' ? a.distance_km : Infinity;
+      const db = typeof b.distance_km === 'number' ? b.distance_km : Infinity;
+      return da - db;
+    });
+
+    setStorefronts(merged);
+    
+  } catch (err: any) {
+    setError(err.message);
+    setStorefronts([]); 
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   useEffect(() => {
-    loadData();
-  }, []);
+    loadData(searchTerm);
+    // re-fetch when coords change to update proximity results
+  }, [coords]);
 
   const filteredStorefronts = storefronts.filter((store) => {
     if (

@@ -12,8 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 // Sub-components
 import MyListings from "../user-profile/components/MyListings";
 import VendorOrders from "../vendor/profile/components/VendorOrders";
-import Settings from "../user-profile/components/Settings";
-
+import Settings from "../vendor/settings/page";
 interface Tab {
   id: string;
   label: string;
@@ -164,7 +163,7 @@ const VendorProfile = () => {
     switch (activeTab) {
       case "listings": return <MyListings />;
       case "orders": return <VendorOrders />;
-      case "settings": return <Settings userProfile={profileData} />;
+      case "settings": return <Settings  />;
       default: return <MyListings />;
     }
   };

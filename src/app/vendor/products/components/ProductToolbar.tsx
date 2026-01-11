@@ -68,8 +68,8 @@ const ProductToolbar: React.FC<ProductToolbarProps> = ({
     { value: 'price-desc', label: 'Price (High to Low)' },
     { value: 'stock-asc', label: 'Stock (Low to High)' },
     { value: 'stock-desc', label: 'Stock (High to Low)' },
-    { value: 'created-desc', label: 'Newest First' },
-    { value: 'created-asc', label: 'Oldest First' }
+    // { value: 'created-desc', label: 'Newest First' },
+    // { value: 'created-asc', label: 'Oldest First' }
   ];
 
   const handleBulkAction = (action: BulkAction) => {

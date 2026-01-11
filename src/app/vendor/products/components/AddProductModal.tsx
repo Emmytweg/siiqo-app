@@ -58,6 +58,8 @@ export interface ProductFormData {
   tags: string[];
   images: ManagedImage[];
   location?: string;
+  latitude?: string;
+  longitude?: string;
   availableFrom?: string; // ISO date
   availableTo?: string; // ISO date
   publish?: boolean;
@@ -115,6 +117,8 @@ const initialFormData: ProductFormData = {
   tags: [],
   images: [],
   location: "",
+  latitude: "",
+  longitude: "",
   availableFrom: "",
   availableTo: "",
   publish: false,
@@ -154,7 +158,12 @@ const AddProductWizard: React.FC<AddProductWizardProps> = ({
       await detectLocation();
       if (autoDetectedLocation.state && autoDetectedLocation.country) {
         const locationString = `${autoDetectedLocation.state}, ${autoDetectedLocation.country}`;
-        setFormData((prev) => ({ ...prev, location: locationString }));
+        setFormData((prev) => ({ 
+          ...prev, 
+          location: locationString,
+          latitude: autoDetectedLocation.latitude || "",
+          longitude: autoDetectedLocation.longitude || ""
+        }));
         toast.success("Location detected successfully!");
       }
     } catch (error) {
@@ -252,6 +261,8 @@ const AddProductWizard: React.FC<AddProductWizardProps> = ({
             })
           ),
           location: editingProduct.location || "",
+          latitude: editingProduct.latitude?.toString() || "",
+          longitude: editingProduct.longitude?.toString() || "",
           availableFrom: editingProduct.availableFrom || "",
           availableTo: editingProduct.availableTo || "",
           publish: !!editingProduct.publish,
@@ -413,6 +424,15 @@ const processSubmission = async (isPublished: boolean) => {
     formDataPayload.append("status", isPublished ? "active" : "draft");
     formDataPayload.append("is_published", String(isPublished));
     formDataPayload.append("location", formData.location || "");
+    
+    // Add latitude and longitude if available
+    if (formData.latitude) {
+      formDataPayload.append("latitude", String(Number(formData.latitude)));
+    }
+    if (formData.longitude) {
+      formDataPayload.append("longitude", String(Number(formData.longitude)));
+    }
+    
     formDataPayload.append("availableFrom", formData.availableFrom || "");
     formDataPayload.append("availableTo", formData.availableTo || "");
     
@@ -950,10 +970,10 @@ const processSubmission = async (isPublished: boolean) => {
                       </Button>
                     </div>
                     
-                    {autoDetectedLocation.latitude && autoDetectedLocation.longitude && (
+                    {(formData.latitude || formData.longitude) && (
                       <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                         <p className="text-xs text-green-800">
-                          <span className="font-semibold">Coordinates detected:</span> {autoDetectedLocation.latitude}, {autoDetectedLocation.longitude}
+                          <span className="font-semibold">Coordinates:</span> Lat: {formData.latitude || 'N/A'}, Lng: {formData.longitude || 'N/A'}
                         </p>
                       </div>
                     )}

@@ -96,9 +96,10 @@ const VendorDetails = () => {
           description: "", // Placeholder
           established_at: "", // Placeholder
           ratings: vendorRes.average_rating,
-          business_banner: vendorRes.banner || null,
+          banner: vendorRes.banner || null,
+          logo: null, // VendorInfo doesn't have logo
           vendor: null, // Placeholder
-          address: "", // Placeholder
+          address: vendorRes.address || "", // Placeholder
           extended: null, // Placeholder
         });
       } catch (error) {

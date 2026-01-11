@@ -4,7 +4,17 @@ import React, { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Icon from "./AppIcon";
 import Link from "next/link";
-import { ShoppingCart, Store, X, LayoutDashboard, LogOut, User, ArrowLeft, Check, AlertCircle } from "lucide-react";
+import {
+  ShoppingCart,
+  Store,
+  X,
+  LayoutDashboard,
+  LogOut,
+  User,
+  ArrowLeft,
+  Check,
+  AlertCircle,
+} from "lucide-react";
 import CartDrawer from "@/components/CartDrawer";
 import { useAuth } from "@/context/AuthContext";
 import { useCartTotals } from "@/context/CartContext";
@@ -69,18 +79,21 @@ const Header: React.FC = () => {
     "/create-listing",
     "/vendor",
     "/shopping",
-    "/vendor-public-view"
+    "/vendor-public-view",
   ];
 
-  const isSearchPage = pathname.startsWith("/search") || pathname.startsWith("/search-results");
-  const isAppPage = !isSearchPage && appPages.some((page) => pathname.startsWith(page));
+  const isSearchPage =
+    pathname.startsWith("/search") || pathname.startsWith("/search-results");
+  const isAppPage =
+    !isSearchPage && appPages.some((page) => pathname.startsWith(page));
   const showBackButton = pathname === "/create-listing";
 
   const modalOptions: ModalOption[] = [
     {
       id: "buyer",
       title: "Start Shopping",
-      description: "Browse our amazing collection of products and find exactly what you need.",
+      description:
+        "Browse our amazing collection of products and find exactly what you need.",
       icon: ShoppingCart,
       buttonText: "Start Shopping",
       gradient: "from-purple-50 to-purple-100",
@@ -95,7 +108,8 @@ const Header: React.FC = () => {
     {
       id: "vendor",
       title: "Start Selling",
-      description: "Join our marketplace and grow your business by connecting with thousands of eager buyers.",
+      description:
+        "Join our marketplace and grow your business by connecting with thousands of eager buyers.",
       icon: Store,
       buttonText: "Start Selling",
       gradient: "from-blue-50 to-blue-100",
@@ -177,7 +191,8 @@ const Header: React.FC = () => {
   };
 
   const getFirstName = () => {
-    const displayName = user?.fullname || user?.business_name || user?.email || "User";
+    const displayName =
+      user?.fullname || user?.business_name || user?.email || "User";
     return displayName.split(" ")[0];
   };
 
@@ -192,8 +207,8 @@ const Header: React.FC = () => {
   // --- Effects ---
   // Auto-switch to buyer mode when on app pages with cart header
   useEffect(() => {
-    if (isAppPage && isLoggedIn && user?.active_view === 'vendor') {
-      handleSwitchMode('buyer').catch(error => {
+    if (isAppPage && isLoggedIn && user?.active_view === "vendor") {
+      handleSwitchMode("buyer").catch((error) => {
         console.error("Failed to auto-switch to buyer mode:", error);
       });
     }
@@ -203,8 +218,10 @@ const Header: React.FC = () => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
       if (
-        (desktopRef.current && !desktopRef.current.contains(target)) &&
-        (mobileRef.current && !mobileRef.current.contains(target))
+        desktopRef.current &&
+        !desktopRef.current.contains(target) &&
+        mobileRef.current &&
+        !mobileRef.current.contains(target)
       ) {
         setIsOpen(false);
       }
@@ -229,9 +246,11 @@ const Header: React.FC = () => {
         <div
           key={toast.id}
           className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium animate-in slide-in-from-bottom duration-300 ${
-            toast.type === "success" ? "bg-green-500" :
-            toast.type === "error" ? "bg-red-500" :
-            "bg-blue-500"
+            toast.type === "success"
+              ? "bg-green-500"
+              : toast.type === "error"
+              ? "bg-red-500"
+              : "bg-blue-500"
           }`}
         >
           {toast.type === "loading" && (
@@ -251,23 +270,23 @@ const Header: React.FC = () => {
   // const renderVendorButton = () => {
   //   if (isRegisteredVendor) {
   //     return (
-  //       <button 
-  //         onClick={handleVendorAccess} 
+  //       <button
+  //         onClick={handleVendorAccess}
   //         disabled={isSwitching}
   //         className="flex items-center w-full gap-2 p-3 text-sm font-medium text-left hover:bg-surface-secondary rounded-md transition-colors disabled:opacity-50"
   //       >
-  //         <LayoutDashboard size={16} /> 
+  //         <LayoutDashboard size={16} />
   //         {isSwitching ? "Switching..." : "Go to Dashboard"}
   //       </button>
   //     );
   //   }
   //   return (
-  //     <button 
-  //       onClick={() => { 
+  //     <button
+  //       onClick={() => {
   //         addToast("Redirecting to vendor onboarding...", "loading");
-  //         router.push("/auth/vendor-onboarding"); 
-  //         setIsOpen(false); 
-  //       }} 
+  //         router.push("/auth/vendor-onboarding");
+  //         setIsOpen(false);
+  //       }}
   //       className="flex items-center w-full gap-2 p-3 text-sm font-medium text-left hover:bg-surface-secondary rounded-md transition-colors"
   //     >
   //       <Store size={16} /> Become a Vendor
@@ -278,32 +297,52 @@ const Header: React.FC = () => {
   const GetStartedModal = () => {
     if (!isModalOpen) return null;
     return (
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={closeModal}>
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg sm:max-w-4xl px-4 py-8 max-h-[90vh] overflow-y-auto animate-in zoom-in duration-300" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+        onClick={closeModal}
+      >
+        <div
+          className="bg-white rounded-2xl shadow-2xl w-full max-w-lg sm:max-w-4xl px-4 py-8 max-h-[90vh] overflow-y-auto animate-in zoom-in duration-300"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="relative p-6 pb-0">
-            <button onClick={closeModal} className="absolute p-2 transition-colors rounded-full top-4 right-4 hover:bg-gray-100">
+            <button
+              onClick={closeModal}
+              className="absolute p-2 transition-colors rounded-full top-4 right-4 hover:bg-gray-100"
+            >
               <X className="w-6 h-6 text-gray-500" />
             </button>
             <div className="text-center">
-              <h2 className="mb-2 text-2xl font-bold text-gray-800">Choose Your Path</h2>
-              <p className="text-gray-600">Select how you'd like to get started with our platform</p>
+              <h2 className="mb-2 text-2xl font-bold text-gray-800">
+                Choose Your Path
+              </h2>
+              <p className="text-gray-600">
+                Select how you'd like to get started with our platform
+              </p>
             </div>
           </div>
           <div className="grid grid-cols-1 gap-6 p-6 mb-6 sm:grid-cols-2">
             {modalOptions.map((option) => {
               const IconComp = option.icon;
               return (
-                <div key={option.id} className={`group relative bg-gradient-to-br ${option.gradient} border-2 rounded-xl p-6 cursor-pointer transition-all duration-300 hover:shadow-lg ${option.hoverGradient} hover:scale-105`}>
+                <div
+                  key={option.id}
+                  className={`group relative bg-gradient-to-br ${option.gradient} border-2 rounded-xl p-6 cursor-pointer transition-all duration-300 hover:shadow-lg ${option.hoverGradient} hover:scale-105`}
+                >
                   <div className="text-center">
                     <div className="inline-flex items-center justify-center mb-4 bg-white rounded-full shadow-md w-14 h-14 sm:w-16 sm:h-16">
                       <IconComp className={`w-7 h-7 ${option.iconColor}`} />
                     </div>
-                    <h3 className="mb-2 text-lg font-semibold text-gray-800 sm:text-xl">{option.title}</h3>
-                    <p className="mb-4 text-sm text-gray-600">{option.description}</p>
+                    <h3 className="mb-2 text-lg font-semibold text-gray-800 sm:text-xl">
+                      {option.title}
+                    </h3>
+                    <p className="mb-4 text-sm text-gray-600">
+                      {option.description}
+                    </p>
                     <button
-                      onClick={() => { 
+                      onClick={() => {
                         addToast("Redirecting...", "loading");
-                        router.push(option.route); 
+                        router.push(option.route);
                         closeModal();
                       }}
                       className={`inline-block ${option.buttonColor} text-white px-5 py-2 rounded-lg font-medium text-sm ${option.buttonHoverColor} transition-colors`}
@@ -330,13 +369,27 @@ const Header: React.FC = () => {
               <img src="/images/siiqo.png" alt="Logo" className="w-full h-14" />
             </Link>
             <div className="flex items-center gap-4">
-              {isLoading ? <Skeleton type="rect" width="100px" height="36px" /> : 
-               isLoggedIn ? (
-                <Button variant="navy" onClick={() => router.push(user?.active_view === 'vendor' ? "/vendor/dashboard" : "/user-profile")}>
-                  {user?.active_view === 'vendor' ? "Vendor Dashboard" : "User Profile"}
+              {isLoading ? (
+                <Skeleton type="rect" width="100px" height="36px" />
+              ) : isLoggedIn ? (
+                <Button
+                  variant="navy"
+                  onClick={() =>
+                    router.push(
+                      user?.active_view === "vendor"
+                        ? "/vendor/dashboard"
+                        : "/user-profile"
+                    )
+                  }
+                >
+                  {user?.active_view === "vendor"
+                    ? "Vendor Dashboard"
+                    : "User Profile"}
                 </Button>
               ) : (
-                <Button variant="navy" onClick={openModal}>Get Started</Button>
+                <Button variant="navy" onClick={openModal}>
+                  Get Started
+                </Button>
               )}
             </div>
           </div>
@@ -353,19 +406,23 @@ const Header: React.FC = () => {
         <div className="flex items-center justify-between h-16 px-4 mx-auto max-w-7xl md:h-18 md:px-2">
           <div className="flex items-center space-x-4">
             {showBackButton ? (
-              <button 
-              onClick={() => { 
-                addToast("Going back...", "loading"); 
-                window.history.length > 1 ? router.back() : router.push("/"); 
-              }} 
-              disabled={isSwitching}
-              className="p-2 -ml-2 transition-colors rounded-lg hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              <button
+                onClick={() => {
+                  addToast("Going back...", "loading");
+                  window.history.length > 1 ? router.back() : router.push("/");
+                }}
+                disabled={isSwitching}
+                className="p-2 -ml-2 transition-colors rounded-lg hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
               >
-              <ArrowLeft size={20} />
+                <ArrowLeft size={20} />
               </button>
             ) : (
               <Link href="/" className="block">
-              <img src="/images/siiqo.png" alt="Logo" className="w-full h-14" />
+                <img
+                  src="/images/siiqo.png"
+                  alt="Logo"
+                  className="w-full h-14"
+                />
               </Link>
             )}
           </div>
@@ -376,8 +433,15 @@ const Header: React.FC = () => {
               <Skeleton type="rect" width="150px" height="30px" />
             ) : isLoggedIn ? (
               <>
-                <span className="hidden text-sm text-gray-600 lg:block">Welcome, {userData?.personal_info?.fullname || user?.fullname}</span>
-                <button onClick={handleCartOpen} className="relative p-2 transition-colors rounded-lg hover:bg-surface-secondary">
+                <span className="hidden text-sm text-gray-600 lg:block">
+                  Welcome, {userData?.personal_info?.fullname || user?.fullname}
+                </span>
+                <button
+                  onClick={() => addToast("Cart coming soon!", "loading")}
+                  disabled
+                  className="relative p-2 transition-colors rounded-lg hover:bg-surface-secondary opacity-50 cursor-not-allowed"
+                  title="Coming soon"
+                >
                   <ShoppingCart size={20} className="text-text-primary" />
                   {totalItems > 0 && (
                     <span className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
@@ -385,18 +449,33 @@ const Header: React.FC = () => {
                     </span>
                   )}
                 </button>
-                
+
                 <div className="relative" ref={desktopRef}>
-                  <button onClick={() => setIsOpen(!isOpen)} className="p-2 transition-colors rounded-lg hover:bg-surface-secondary">
+                  <button
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="p-2 transition-colors rounded-lg hover:bg-surface-secondary"
+                  >
                     <Icon name="AlignJustify" size={20} />
                   </button>
                   {isOpen && (
                     <div className="absolute right-0 z-10 flex flex-col gap-3 p-4 mt-2 bg-white border rounded-lg shadow-xl w-60 border-surface-border">
-                      <button onClick={() => { router.push("/user-profile"); setIsOpen(false); }} className={`w-full text-left p-3 hover:bg-surface-secondary flex items-center gap-2 text-sm font-medium rounded-md ${pathname === '/user-profile' ? 'hidden' : 'flex'}`}>
-                       <User size={16} /> { pathname === '/user-profile' ? "" : `My Profile `}
+                      <button
+                        onClick={() => {
+                          router.push("/user-profile");
+                          setIsOpen(false);
+                        }}
+                        className={`w-full text-left p-3 hover:bg-surface-secondary flex items-center gap-2 text-sm font-medium rounded-md ${
+                          pathname === "/user-profile" ? "hidden" : "flex"
+                        }`}
+                      >
+                        <User size={16} />{" "}
+                        {pathname === "/user-profile" ? "" : `My Profile `}
                       </button>
                       {/* {renderVendorButton()} */}
-                      <button onClick={handleLogout} className="w-full text-left p-3 text-white bg-red-600 hover:bg-red-700 flex items-center gap-2 text-sm font-medium rounded-md">
+                      <button
+                        onClick={handleLogout}
+                        className="w-full text-left p-3 text-white bg-red-600 hover:bg-red-700 flex items-center gap-2 text-sm font-medium rounded-md"
+                      >
                         <LogOut size={16} /> Logout
                       </button>
                     </div>
@@ -404,7 +483,9 @@ const Header: React.FC = () => {
                 </div>
               </>
             ) : (
-              <Button variant="navy" onClick={() => router.push("/auth/login")}>Login</Button>
+              <Button variant="navy" onClick={() => router.push("/auth/login")}>
+                Login
+              </Button>
             )}
           </div>
 
@@ -412,13 +493,26 @@ const Header: React.FC = () => {
           <div className="sm:hidden flex items-center gap-2">
             {isLoggedIn ? (
               <div className="relative" ref={mobileRef}>
-                <button onClick={() => setIsOpen(!isOpen)} className="p-2 rounded-lg hover:bg-surface-secondary">
+                <button
+                  onClick={() => setIsOpen(!isOpen)}
+                  className="p-2 rounded-lg hover:bg-surface-secondary"
+                >
                   <Icon name="AlignJustify" size={20} />
                 </button>
                 {isOpen && (
                   <div className="absolute right-0 z-10 flex flex-col gap-2 p-4 mt-2 bg-white border rounded-lg shadow-xl w-60 border-surface-border">
-                    <span className="pb-2 text-sm font-bold border-b">Hi, {userData?.personal_info?.fullname || user?.fullname || "User"}</span>
-                    <button onClick={handleCartOpen} className="relative flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-gray-800 rounded-lg">
+                    <span className="pb-2 text-sm font-bold border-b">
+                      Hi,{" "}
+                      {userData?.personal_info?.fullname ||
+                        user?.fullname ||
+                        "User"}
+                    </span>
+                    <button
+                      onClick={() => addToast("Cart coming soon!", "loading")}
+                      disabled
+                      className="relative flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-gray-400 rounded-lg opacity-60 cursor-not-allowed"
+                      title="Coming soon"
+                    >
                       <ShoppingCart size={16} className="mr-2" /> Cart
                       {totalItems > 0 && (
                         <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
@@ -427,14 +521,19 @@ const Header: React.FC = () => {
                       )}
                     </button>
                     {/* {renderVendorButton()} */}
-                    <button onClick={handleLogout} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg text-left">
+                    <button
+                      onClick={handleLogout}
+                      className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg text-left"
+                    >
                       <LogOut size={16} className="inline mr-2" /> Logout
                     </button>
                   </div>
                 )}
               </div>
             ) : (
-              <Button variant="navy" onClick={openModal}>Get Started</Button>
+              <Button variant="navy" onClick={openModal}>
+                Get Started
+              </Button>
             )}
           </div>
         </div>
