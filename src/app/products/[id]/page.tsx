@@ -25,7 +25,9 @@ export default function ProductDetailPage() {
   const [isWishlisted, setIsWishlisted] = useState(false);
 
   // Calculate cart quantity for this product
-  const cartQuantity = cartItems.find((item) => item.product_id === Number(productId))?.quantity || 0;
+  const cartQuantity =
+    cartItems.find((item) => item.product_id === Number(productId))?.quantity ||
+    0;
 
   // Switch to buyer mode
   useEffect(() => {
@@ -81,7 +83,7 @@ export default function ProductDetailPage() {
       </div>
     );
   }
-console.log("Product Data:", productData);
+  console.log("Product Data:", productData);
   if (!productData) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -156,6 +158,25 @@ console.log("Product Data:", productData);
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="mx-auto max-w-7xl px-4 py-6">
+        <button
+          onClick={() => router.back()}
+          className="mb-6 flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+          aria-label="Go back"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          Back
+        </button>
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           <ImageGallery
             images={images}
@@ -180,11 +201,14 @@ console.log("Product Data:", productData);
 
             <LocationMap
               location={{
-                address: "Lagos, Nigeria",
-                lat: 6.5244,
-                lng: 3.3792,
+                address: productData.location || "Location not available",
+                lat: productData.latitude || 6.5244,
+                lng: productData.longitude || 3.3792,
               }}
-              onGetDirections={() => {}}
+              onGetDirections={() => {
+                const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${productData.latitude},${productData.longitude}`;
+                window.open(mapsUrl, "_blank");
+              }}
             />
           </div>
         </div>
@@ -200,11 +224,12 @@ console.log("Product Data:", productData);
           isWishlisted={isWishlisted}
         />
       */}
-      
+
       <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-background to-background/80 backdrop-blur-sm border-t border-gray-200 p-4 text-center">
-        <p className="text-sm font-semibold text-gray-500">Coming Soon: Enhanced Cart & Checkout</p>
+        <p className="text-sm font-semibold text-gray-500">
+          Coming Soon: Enhanced Cart & Checkout
+        </p>
       </div>
     </div>
   );
 }
-

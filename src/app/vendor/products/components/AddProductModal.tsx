@@ -18,6 +18,7 @@ import { vendorService } from "@/services/vendorService";
 import { toast } from "sonner";
 import { productService } from "@/services/productService";
 import { useLocationDetection } from "@/hooks/useLocationDetection";
+import ShareModal from "@/components/ShareModal";
 /* ===========================
    Types
    =========================== */
@@ -136,14 +137,17 @@ const AddProductWizard: React.FC<AddProductWizardProps> = ({
   // loading = false,
 }) => {
   const [currentStep, setCurrentStep] = useState<WizardStep>("photos");
-  const [formData, setFormData] =
-    useState<ProductFormData>(initialFormData);
+  const [formData, setFormData] = useState<ProductFormData>(initialFormData);
   const [dragActive, setDragActive] = useState<boolean>(false);
   const [uploadErrors, setUploadErrors] = useState<string[]>([]);
   const [saveAsDraft, setSaveAsDraft] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [categoryOptions, setCategoryOptions] = useState<SelectOption[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState<boolean>(false);
+  const [showShareModal, setShowShareModal] = useState<boolean>(false);
+  const [createdProductId, setCreatedProductId] = useState<
+    string | number | null
+  >(null);
 
   // Location detection hook
   const {
@@ -158,11 +162,11 @@ const AddProductWizard: React.FC<AddProductWizardProps> = ({
       await detectLocation();
       if (autoDetectedLocation.state && autoDetectedLocation.country) {
         const locationString = `${autoDetectedLocation.state}, ${autoDetectedLocation.country}`;
-        setFormData((prev) => ({ 
-          ...prev, 
+        setFormData((prev) => ({
+          ...prev,
           location: locationString,
           latitude: autoDetectedLocation.latitude || "",
-          longitude: autoDetectedLocation.longitude || ""
+          longitude: autoDetectedLocation.longitude || "",
         }));
         toast.success("Location detected successfully!");
       }
@@ -188,7 +192,11 @@ const AddProductWizard: React.FC<AddProductWizardProps> = ({
       try {
         setCategoriesLoading(true);
         const response = await productService.getCategories();
-        if (response && response.categories && Array.isArray(response.categories)) {
+        if (
+          response &&
+          response.categories &&
+          Array.isArray(response.categories)
+        ) {
           const options = response.categories.map((cat: any) => ({
             value: cat.name.toLowerCase().replace(/\s+/g, "-"),
             label: cat.name,
@@ -251,15 +259,15 @@ const AddProductWizard: React.FC<AddProductWizardProps> = ({
           seoTitle: editingProduct.seoTitle || "",
           seoDescription: editingProduct.seoDescription || "",
           tags: editingProduct.tags || [],
-          images: (editingProduct.images || []).slice(0, MAX_IMAGES).map(
-            (img: any, index: number) => ({
+          images: (editingProduct.images || [])
+            .slice(0, MAX_IMAGES)
+            .map((img: any, index: number) => ({
               id: Date.now() + index,
               url: typeof img === "string" ? img : img.url,
               alt: "Existing image",
               isUploaded: true,
               isUploading: false,
-            })
-          ),
+            })),
           location: editingProduct.location || "",
           latitude: editingProduct.latitude?.toString() || "",
           longitude: editingProduct.longitude?.toString() || "",
@@ -303,12 +311,18 @@ const AddProductWizard: React.FC<AddProductWizardProps> = ({
   const handleImageUpload = (files: FileList | null) => {
     if (!files) return;
     setUploadErrors([]);
-    const incoming = Array.from(files).slice(0, MAX_IMAGES - formData.images.length);
+    const incoming = Array.from(files).slice(
+      0,
+      MAX_IMAGES - formData.images.length
+    );
 
     incoming.forEach((file) => {
       // Validate file type
-      if (!file.type.startsWith('image/')) {
-        setUploadErrors((prev) => [...prev, `${file.name} is not a valid image file.`]);
+      if (!file.type.startsWith("image/")) {
+        setUploadErrors((prev) => [
+          ...prev,
+          `${file.name} is not a valid image file.`,
+        ]);
         return;
       }
 
@@ -383,116 +397,163 @@ const AddProductWizard: React.FC<AddProductWizardProps> = ({
 
   const hasUploadingImages = false; // No longer uploading images individually
 
-const processSubmission = async (isPublished: boolean) => {
-  if (loading) return;
-  
-  // Validate required fields
-  if (!formData.name || !formData.category || !formData.price) {
-    toast.error("Missing required fields", {
-      description: "Please fill in name, category, and price before publishing.",
-      duration: 4000,
-    });
-    return;
-  }
+  const processSubmission = async (isPublished: boolean) => {
+    if (loading) return;
 
-  setLoading(true);
-  try {
-    // Create FormData object for multipart/form-data submission
-    const formDataPayload = new FormData();
-    
-    // Add text fields
-    formDataPayload.append("name", formData.name);
-    formDataPayload.append("description", formData.description);
-    formDataPayload.append("category", formData.category);
-    formDataPayload.append("price", String(Number(formData.price)));
-    
-    if (formData.comparePrice) {
-      formDataPayload.append("compare_at_price", String(Number(formData.comparePrice)));
-    }
-    if (formData.cost) {
-      formDataPayload.append("cost_per_item", String(Number(formData.cost)));
-    }
-    
-    formDataPayload.append("sku", formData.sku);
-    formDataPayload.append("barcode", formData.barcode);
-    formDataPayload.append("quantity", String(Number(formData.stock) || 0));
-    formDataPayload.append("low_stock_threshold", String(Number(formData.lowStockThreshold) || 0));
-    formDataPayload.append("weight", String(Number(formData.weight) || 0));
-    formDataPayload.append("dimensions", JSON.stringify(formData.dimensions));
-    formDataPayload.append("seo_title", formData.seoTitle);
-    formDataPayload.append("seo_description", formData.seoDescription);
-    formDataPayload.append("status", isPublished ? "active" : "draft");
-    formDataPayload.append("is_published", String(isPublished));
-    formDataPayload.append("location", formData.location || "");
-    
-    // Add latitude and longitude if available
-    if (formData.latitude) {
-      formDataPayload.append("latitude", String(Number(formData.latitude)));
-    }
-    if (formData.longitude) {
-      formDataPayload.append("longitude", String(Number(formData.longitude)));
-    }
-    
-    formDataPayload.append("availableFrom", formData.availableFrom || "");
-    formDataPayload.append("availableTo", formData.availableTo || "");
-    
-    // Add image files directly (not URLs)
-    formData.images.forEach((img) => {
-      if (img.file) {
-        // Append actual File objects
-        formDataPayload.append(`images`, img.file);
-      }
-    });
-    
-    // Add tags as array
-    formData.tags.forEach((tag, index) => {
-      formDataPayload.append(`tags[${index}]`, tag);
-    });
-
-    let response;
-    if (editingProduct) {
-      // For editing, use patch endpoint
-      response = await productService.editProduct(editingProduct.id, formDataPayload as any);
-    } else {
-      // For new products, use addProduct with FormData
-      response = await productService.addProduct(formDataPayload);
-    }
-
-    toast.success(editingProduct 
-      ? "✓ Product updated successfully!" 
-      : "✓ Product added successfully!", 
-      {
-        description: editingProduct 
-          ? "Your product changes have been saved."
-          : "Your product is now live in the marketplace!",
+    // Validate required fields
+    if (!formData.name || !formData.category || !formData.price) {
+      toast.error("Missing required fields", {
+        description:
+          "Please fill in name, category, and price before publishing.",
         duration: 4000,
-      }
-    );
-    onSave(response.data || response);
-    
-    // Close modal and refresh page for new products
-    if (!editingProduct) {
-      setTimeout(() => {
-        onClose();
-        window.location.reload();
-      }, 1500);
-    } else {
-      // For edits, just close without refresh
-      setTimeout(() => {
-        onClose();
-      }, 1500);
+      });
+      return;
     }
-  } catch (error: any) {
-    console.error("Submission error:", error);
-    const errorMsg = error.response?.data?.message || error.message || "Failed to save product.";
-    toast.error(errorMsg, {
-      description: "Please check your input and try again.",
-      duration: 5000,
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+
+    setLoading(true);
+    try {
+      // Create FormData object for multipart/form-data submission
+      const formDataPayload = new FormData();
+
+      // Add text fields
+      formDataPayload.append("name", formData.name);
+      formDataPayload.append("description", formData.description);
+      formDataPayload.append("category", formData.category);
+      formDataPayload.append("price", String(Number(formData.price)));
+
+      if (formData.comparePrice) {
+        formDataPayload.append(
+          "compare_at_price",
+          String(Number(formData.comparePrice))
+        );
+      }
+      if (formData.cost) {
+        formDataPayload.append("cost_per_item", String(Number(formData.cost)));
+      }
+
+      formDataPayload.append("sku", formData.sku);
+      formDataPayload.append("barcode", formData.barcode);
+      formDataPayload.append("quantity", String(Number(formData.stock) || 0));
+      formDataPayload.append(
+        "low_stock_threshold",
+        String(Number(formData.lowStockThreshold) || 0)
+      );
+      formDataPayload.append("weight", String(Number(formData.weight) || 0));
+      formDataPayload.append("dimensions", JSON.stringify(formData.dimensions));
+      formDataPayload.append("seo_title", formData.seoTitle);
+      formDataPayload.append("seo_description", formData.seoDescription);
+      formDataPayload.append("status", isPublished ? "active" : "draft");
+      formDataPayload.append("is_published", String(isPublished));
+      formDataPayload.append("location", formData.location || "");
+
+      // Add latitude and longitude if available
+      if (formData.latitude) {
+        formDataPayload.append("latitude", String(Number(formData.latitude)));
+      }
+      if (formData.longitude) {
+        formDataPayload.append("longitude", String(Number(formData.longitude)));
+      }
+
+      formDataPayload.append("availableFrom", formData.availableFrom || "");
+      formDataPayload.append("availableTo", formData.availableTo || "");
+
+      // Add image files directly (not URLs)
+      formData.images.forEach((img) => {
+        if (img.file) {
+          // Append actual File objects
+          formDataPayload.append(`images`, img.file);
+        }
+      });
+
+      // Add tags as array
+      formData.tags.forEach((tag, index) => {
+        formDataPayload.append(`tags[${index}]`, tag);
+      });
+
+      let response;
+      if (editingProduct) {
+        // For editing, use patch endpoint
+        response = await productService.editProduct(
+          editingProduct.id,
+          formDataPayload as any
+        );
+      } else {
+        // For new products, use addProduct with FormData
+        response = await productService.addProduct(formDataPayload);
+      }
+      console.log("CREATE PRODUCT RESPONSE:", response);
+console.log("RESPONSE.DATA:", response?.data);
+
+// 🔍 DEBUG: inspect API response shape
+console.log("Full response:", response);
+console.log("Response.data:", response?.data);
+console.log("Possible product id locations:", {
+  id: response?.data?.id,
+  productId: response?.data?.product?.id,
+  altId: response?.data?.product_id,
+});
+
+      toast.success(
+        editingProduct
+          ? "✓ Product updated successfully!"
+          : "✓ Product added successfully!",
+        {
+          description: editingProduct
+            ? "Your product changes have been saved."
+            : "Your product is now live in the marketplace!",
+          duration: 4000,
+        }
+      );
+      onSave(response.data || response);
+
+      // For new products, show share modal; for edits, just close
+      if (!editingProduct) {
+        // Extract product ID from response
+const productId =
+  response?.data?.id ??
+  response?.data?.product?.id ??
+  response?.data?.data?.id ??
+  response?.id ??
+  null;
+
+console.log("FINAL PRODUCT ID:", productId);
+
+if (productId != null) {
+  setCreatedProductId(productId);
+  setShowShareModal(true);
+}
+        if (productId) {
+          setCreatedProductId(productId);
+          setShowShareModal(true);
+        } else {
+          // Fallback: reload page if no product ID
+          setTimeout(() => {
+  onClose();
+  // Reload to refresh product list
+  window.location.reload();
+}, 1500);
+
+        }
+      } else {
+        // For edits, just close without refresh
+        setTimeout(() => {
+          onClose();
+        }, 1500);
+      }
+    } catch (error: any) {
+      console.error("Submission error:", error);
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to save product.";
+      toast.error(errorMsg, {
+        description: "Please check your input and try again.",
+        duration: 5000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   if (!isOpen) return null;
 
   /* ===========================
@@ -541,7 +602,6 @@ const processSubmission = async (isPublished: boolean) => {
           </div>
         </div>
 
-
         {/* Stepper nav */}
         <div className="hidden md:flex items-center gap-2 px-4 py-3 border-b border-border overflow-x-auto">
           {steps.map((s) => {
@@ -552,7 +612,9 @@ const processSubmission = async (isPublished: boolean) => {
                 key={s.id}
                 onClick={() => setCurrentStep(s.id)}
                 className={`flex items-center gap-2 px-3 py-1 rounded-md transition ${
-                  active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/50"
+                  active
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted/50"
                 }`}
               >
                 <span className="text-xs font-medium">{idx}.</span>
@@ -586,8 +648,8 @@ const processSubmission = async (isPublished: boolean) => {
                       <div>
                         <h4 className="text-base font-semibold">Add Photos</h4>
                         <p className="text-sm text-muted-foreground">
-                          Add up to {MAX_IMAGES} photos. The first photo will
-                          be your main image.
+                          Add up to {MAX_IMAGES} photos. The first photo will be
+                          your main image.
                         </p>
                       </div>
                       <div className="text-xs w-[30%] md:w-[10%] text-muted-foreground">
@@ -609,12 +671,19 @@ const processSubmission = async (isPublished: boolean) => {
                       onDragOver={handleDrag}
                       // onDrop={handleDrop}
                       className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                        dragActive ? "border-primary bg-primary/5" : "border-border"
+                        dragActive
+                          ? "border-primary bg-primary/5"
+                          : "border-border"
                       }`}
                     >
-                      <Icon name="Upload" size={40} className="mx-auto mb-2 text-muted-foreground" />
+                      <Icon
+                        name="Upload"
+                        size={40}
+                        className="mx-auto mb-2 text-muted-foreground"
+                      />
                       <p className="text-sm text-muted-foreground mb-3">
-                        Drag and drop images here, or click to select from device
+                        Drag and drop images here, or click to select from
+                        device
                       </p>
 
                       <div className="flex gap-2 items-center justify-center">
@@ -629,16 +698,29 @@ const processSubmission = async (isPublished: boolean) => {
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={() => document.getElementById("wizard-image-input")?.click()}
-                          disabled={hasUploadingImages || formData.images.length >= MAX_IMAGES}
+                          onClick={() =>
+                            document
+                              .getElementById("wizard-image-input")
+                              ?.click()
+                          }
+                          disabled={
+                            hasUploadingImages ||
+                            formData.images.length >= MAX_IMAGES
+                          }
                         >
-                          {hasUploadingImages ? "Uploading..." : "Upload from gallery"}
+                          {hasUploadingImages
+                            ? "Uploading..."
+                            : "Upload from gallery"}
                         </Button>
 
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={() => document.getElementById("wizard-image-input")?.click()}
+                          onClick={() =>
+                            document
+                              .getElementById("wizard-image-input")
+                              ?.click()
+                          }
                         >
                           Take Photo
                         </Button>
@@ -733,14 +815,20 @@ const processSubmission = async (isPublished: boolean) => {
                       </label>
                       {categoriesLoading ? (
                         <div className="w-full px-3 py-2 border rounded-lg border-border bg-background flex items-center gap-2 text-muted-foreground">
-                          <Icon name="Loader2" size={16} className="animate-spin" />
+                          <Icon
+                            name="Loader2"
+                            size={16}
+                            className="animate-spin"
+                          />
                           Loading categories...
                         </div>
                       ) : (
                         <Select
                           options={categoryOptions}
                           value={formData.category}
-                          onChange={(value: any) => handleSelectChange("category", value)}
+                          onChange={(value: any) =>
+                            handleSelectChange("category", value)
+                          }
                           placeholder="Select a category..."
                         />
                       )}
@@ -865,7 +953,9 @@ const processSubmission = async (isPublished: boolean) => {
                           name="length"
                           type="number"
                           value={formData.dimensions.length}
-                          onChange={(e) => handleDimensionChange("length", e.target.value)}
+                          onChange={(e) =>
+                            handleDimensionChange("length", e.target.value)
+                          }
                           placeholder="0"
                         />
                         <Input
@@ -873,7 +963,9 @@ const processSubmission = async (isPublished: boolean) => {
                           name="width"
                           type="number"
                           value={formData.dimensions.width}
-                          onChange={(e) => handleDimensionChange("width", e.target.value)}
+                          onChange={(e) =>
+                            handleDimensionChange("width", e.target.value)
+                          }
                           placeholder="0"
                         />
                         <Input
@@ -881,7 +973,9 @@ const processSubmission = async (isPublished: boolean) => {
                           name="height"
                           type="number"
                           value={formData.dimensions.height}
-                          onChange={(e) => handleDimensionChange("height", e.target.value)}
+                          onChange={(e) =>
+                            handleDimensionChange("height", e.target.value)
+                          }
                           placeholder="0"
                         />
                       </div>
@@ -937,7 +1031,7 @@ const processSubmission = async (isPublished: boolean) => {
                 >
                   <div className="space-y-4">
                     <h4 className="text-base font-semibold">Location</h4>
-                    
+
                     {/* Auto-detect location button */}
                     <div className="flex gap-2 items-end">
                       <div className="flex-1">
@@ -958,7 +1052,11 @@ const processSubmission = async (isPublished: boolean) => {
                       >
                         {isLocationLoading ? (
                           <>
-                            <Icon name="Loader2" size={16} className="animate-spin mr-2" />
+                            <Icon
+                              name="Loader2"
+                              size={16}
+                              className="animate-spin mr-2"
+                            />
                             Detecting...
                           </>
                         ) : (
@@ -969,15 +1067,17 @@ const processSubmission = async (isPublished: boolean) => {
                         )}
                       </Button>
                     </div>
-                    
+
                     {(formData.latitude || formData.longitude) && (
                       <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                         <p className="text-xs text-green-800">
-                          <span className="font-semibold">Coordinates:</span> Lat: {formData.latitude || 'N/A'}, Lng: {formData.longitude || 'N/A'}
+                          <span className="font-semibold">Coordinates:</span>{" "}
+                          Lat: {formData.latitude || "N/A"}, Lng:{" "}
+                          {formData.longitude || "N/A"}
                         </p>
                       </div>
                     )}
-                    
+
                     <p className="text-sm text-muted-foreground">
                       If you want buyers to pick up locally or show location in
                       the listing, enter it here or use auto-detect.
@@ -985,7 +1085,6 @@ const processSubmission = async (isPublished: boolean) => {
                   </div>
                 </motion.div>
               )}
-            
 
               {/* AVAILABILITY */}
               {currentStep === "availability" && (
@@ -1001,23 +1100,37 @@ const processSubmission = async (isPublished: boolean) => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block mb-1 text-sm font-medium">Available From</label>
+                        <label className="block mb-1 text-sm font-medium">
+                          Available From
+                        </label>
                         <input
                           type="date"
                           name="availableFrom"
                           value={formData.availableFrom || ""}
-                          onChange={(e) => setFormData((p) => ({ ...p, availableFrom: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((p) => ({
+                              ...p,
+                              availableFrom: e.target.value,
+                            }))
+                          }
                           className="w-full px-3 py-2 border rounded-lg border-border bg-background"
                         />
                       </div>
 
                       <div>
-                        <label className="block mb-1 text-sm font-medium">Available To</label>
+                        <label className="block mb-1 text-sm font-medium">
+                          Available To
+                        </label>
                         <input
                           type="date"
                           name="availableTo"
                           value={formData.availableTo || ""}
-                          onChange={(e) => setFormData((p) => ({ ...p, availableTo: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((p) => ({
+                              ...p,
+                              availableTo: e.target.value,
+                            }))
+                          }
                           className="w-full px-3 py-2 border rounded-lg border-border bg-background"
                         />
                       </div>
@@ -1041,29 +1154,49 @@ const processSubmission = async (isPublished: boolean) => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="md:col-span-2 space-y-4">
                         <div className="rounded-lg border border-border p-4">
-                          <h5 className="font-semibold">{formData.name || "Product Title"}</h5>
+                          <h5 className="font-semibold">
+                            {formData.name || "Product Title"}
+                          </h5>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {formData.description || "Product description preview..."}
+                            {formData.description ||
+                              "Product description preview..."}
                           </p>
-                          <p className="mt-2 text-sm text-muted-foreground">Category: {formData.category}</p>
-                          <p className="mt-1 text-lg font-bold">{formData.price ? `₦${formData.price}` : "$0.00"}</p>
+                          <p className="mt-2 text-sm text-muted-foreground">
+                            Category: {formData.category}
+                          </p>
+                          <p className="mt-1 text-lg font-bold">
+                            {formData.price ? `₦${formData.price}` : "$0.00"}
+                          </p>
                         </div>
 
                         <div>
                           <h6 className="font-medium">Images</h6>
                           <div className="mt-2 grid grid-cols-3 gap-2">
                             {formData.images.slice(0, 6).map((img) => (
-                              <Image key={img.id} src={img.url} alt={img.alt} className="object-cover w-full h-24 rounded" />
+                              <Image
+                                key={img.id}
+                                src={img.url}
+                                alt={img.alt}
+                                className="object-cover w-full h-24 rounded"
+                              />
                             ))}
                           </div>
                         </div>
                       </div>
 
                       <div className="rounded-lg border border-border p-4">
-                        <p className="text-sm text-muted-foreground">Status: {formData.status}</p>
-                        <p className="text-sm mt-1">Visibility: {formData.visibility}</p>
-                        <p className="text-sm mt-1">Stock: {formData.stock || 0}</p>
-                        <p className="text-sm mt-1">SKU: {formData.sku || "-"}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Status: {formData.status}
+                        </p>
+                        <p className="text-sm mt-1">
+                          Visibility: {formData.visibility}
+                        </p>
+                        <p className="text-sm mt-1">
+                          Stock: {formData.stock || 0}
+                        </p>
+                        <p className="text-sm mt-1">
+                          SKU: {formData.sku || "-"}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1071,26 +1204,41 @@ const processSubmission = async (isPublished: boolean) => {
               )}
             </AnimatePresence>
           </div>
-{/* footer */}
+          {/* footer */}
           {currentStep === "preview" ? (
-  <button
-    type="button" // Change to button to control the click
-    onClick={() => processSubmission(true)}
-    className="px-4 py-2 w-full m-4 rounded-md bg-success text-white hover:opacity-95"
-    disabled={loading || hasUploadingImages}
-  >
-    {loading ? "Saving..." : "Save & Publish"}
-  </button>
-) : (
-  <button
-    type="submit" // This triggers form onSubmit -> goNext()
-    className="px-4 py-2 m-4 rounded-md bg-primary text-white hover:opacity-95"
-  >
-    Continue
-  </button>
-)}
+            <button
+              type="button" // Change to button to control the click
+              onClick={() => processSubmission(true)}
+              className="px-4 py-2 w-full m-4 rounded-md bg-success text-white hover:opacity-95"
+              disabled={loading || hasUploadingImages}
+            >
+              {loading ? "Saving..." : "Save & Publish"}
+            </button>
+          ) : (
+            <button
+              type="submit" // This triggers form onSubmit -> goNext()
+              className="px-4 py-2 m-4 rounded-md bg-primary text-white hover:opacity-95"
+            >
+              Continue
+            </button>
+          )}
         </form>
       </motion.div>
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => {
+          setShowShareModal(false);
+          setTimeout(() => {
+            onClose();
+            // Reload to refresh product list
+            // window.location.reload();
+          }, 300);
+        }}
+        productId={createdProductId || ""}
+        productName={formData.name}
+      />
     </div>
   );
 };

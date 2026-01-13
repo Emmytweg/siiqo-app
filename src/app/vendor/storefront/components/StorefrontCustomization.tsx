@@ -492,19 +492,19 @@ useEffect(() => {
         </div> */}
 
         {/* WORKING HOURS */}
-        <div className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
+        <div className="bg-white p-4 md:p-6 lg:p-8 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
             <Clock size={14} /> Business Hours
           </label>
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
             {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
-              <div key={day} className="flex items-center gap-4 pb-4 border-b border-slate-100 last:border-b-0">
-                <div className="w-24">
+              <div key={day} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 pb-4 border-b border-slate-100 last:border-b-0">
+                <div className="w-20 sm:w-24 flex-shrink-0">
                   <span className="text-sm font-bold text-slate-900">{day}</span>
                 </div>
                 
-                <div className="flex-1 flex items-center gap-3">
-                  <div className="flex items-center gap-2">
+                <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1">
                     <input 
                       type="time" 
                       value={settings.working_hours[day]?.start || "09:00"}
@@ -515,9 +515,10 @@ useEffect(() => {
                           start: e.target.value
                         }
                       })}
-                      className="px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-sm font-bold outline-none focus:ring-2 ring-blue-500"
+                      className="w-full sm:w-auto px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-sm font-bold outline-none focus:ring-2 ring-blue-500"
                     />
-                    <span className="text-slate-400 font-bold">to</span>
+                    <span className="hidden sm:block text-slate-400 font-bold">to</span>
+                    <span className="sm:hidden text-slate-400 font-bold text-xs">to</span>
                     <input 
                       type="time" 
                       value={settings.working_hours[day]?.end || "21:00"}
@@ -528,7 +529,7 @@ useEffect(() => {
                           end: e.target.value
                         }
                       })}
-                      className="px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-sm font-bold outline-none focus:ring-2 ring-blue-500"
+                      className="w-full sm:w-auto px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-sm font-bold outline-none focus:ring-2 ring-blue-500"
                     />
                   </div>
                   
@@ -538,7 +539,7 @@ useEffect(() => {
                       delete newHours[day];
                       updateSetting('working_hours', newHours);
                     }}
-                    className="ml-auto px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg text-xs font-bold transition-colors"
+                    className="w-full sm:w-auto px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg text-xs font-bold transition-colors"
                   >
                     Closed
                   </button>
@@ -551,7 +552,7 @@ useEffect(() => {
       </main>
 
       {/* --- FLOATING SAVE BAR --- */}
-      <footer className="fixed bottom-0 left-28 right-0 p-4 z-40">
+      <footer className="fixed bottom-0 left-20 md:left-28 right-20 p-4 z-40">
         <div className="max-w-4xl mx-auto bg-slate-900/90 backdrop-blur-xl p-4 rounded-[2rem] flex items-center justify-between shadow-2xl border border-white/10">
           <div className="hidden sm:flex flex-col ml-4">
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Server Sync</span>

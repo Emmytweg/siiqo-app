@@ -23,7 +23,7 @@ export interface NearbyDealCardProps {
     id: number | string;
   name: string;
   price: number;
-    images: string;
+    image: string;
     vendor_name:  string ;
   };
   dealData: DealData;
@@ -69,7 +69,7 @@ const NearbyDealCard: React.FC<NearbyDealCardProps> = ({
       <div className="relative w-full h-48 overflow-hidden rounded-t-lg shrink-0">
         <Image
           src={
-            dealData.image           }
+            product.image           }
           
           alt={product.name}
           fill={true}

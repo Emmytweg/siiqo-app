@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, FormEvent, ChangeEvent } from "react";
+import React, { useState, FormEvent, ChangeEvent, useEffect } from "react";
 import Icon, { type LucideIconName } from "@/components/AppIcon";
 import Button from "@/components/ui/alt/ButtonAlt"; // Updated to match your previous components
 import Input from "@/components/ui/new/Input";
+import { vendorService } from "@/services/vendorService";
 
 interface ContactFormData {
   name: string;
@@ -13,7 +14,7 @@ interface ContactFormData {
 }
 
 interface ContactSectionProps {
-  business: any; // Supporting the flexible LocalStorage object
+  business?: any; // Supporting the flexible LocalStorage object (optional)
   onSendMessage?: (data: ContactFormData) => Promise<void>;
 }
 
@@ -26,13 +27,63 @@ const ContactSection: React.FC<ContactSectionProps> = ({
   const [email, setEmail] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [settingsData, setSettingsData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Helper to safely get business data from either API or LocalStorage format
-  const bizName = business?.business_name || business?.name || "Our Business";
-  const bizPhone = business?.phone || business?.contact?.phone || "No phone provided";
-  const bizEmail = business?.email || business?.contact?.email || "No email provided";
-  const bizAddress = business?.address || business?.contact?.address || "Location not set";
-  const bizWebsite = business?.website || business?.contact?.website;
+  // Fetch settings from API on mount
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await vendorService.getDashboardStats();
+        if (response?.data) {
+          setSettingsData(response.data);
+        }
+      } catch (error) {
+        console.error("Error fetching settings:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSettings();
+  }, []);
+
+  // Helper to safely get business data from API response or fallback to prop
+  const bizName =
+    settingsData?.store_settings?.business_name ||
+    business?.business_name ||
+    business?.name ||
+    "Our Business";
+  const bizPhone =
+    settingsData?.personal_info?.phone ||
+    business?.phone ||
+    business?.contact?.phone ||
+    "No phone provided";
+  const bizEmail =
+    settingsData?.personal_info?.email ||
+    business?.email ||
+    business?.contact?.email ||
+    "No email provided";
+  const bizAddress =
+    settingsData?.store_settings?.address ||
+    settingsData?.financials?.business_address ||
+    business?.address ||
+    business?.contact?.address ||
+    "Location not set";
+  const bizWebsite =
+    settingsData?.store_settings?.website ||
+    business?.website ||
+    business?.contact?.website;
+  const bizLatitude =
+    settingsData?.financials?.latitude ||
+    business?.latitude ||
+    business?.lat ||
+    business?.location?.lat;
+  const bizLongitude =
+    settingsData?.financials?.longitude ||
+    business?.longitude ||
+    business?.lng ||
+    business?.location?.lng;
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -43,8 +94,13 @@ const ContactSection: React.FC<ContactSectionProps> = ({
         await onSendMessage({ name, email, phone, message });
       } else {
         // Fallback for preview mode
-        console.log("Message sent in preview:", { name, email, phone, message });
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log("Message sent in preview:", {
+          name,
+          email,
+          phone,
+          message,
+        });
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
       setName("");
@@ -59,12 +115,16 @@ const ContactSection: React.FC<ContactSectionProps> = ({
   };
 
   const handleCallClick = (): void => {
-    if (bizPhone !== "No phone provided") window.location.href = `tel:${bizPhone}`;
+    if (bizPhone !== "No phone provided")
+      window.location.href = `tel:${bizPhone}`;
   };
 
   const handleDirectionsClick = (): void => {
     const address = encodeURIComponent(bizAddress);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, "_blank");
+    window.open(
+      `https://www.google.com/maps/search/?api=1&query=${address}`,
+      "_blank"
+    );
   };
 
   return (
@@ -84,7 +144,9 @@ const ContactSection: React.FC<ContactSectionProps> = ({
                 <Icon name="Phone" size={20} />
               </div>
               <div className="flex-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase">Phone</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">
+                  Phone
+                </p>
                 <p className="text-sm font-black text-slate-800">{bizPhone}</p>
               </div>
               <Button variant="outline" size="sm" onClick={handleCallClick}>
@@ -98,10 +160,18 @@ const ContactSection: React.FC<ContactSectionProps> = ({
                 <Icon name="Mail" size={20} />
               </div>
               <div className="flex-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase">Email</p>
-                <p className="text-sm font-black text-slate-800 truncate max-w-[150px]">{bizEmail}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">
+                  Email
+                </p>
+                <p className="text-sm font-black text-slate-800 truncate max-w-[150px]">
+                  {bizEmail}
+                </p>
               </div>
-              <Button variant="outline" size="sm" onClick={() => window.location.href = `mailto:${bizEmail}`}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => (window.location.href = `mailto:${bizEmail}`)}
+              >
                 Email
               </Button>
             </div>
@@ -112,10 +182,18 @@ const ContactSection: React.FC<ContactSectionProps> = ({
                 <Icon name="MapPin" size={20} />
               </div>
               <div className="flex-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase">Address</p>
-                <p className="text-sm font-black text-slate-800 line-clamp-1">{bizAddress}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">
+                  Address
+                </p>
+                <p className="text-sm font-black text-slate-800 line-clamp-1">
+                  {bizAddress}
+                </p>
               </div>
-              <Button variant="outline" size="sm" onClick={handleDirectionsClick}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDirectionsClick}
+              >
                 Map
               </Button>
             </div>
@@ -127,10 +205,18 @@ const ContactSection: React.FC<ContactSectionProps> = ({
                   <Icon name="Globe" size={20} />
                 </div>
                 <div className="flex-1">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">Website</p>
-                  <p className="text-sm font-black text-slate-800">{bizWebsite}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">
+                    Website
+                  </p>
+                  <p className="text-sm font-black text-slate-800">
+                    {bizWebsite}
+                  </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => window.open(bizWebsite, "_blank")}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(bizWebsite, "_blank")}
+                >
                   Visit
                 </Button>
               </div>
@@ -184,7 +270,7 @@ const ContactSection: React.FC<ContactSectionProps> = ({
       </div>
 
       {/* Dynamic Map Section */}
-      <div className="pb-10">
+      {/* <div className="pb-10">
         <h3 className="mb-4 font-black text-slate-900 uppercase text-[10px] tracking-widest px-1">Find us here</h3>
         <div className="w-full h-64 overflow-hidden rounded-[2.5rem] border-4 border-white shadow-lg lg:h-80">
           <iframe
@@ -193,10 +279,14 @@ const ContactSection: React.FC<ContactSectionProps> = ({
             loading="lazy"
             title={bizName}
             style={{ border: 0 }}
-            src={`https://www.google.com/maps/embed/v1/place?key=YOUR_GOOGLE_MAPS_API_KEY&q=${encodeURIComponent(bizAddress)}`}
+            src={
+              bizLatitude && bizLongitude
+                ? `https://www.google.com/maps/embed/v1/place?key=YOUR_GOOGLE_MAPS_API_KEY&q=${bizLatitude},${bizLongitude}`
+                : `https://www.google.com/maps/embed/v1/place?key=YOUR_GOOGLE_MAPS_API_KEY&q=${encodeURIComponent(bizAddress)}`
+            }
           />
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };

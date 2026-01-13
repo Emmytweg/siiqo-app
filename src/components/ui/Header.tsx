@@ -387,7 +387,10 @@ const Header: React.FC = () => {
                     : "User Profile"}
                 </Button>
               ) : (
-                <Button variant="navy" onClick={openModal}>
+                <Button
+                  variant="navy"
+                  onClick={() => router.push("/auth/signup")}
+                >
                   Get Started
                 </Button>
               )}
@@ -531,7 +534,10 @@ const Header: React.FC = () => {
                 )}
               </div>
             ) : (
-              <Button variant="navy" onClick={openModal}>
+              <Button
+                variant="navy"
+                onClick={() => router.push("/auth/signup")}
+              >
                 Get Started
               </Button>
             )}

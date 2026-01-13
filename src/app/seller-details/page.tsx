@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, ChangeEvent } from "react";
@@ -29,6 +28,10 @@ const VendorProfile = () => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [profileData, setProfileData] = useState<any>(null);
   const [isVendor, setIsVendor] = useState<boolean>(true);
+
+  // Keep a ref of the original profile data to compare changes
+  const originalProfileDataRef = React.useRef<any>(null);
+
   // Form state
   const [editForm, setEditForm] = useState({
     name: "",
@@ -38,7 +41,7 @@ const VendorProfile = () => {
     phone: "",
     location: "",
     banner_url: "", // For preview
-    logo_url: "",   // For preview
+    logo_url: "", // For preview
     bannerFile: null as File | null,
     logoFile: null as File | null,
   });
@@ -50,15 +53,20 @@ const VendorProfile = () => {
 
       if (response.status === "success") {
         const { personal_info, store_settings } = response.data;
-        
+
         const mappedData = {
           name: store_settings.business_name,
           ownerName: personal_info.fullname,
           email: personal_info.email,
           phone: personal_info.phone || "",
-          avatar: store_settings.logo_url || "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400",
-          cover: store_settings.banner_url || "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1600",
-          primaryColor: store_settings.template_options?.primary_color || "#000000",
+          avatar:
+            store_settings.logo_url ||
+            "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400",
+          cover:
+            store_settings.banner_url ||
+            "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1600",
+          primaryColor:
+            store_settings.template_options?.primary_color || "#000000",
           location: store_settings.address,
           bio: store_settings.description,
           isPublished: store_settings.is_published,
@@ -94,62 +102,50 @@ const VendorProfile = () => {
     fetchVendorSettings();
   }, []);
 
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  // Initialize original settings ref after data is fetched
+  useEffect(() => {
+    if (profileData) {
+      originalProfileDataRef.current = {
+        name: profileData.name,
+        ownerName: profileData.ownerName,
+        bio: profileData.bio,
+        email: profileData.email,
+        phone: profileData.phone,
+        location: profileData.location,
+        banner_url: profileData.cover,
+        logo_url: profileData.avatar,
+      };
+    }
+  }, [profileData]);
+
+  const handleInputChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
-    setEditForm(prev => ({ ...prev, [name]: value }));
+    setEditForm((prev) => ({ ...prev, [name]: value }));
   };
-   useEffect(() => {
-      switchMode("vendor");
-    }, []);
+  useEffect(() => {
+    switchMode("vendor");
+  }, []);
 
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'banner' | 'logo') => {
+  const handleImageChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    type: "banner" | "logo"
+  ) => {
     const file = e.target.files?.[0];
     if (file) {
       const previewUrl = URL.createObjectURL(file);
-      setEditForm(prev => ({
+      setEditForm((prev) => ({
         ...prev,
         [`${type}_url`]: previewUrl,
-        [`${type}File`]: file
+        [`${type}File`]: file,
       }));
     }
   };
 
-  const handleUpdateProfile = async () => {
-    try {
-      setIsUpdating(true);
-      
-      // We use FormData because we are sending actual Files (images)
-      const formData = new FormData();
-      
-      // Fields according to your API structure
-      formData.append("business_name", editForm.name);
-      formData.append("description", editForm.bio);
-      formData.append("address", editForm.location);
-      formData.append("fullname", editForm.ownerName);
-      formData.append("phone", editForm.phone);
-
-      // Append files if they were changed
-      if (editForm.bannerFile) {
-        formData.append("banner_url", editForm.bannerFile);
-      }
-      if (editForm.logoFile) {
-        formData.append("logo_url", editForm.logoFile);
-      }
-
-      const res = await storefrontService.updateStorefrontData(formData);
-
-      if (res.status === "success") {
-        toast.success("Settings updated successfully");
-        setIsEditing(false);
-        fetchVendorSettings(); // Reload to get the new permanent URLs
-      }
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.response?.data?.message || "Failed to update settings.");
-    } finally {
-      setIsUpdating(false);
-    }
+  const handleEditProfile = () => {
+    toast.info("Taking you to settings...");
+    router.push("/vendor/settings");
   };
 
   const tabs: Tab[] = [
@@ -161,22 +157,48 @@ const VendorProfile = () => {
   const renderTabContent = () => {
     if (!profileData) return null;
     switch (activeTab) {
-      case "listings": return <MyListings />;
-      case "orders": return <VendorOrders />;
-      case "settings": return <Settings  />;
-      default: return <MyListings />;
+      case "listings":
+        return <MyListings />;
+      case "orders":
+        return <VendorOrders />;
+      case "settings":
+        return <Settings />;
+      default:
+        return <MyListings />;
     }
   };
 
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center min-h-screen">
-      <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      <p className="mt-4 text-sm text-text-secondary">Loading Profile...</p>
-    </div>
-  );
+  if (loading)
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="mt-4 text-sm text-text-secondary">Loading Profile...</p>
+      </div>
+    );
 
   return (
     <div className="min-h-screen bg-background pb-12">
+      <div className="px-4 md:px-8 pt-4 pb-2">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+          aria-label="Go back"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          Back
+        </button>
+      </div>
       {/* --- Cover Image --- */}
       <div className="relative">
         <div
@@ -189,18 +211,33 @@ const VendorProfile = () => {
                 <Icon name="Camera" size={32} />
                 <span className="text-sm font-medium">Change Banner</span>
               </div>
-              <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageChange(e, 'banner')} />
+              <input
+                type="file"
+                className="hidden"
+                accept="image/*"
+                onChange={(e) => handleImageChange(e, "banner")}
+              />
             </label>
           )}
-          
+
           {/* --- Profile Logo --- */}
           <div className="absolute -bottom-12 left-6 md:left-12">
             <div className="w-24 h-24 md:w-36 md:h-36 rounded-2xl overflow-hidden border-4 border-white bg-white shadow-xl relative group">
-              <Image src={editForm.logo_url} alt="Store Logo" fill className="object-cover" />
+              <Image
+                src={editForm.logo_url}
+                alt="Store Logo"
+                fill
+                className="object-cover"
+              />
               {isEditing && (
                 <label className="absolute inset-0 flex items-center justify-center bg-black/40 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
                   <Icon name="Edit" size={24} className="text-white" />
-                  <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageChange(e, 'logo')} />
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={(e) => handleImageChange(e, "logo")}
+                  />
                 </label>
               )}
             </div>
@@ -232,52 +269,54 @@ const VendorProfile = () => {
               <>
                 <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
                   {profileData?.name}
-                  <Icon name="ShieldCheck" size={24} className="text-blue-500" />
+                  <Icon
+                    name="ShieldCheck"
+                    size={24}
+                    className="text-blue-500"
+                  />
                 </h1>
-                <p className="text-text-secondary text-sm font-medium">Owned by {profileData?.ownerName}</p>
+                <p className="text-text-secondary text-sm font-medium">
+                  Owned by {profileData?.ownerName}
+                </p>
               </>
             )}
-            
+
             <div className="flex items-center gap-4 text-xs text-text-secondary mt-2">
               <span className="flex items-center gap-1">
-                <Icon name="MapPin" size={14} /> 
+                <Icon name="MapPin" size={14} />
                 {isEditing ? (
-                   <input name="location" value={editForm.location} onChange={handleInputChange} className="bg-transparent border-b focus:outline-none" />
-                ) : profileData?.location}
+                  <input
+                    name="location"
+                    value={editForm.location}
+                    onChange={handleInputChange}
+                    className="bg-transparent border-b focus:outline-none"
+                  />
+                ) : (
+                  profileData?.location
+                )}
               </span>
-              {/* <span className="flex items-center gap-1">
-                <Icon name="Circle" size={10} className={profileData?.isPublished ? "text-success fill-success" : "text-gray-400"} />
-                {profileData?.isPublished ? "Live" : "Offline"}
-              </span> */}
             </div>
           </div>
 
           <div className="flex gap-3">
             {isEditing ? (
               <>
-                <button 
+                <button
                   onClick={() => setIsEditing(false)}
                   className="px-6 py-2.5 rounded-xl font-bold border border-border hover:bg-muted transition-all"
                 >
                   Cancel
                 </button>
-                <button 
-                  onClick={handleUpdateProfile}
-                  disabled={isUpdating}
-                  className="px-6 py-2.5 rounded-xl font-bold text-white shadow-lg bg-black disabled:opacity-50"
-                >
-                  {isUpdating ? "Saving..." : "Save Changes"}
-                </button>
               </>
             ) : (
               <>
-                {/* <button 
-                  onClick={() => setIsEditing(true)}
+                <button
+                  onClick={handleEditProfile}
                   className="px-6 py-2.5 rounded-xl font-bold border border-border hover:bg-muted transition-all flex items-center gap-2"
                 >
                   <Icon name="Edit3" size={16} /> Edit Profile
-                </button> */}
-                <button 
+                </button>
+                <button
                   onClick={() => router.push("/vendor/products/")}
                   className="px-6 py-2.5 rounded-xl font-bold text-white shadow-lg transition-transform active:scale-95"
                   style={{ backgroundColor: profileData?.primaryColor }}
@@ -292,34 +331,24 @@ const VendorProfile = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-10">
           <aside className="lg:col-span-4 space-y-6">
             <div className="p-6 border rounded-2xl bg-surface shadow-sm">
-              <h3 className="text-xs font-bold uppercase tracking-widest mb-3 opacity-50">About Store</h3>
-              {isEditing ? (
-                <textarea
-                  name="bio"
-                  value={editForm.bio}
-                  onChange={handleInputChange}
-                  rows={4}
-                  className="w-full text-sm bg-transparent border rounded p-2 focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-              ) : (
-                <p className="text-sm leading-relaxed">{profileData?.bio}</p>
-              )}
+              <h3 className="text-xs font-bold uppercase tracking-widest mb-3 opacity-50">
+                About Store
+              </h3>
+              <p className="text-sm leading-relaxed">{profileData?.bio}</p>
             </div>
-            
+
             <div className="p-6 border rounded-2xl bg-surface shadow-sm">
-              <h3 className="text-xs font-bold uppercase tracking-widest mb-4 opacity-50">Contact Info</h3>
+              <h3 className="text-xs font-bold uppercase tracking-widest mb-4 opacity-50">
+                Contact Info
+              </h3>
               <div className="space-y-3">
                 <div className="flex items-center gap-3 text-sm">
-                  <Icon name="Mail" size={16} /> 
-                  {isEditing ? (
-                    <input name="email" value={editForm.email} onChange={handleInputChange} className="bg-transparent border-b focus:outline-none w-full" />
-                  ) : profileData?.email}
+                  <Icon name="Mail" size={16} />
+                  {profileData?.email}
                 </div>
                 <div className="flex items-center gap-3 text-sm">
-                  <Icon name="Phone" size={16} /> 
-                  {isEditing ? (
-                    <input name="phone" value={editForm.phone} onChange={handleInputChange} className="bg-transparent border-b focus:outline-none w-full" />
-                  ) : profileData?.phone}
+                  <Icon name="Phone" size={16} />
+                  {profileData?.phone}
                 </div>
               </div>
             </div>
@@ -333,19 +362,22 @@ const VendorProfile = () => {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex-1 py-4 text-sm font-bold transition-all border-b-2 ${
-                      activeTab === tab.id ? "text-black" : "border-transparent text-text-secondary"
+                      activeTab === tab.id
+                        ? "text-black"
+                        : "border-transparent text-text-secondary"
                     }`}
-                    style={{ 
-                        borderBottomColor: activeTab === tab.id ? profileData?.primaryColor : 'transparent' 
+                    style={{
+                      borderBottomColor:
+                        activeTab === tab.id
+                          ? profileData?.primaryColor
+                          : "transparent",
                     }}
                   >
                     {tab.label}
                   </button>
                 ))}
               </div>
-              <div className="p-6 mb-20 ">
-                {renderTabContent()}
-              </div>
+              <div className="p-6 mb-20 ">{renderTabContent()}</div>
             </div>
           </main>
         </div>
